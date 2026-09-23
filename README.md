@@ -1,0 +1,59 @@
+# Pragmatic Intent
+
+**Pragmatic Intent Detection for AI Assistants: An Empirical Study of Conversational Context and Linguistic Indirectness**
+
+People rarely ask AI assistants for things directly. "It's freezing in here" can be a request to turn
+up the heat, and "I have an interview tomorrow and haven't practiced" can be a request for help
+preparing. This project measures how well machine-learning and language models recover what the user
+*means*, and how that ability depends on:
+
+- **Degree of indirectness.** Utterances range from direct requests ("Turn the heat up") to
+  conventionally indirect ones ("Can you turn the heat up?") to strong and mild hints.
+- **Amount of conversational context.** Models see the utterance alone, one prior turn, the full
+  dialogue history, or a mismatched history from a different conversation.
+
+## Research question
+
+> How do conversational context and degree of linguistic indirectness interact when models detect and
+> interpret a user's underlying intent?
+
+The central hypothesis is that context helps more as requests become less explicit.
+
+## Approach
+
+- **Two-stage task.**
+  - Stage 1 (detection): is the user making a direct request, an indirect request, or no request?
+  - Stage 2 (interpretation): for indirect requests, what is the underlying request?
+- **Controlled benchmark.** About 8 assistant-intent categories × 4 indirectness levels (grounded in
+  the CCSARP request-strategy scale) × 4 context conditions. It includes contrastive items where the
+  same utterance is or isn't a request depending on context. Test items are human-validated.
+- **Model comparison.** A classical baseline (TF-IDF + logistic regression), fine-tuned transformer
+  encoders, prompted LLMs (open-weight and API), and a two-stage hybrid pipeline.
+- **Analysis.** A mixed-effects test of the context × indirectness interaction, a human baseline,
+  per-intent difficulty, and error analysis.
+
+## Status
+
+🚧 **Phase 0: design.** Taxonomy, indirectness rubric, and analysis plan are in progress. See
+[`docs/research_plan.md`](docs/research_plan.md) for the phased plan and design decisions.
+
+## Repository layout
+
+The layout will grow as the phases land:
+
+```text
+docs/       research plan, analysis plan, annotation guidelines
+configs/    experiment configs (one config = one reproducible run)
+src/        data pipeline, models, evaluation harness
+data/       local datasets (raw sources are not committed; see their licenses)
+results/    run logs (JSONL) and figures
+```
+
+## License
+
+The code is released under the [MIT License](LICENSE). The benchmark data will be released
+separately under a license compatible with its source datasets.
+
+## Author
+
+Sandy Thomas. Started as a Machine & Deep Learning course project, Fall 2026.
