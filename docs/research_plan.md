@@ -3,6 +3,40 @@
 _Created 2026-09-23 from the Fall 2026 CSCI 4220 proposal. Goal: course report in Week 10, then a
 workshop/SRW paper submission._
 
+## Design revision (2026-09-25): existing-data path
+
+_Approved by the user. Where this section conflicts with the rest of this plan, this section wins.
+The synthetic benchmark is parked ([`synthetic_data_plan.md`](synthetic_data_plan.md)). Data details
+are in [`data_sources.md`](data_sources.md)._
+
+**New design.**
+- **Core data:** DIRECT's same-turn triples (original / direct / indirect version of each MultiWOZ
+  user turn), with context from MultiWOZ 2.1 joined on `dialogue_id` + `turn_index`. All 71,498 rows match.
+- **Levels:** the user hand-labels CCSARP levels L0–L3 on a sample, from the utterance alone.
+- **Stage 1:** direct vs. indirect. `no_request` covers only genuine non-requests (thanks and
+  closings; about 16% of targets by user acts).
+- **Stage 2:** intent labels come from MultiWOZ domain + user dialogue acts.
+- **Context:** none / one prior system turn / full history / a length-matched mismatched history from
+  a same-split dialogue with no shared domain. Contexts are derived at load time
+  (`src/data/build_direct_dataset.py`).
+- **Splits:** MultiWOZ's official train / val (as dev) / test, grouped by dialogue.
+- **Later:** a small hand-written contrastive set is an optional add-on. Hypotheses H1–H5 are unchanged.
+
+| Original item | Status |
+|---|---|
+| Decisions 1–2 (indirectness by CCSARP form; ambiguity measured) | **Unchanged.** Indirectness is now labeled on existing utterances, not written as ladders. |
+| Decision 3 (3-way Stage 1) | **Changed.** Direct vs. indirect, with `no_request` only for genuine non-requests. |
+| Decision 4 (contrastive items in every scenario) | **Superseded.** Now an optional add-on. |
+| Decision 5 (four context conditions incl. mismatched) | **Unchanged.** Adds a mismatched control for the one-turn condition. |
+| Decision 6 (split by scenario) | **Changed.** Split by dialogue (MultiWOZ official split). |
+| Decision 7 (generator-family bias) | **Mostly moot.** DIRECT is human-written; this applies again only to LLM-written add-ons. |
+| Phase 0 (taxonomy, rubric) / Phase 1 (κ pilot) | **Changed / unchanged.** Intents = MultiWOZ domains + acts. The level rubric and a second labeler for ~50 items are still needed. |
+| Phase 2 (build benchmark) | **Superseded** by the DIRECT + MultiWOZ join. |
+| Phases 3–7 (harness, experiments, analysis, report, release) | **Unchanged.** The release can hold only code + labels (IDs, levels), because DIRECT's text can't be redistributed. |
+
+**Main risk:** DIRECT already ran a binary history ablation, and history barely helped. Novelty rests
+on the graded context × level interaction and the mismatched control.
+
 ## Central question
 
 How do **conversational context** and **degree of indirectness** *interact* in determining whether

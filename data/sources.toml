@@ -1,0 +1,227 @@
+# Manifest of third-party source datasets for the Pragmatic Intent benchmark.
+#
+# Consumed by `python -m src.data.download_sources` (see docs/data_sources.md).
+# Files are written to data/raw/<name>/<path>, which is git-ignored: the sources
+# carry their own licenses and must not be redistributed through this repo.
+#
+# Every URL must be https:// on a host listed in `allowed_hosts`; redirects are
+# held to the same rule. URLs are pinned to a commit or a release so the SHA-256
+# checksums stay valid. To add or bump a source: download the file once, record
+# its size and `sha256sum`, and document its license in docs/data_sources.md.
+#
+# Schema (validated by the downloader; unknown keys are rejected):
+#   [[sources]]        name, title, homepage, license, license_url,
+#                      citation_key, version, files, [intended_use], [notes]
+#   [[sources.files]]  url, path, sha256, size, [extract], [keep_archive]
+#   extract entries    member, sha256, size  (only these members are extracted)
+
+schema_version = 1
+
+allowed_hosts = [
+  "raw.githubusercontent.com",
+  "huggingface.co",
+  "amazon-massive-nlu-dataset.s3.amazonaws.com",
+  "ndownloader.figshare.com",
+  # Figshare's download host 302-redirects to its path-style S3 bucket
+  # (/pfigshare-u-files/...). The regional host admits any bucket, which is
+  # acceptable only because every file is pinned by size and SHA-256.
+  "s3-eu-west-1.amazonaws.com",
+]
+
+# ---------------------------------------------------------------------------
+[[sources]]
+name = "direct"
+title = "DIRECT: Direct and Indirect REsponses in Conversational Text Corpus"
+homepage = "https://github.com/junya-takayama/DIRECT"
+license = "NONE STATED: no license in the repo, README, or paper (all rights reserved by default)"
+license_url = "https://github.com/junya-takayama/DIRECT"
+citation_key = "takayama-etal-2021-direct-direct"
+version = "git 0326be46e80aa2627e99aceb88a3e0b9e91dd915 (2021-07-01)"
+intended_use = ["training", "transfer-eval"]
+notes = "Rows reference MultiWOZ dialogue_id/turn_index; dialogue history must be joined from MultiWOZ (not downloaded)."
+
+[[sources.files]]
+url = "https://raw.githubusercontent.com/junya-takayama/DIRECT/0326be46e80aa2627e99aceb88a3e0b9e91dd915/train.csv"
+path = "train.csv"
+size = 13318218
+sha256 = "48b7de2530eae7120a75d769a21d7044fcc2060b9ae3556a988cf34545dc4979"
+
+[[sources.files]]
+url = "https://raw.githubusercontent.com/junya-takayama/DIRECT/0326be46e80aa2627e99aceb88a3e0b9e91dd915/test.csv"
+path = "test.csv"
+size = 1634556
+sha256 = "68a9b870440dcd818db2c75ea97661ab1c689dd34633426ec579fd427b743722"
+
+[[sources.files]]
+url = "https://raw.githubusercontent.com/junya-takayama/DIRECT/0326be46e80aa2627e99aceb88a3e0b9e91dd915/README.md"
+path = "README.md"
+size = 1791
+sha256 = "69c9c852f362777e9a43d627f8d97913030a55692bd7a992633cbcac84223c36"
+
+# ---------------------------------------------------------------------------
+[[sources]]
+name = "indirect_requests"
+title = "IndirectRequests (Mannekote et al., COLING 2025)"
+homepage = "https://huggingface.co/datasets/msamogh/indirect-requests"
+license = "AMBIGUOUS: dataset card metadata says apache-2.0, a second embedded card block says mit; built from SGD schemas (CC BY-SA 4.0)"
+license_url = "https://huggingface.co/datasets/msamogh/indirect-requests/blob/9a06e685c89286eb2bb8026411d150532f86ccb3/README.md"
+citation_key = "mannekote-etal-2025-making"
+version = "hf 9a06e685c89286eb2bb8026411d150532f86ccb3 (2024-02-02)"
+intended_use = ["transfer-eval", "taxonomy-reference"]
+notes = "LLM-generated (GPT-3.5/GPT-4) and crowd-filtered. The *_mean_world_understanding.jsonl files are byte-identical to *_target_slot_value.jsonl, so only the latter are fetched."
+
+[[sources.files]]
+url = "https://huggingface.co/datasets/msamogh/indirect-requests/resolve/9a06e685c89286eb2bb8026411d150532f86ccb3/train_target_slot_value.jsonl"
+path = "train.jsonl"
+size = 65999
+sha256 = "eabdcc1e5729312f8c51b7d658ce74b5e639c725f828b62027eb735aac8a062e"
+
+[[sources.files]]
+url = "https://huggingface.co/datasets/msamogh/indirect-requests/resolve/9a06e685c89286eb2bb8026411d150532f86ccb3/validation_target_slot_value.jsonl"
+path = "validation.jsonl"
+size = 69756
+sha256 = "56802a5242b271592ed2ba97c5d0eda9fee023d88301ee1ad4d9c44eb5d9908d"
+
+[[sources.files]]
+url = "https://huggingface.co/datasets/msamogh/indirect-requests/resolve/9a06e685c89286eb2bb8026411d150532f86ccb3/test_target_slot_value.jsonl"
+path = "test.jsonl"
+size = 113480
+sha256 = "62fd6fd6fe8a9c78bde86cf0d8ea419c0a487ef8858155f6f3d54edc25a97e17"
+
+[[sources.files]]
+url = "https://huggingface.co/datasets/msamogh/indirect-requests/resolve/9a06e685c89286eb2bb8026411d150532f86ccb3/README.md"
+path = "README.md"
+size = 1450
+sha256 = "9e64d23d5e33f1a6d6fdfd483624298320dd00043e1c4a48a134c87461b3dff0"
+
+# ---------------------------------------------------------------------------
+[[sources]]
+name = "circa"
+title = "Circa: indirect answers to polar questions"
+homepage = "https://github.com/google-research-datasets/circa"
+license = "AMBIGUOUS: README text says CC BY 4.0 but links to CC BY-SA 4.0; treat as CC BY-SA 4.0 until clarified"
+license_url = "https://github.com/google-research-datasets/circa/blob/02ad965518ab2fbd8bb24463d312ebb03bac5368/README.md#license"
+citation_key = "louis-etal-2020-id"
+version = "git 02ad965518ab2fbd8bb24463d312ebb03bac5368 (2020-10-08, EMNLP 2020 release)"
+intended_use = ["transfer-eval", "taxonomy-reference"]
+
+[[sources.files]]
+url = "https://raw.githubusercontent.com/google-research-datasets/circa/02ad965518ab2fbd8bb24463d312ebb03bac5368/circa-data.tsv"
+path = "circa-data.tsv"
+size = 7766077
+sha256 = "98454df6b716dd7ff5f83a3db298849f05414688e81c2ee21b8e5a548ed897aa"
+
+[[sources.files]]
+url = "https://raw.githubusercontent.com/google-research-datasets/circa/02ad965518ab2fbd8bb24463d312ebb03bac5368/README.md"
+path = "README.md"
+size = 6896
+sha256 = "4444458e63f49968ce5a17b6c86ec5fca53f1c49960c5a99525d8365ff2769f5"
+
+# ---------------------------------------------------------------------------
+[[sources]]
+name = "clinc150"
+title = "CLINC150: An Evaluation Dataset for Intent Classification and Out-of-Scope Prediction"
+homepage = "https://github.com/clinc/oos-eval"
+license = "CC-BY-3.0"
+license_url = "https://github.com/clinc/oos-eval/blob/828f8093932c8fe6ca7936c3d2e52903b1c523de/LICENSE"
+citation_key = "larson-etal-2019-evaluation"
+version = "git 828f8093932c8fe6ca7936c3d2e52903b1c523de (2021-06-01), data_full.json"
+intended_use = ["seed-utterances", "taxonomy-reference"]
+
+[[sources.files]]
+url = "https://raw.githubusercontent.com/clinc/oos-eval/828f8093932c8fe6ca7936c3d2e52903b1c523de/data/data_full.json"
+path = "data_full.json"
+size = 2495390
+sha256 = "36923c3705a59e08fe9c3883d8bc2dd966ef93e22cb78ac41171782a698d56e0"
+
+[[sources.files]]
+url = "https://raw.githubusercontent.com/clinc/oos-eval/828f8093932c8fe6ca7936c3d2e52903b1c523de/LICENSE"
+path = "LICENSE"
+size = 19467
+sha256 = "e6bc9e9c474700b708f568bac9e5a8a9bcb2b1dad53442f5ba449fcb848b8e76"
+
+[[sources.files]]
+url = "https://raw.githubusercontent.com/clinc/oos-eval/828f8093932c8fe6ca7936c3d2e52903b1c523de/README.md"
+path = "README.md"
+size = 2668
+sha256 = "8a8df26c4de3d25b6c4cff385ca23602c30e4e56828b015206cbc202f6db363a"
+
+# ---------------------------------------------------------------------------
+[[sources]]
+name = "massive"
+title = "MASSIVE 1.1 (en-US locale only)"
+homepage = "https://github.com/alexa/massive"
+license = "CC-BY-4.0"
+license_url = "https://github.com/alexa/massive/blob/f966f21846043aabef9b0f974fa7970027f43738/NOTICE.md"
+citation_key = "fitzgerald-etal-2023-massive"
+version = "MASSIVE 1.1 release tarball (S3 Last-Modified 2022-11-07); en-US is unchanged from 1.0"
+intended_use = ["seed-utterances", "taxonomy-reference"]
+notes = "The 40 MB archive holds 52 locales; only en-US and the license/notice files are extracted, then the archive is deleted."
+
+[[sources.files]]
+url = "https://amazon-massive-nlu-dataset.s3.amazonaws.com/amazon-massive-dataset-1.1.tar.gz"
+path = "amazon-massive-dataset-1.1.tar.gz"
+size = 40251390
+sha256 = "4cba5faa11c71437928e17cb1b9b3d8b8e727e7ea363a3a9a8045e19c0491577"
+keep_archive = false
+extract = [
+  { member = "1.1/data/en-US.jsonl", size = 3904197, sha256 = "c70f75c6a543a26e249ec383df67733ad9b1066f6c0406c2e04a3f03356e407e" },
+  { member = "1.1/LICENSE", size = 18704, sha256 = "c2e6ea015269147de02117ebdd91f30ef09831251f5345fa8365273b1db1d435" },
+  { member = "1.1/NOTICE.md", size = 502, sha256 = "b90534ccd20c6f0e1e5239567af0d150496339542b75a15bfbc3e1e737593ddb" },
+  { member = "1.1/CITATION.md", size = 1128, sha256 = "96d21569b0e2f3b64e7e8a2ff22a5b15570ec3f7f93ffdc26efb01d366fe073f" },
+]
+
+# ---------------------------------------------------------------------------
+[[sources]]
+name = "conv_implicatures"
+title = "Conversational Implicatures in English Dialogue: Annotated Dataset (George & Mamidi, 2020)"
+homepage = "https://doi.org/10.6084/m9.figshare.10315505"
+license = "CC-BY-4.0 as declared on Figshare; BUT the dialogue text is transcribed from third-party copyrighted sources (TOEFL practice tapescripts, IMSDb movie scripts), so do not redistribute it"
+license_url = "https://figshare.com/articles/dataset/Implicature_dataset/10315505/7"
+citation_key = "george-mamidi-2020-conversational"
+version = "figshare v7 (doi 10.6084/m9.figshare.10315505.v7, modified 2023-05-31); immutable file ids 24402071, 24402074"
+intended_use = ["stage2-reference", "no-request-reference", "transfer-eval"]
+notes = "1,000 records. The xlsx copy (file 24402077) holds the same rows and is not fetched; neither are the superseded partial PDFs. Figshare MD5s cross-checked on 2026-09-25."
+
+[[sources.files]]
+url = "https://ndownloader.figshare.com/files/24402071"
+path = "implicature_1-1001.csv"
+size = 96822
+sha256 = "3de2fee93c0135185f6b4934e159099124a4c22a6699e2daa17a86cf4e473320"
+
+[[sources.files]]
+url = "https://ndownloader.figshare.com/files/24402074"
+path = "Readme.pdf"
+size = 60914
+sha256 = "bf397cf8ad69a21a8ac2e4f24e247754ff996121cd9b9aa58ab444fad7602d08"
+
+# ---------------------------------------------------------------------------
+[[sources]]
+name = "multiwoz"
+title = "MultiWOZ 2.1: dialogues with inline user/system dialogue acts, plus official val/test lists"
+homepage = "https://github.com/budzianowski/multiwoz"
+license = "MIT (repository LICENSE: 'Copyright (c) 2019 Paweł Budzianowski'; the zip's README also says 'Copyright Cambridge Dialogue Systems Group, 2018')"
+license_url = "https://github.com/budzianowski/multiwoz/blob/fe0c8e65cfcd8462bd33c86e35f21addc84ca82b/LICENSE"
+citation_key = "eric-etal-2020-multiwoz"
+version = "MultiWOZ 2.1 zip at git fe0c8e65cfcd8462bd33c86e35f21addc84ca82b (2025-01-14)"
+intended_use = ["context", "stage2-labels", "splits"]
+notes = "DIRECT aligns to 2.1: all 71,498 rows match the turn text at turn_index after stripping whitespace (docs/data_sources.md). User acts are inline in data.json, so system_acts.json and the db files are not extracted."
+
+[[sources.files]]
+url = "https://raw.githubusercontent.com/budzianowski/multiwoz/fe0c8e65cfcd8462bd33c86e35f21addc84ca82b/data/MultiWOZ_2.1.zip"
+path = "MultiWOZ_2.1.zip"
+size = 20241542
+sha256 = "8db3f6afe591383b8523b271f07727693e73012ecce47f3ac7987191e09b7523"
+keep_archive = false
+extract = [
+  { member = "MultiWOZ_2.1/data.json", size = 374423663, sha256 = "8be37ba1cb5b5a35943f32d4dbe03c5017dd88e15716f74987f60e0ece37851c" },
+  { member = "MultiWOZ_2.1/valListFile.txt", size = 13507, sha256 = "8e19240b90576c3ed83a0d44ef5e7ca8916e47356662ed4621e6b39d8c327d80" },
+  { member = "MultiWOZ_2.1/testListFile.txt", size = 13497, sha256 = "56fff5bf8c7b0a64fba8672241a7bdd947c3a58986bf06f46d37f33288f73ce0" },
+  { member = "MultiWOZ_2.1/README", size = 3118, sha256 = "6db60b1b22b9d7d0c16c46fa009e880259564712c057e03b43409c1851f3e07b" },
+]
+
+[[sources.files]]
+url = "https://raw.githubusercontent.com/budzianowski/multiwoz/fe0c8e65cfcd8462bd33c86e35f21addc84ca82b/LICENSE"
+path = "LICENSE"
+size = 1086
+sha256 = "d84d5c0261e1cfc4b4f10f16497feb217800ae6bf89240ee5622a75f659f5124"
