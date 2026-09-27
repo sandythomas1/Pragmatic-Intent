@@ -1,0 +1,16 @@
+item_id,dialogue_id,turn_index,variant,label_initial,label_final,fragment,annotator,rubric_version
+r1-01,PMUL1779.json,8,indirect,INF,INF,0,A1,v1
+r1-02,MUL2063.json,2,target,NR,NR,0,A1,v1
+r1-03,MUL2122.json,4,direct,L0,L0,0,A1,v1
+r1-04,PMUL4800.json,4,indirect,L1,L1,0,A1,v1
+r1-05,MUL2122.json,4,indirect,L1,L1,0,A1,v1
+r1-06,PMUL1779.json,8,direct,INF,INF,0,A1,v1
+r1-07,MUL2122.json,4,target,L2,L0,0,A1,v1
+r1-08,MUL2063.json,2,indirect,?,NR,0,A1,v1
+r1-09,PMUL4800.json,4,direct,?,L0,0,A1,v1
+r1-10,PMUL1779.json,8,target,NR,INF,0,A1,v1
+r1-11,MUL2063.json,2,direct,NR,NR,0,A1,v1
+r1-12,SNG0613.json,2,direct,L3,L1,0,A1,v1
+r1-13,SNG0613.json,2,indirect,L3,L2,0,A1,v1
+r1-14,SNG0613.json,2,target,L3,INF,1,A1,v1
+r1-15,PMUL4800.json,4,target,L1,L1,0,A1,v1
