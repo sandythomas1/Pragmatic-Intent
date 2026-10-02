@@ -62,6 +62,30 @@ it in the notes column, and don't let it change the level.
   it states the user's goal and names the thing. The alternative is `L2`, on the reading that it only
   describes the user's situation. Decide once several examples have been seen.
 
+## Running a round
+
+```bash
+python -m src.annotation.levels sample --round 2 --split dev --triples 10   # blinded, shuffled sheet
+python -m src.annotation.levels label  --round 2 --annotator A1             # terminal: one key per item; resumable
+python -m src.annotation.levels sheet  --round 2 --annotator A1             # or: an Excel-ready CSV to fill in
+python -m src.annotation.levels export --round 2 --annotator A1 --rubric v1 # writes data/annotations/levels_round2.csv
+```
+
+**In Excel:** open `data/interim/labeling/round<N>/labels_<annotator>.csv`. Fill in `label` (`L0` `L1`
+`L2` `L3` `INF` `NR` `?`, any case), `fragment` (`1`, or leave it blank), and `notes`. Don't edit
+`item_id`. Rows are matched by ID, so sorting is harmless. Save with **File → Save As → CSV UTF-8**. Plain "CSV" can garble curly
+quotes, and the export rejects the file if that happens.
+
+- Calibration rounds draw from `dev`. The gold sample is drawn from `test` once the rubric is
+  frozen. (Round 1 was drawn from `test` before this rule existed. Its 5 turns are excluded from
+  every later draw, so they never enter the gold sample.)
+- Each draw takes whole DIRECT rows (all three variants), skips turn 0 (no context to vary) and
+  rows with no mismatch donor, and skips turns labeled in any earlier round.
+- Don't open `key.csv` while labeling: it shows the variant.
+- Notes stay in the git-ignored `labels_<annotator>.csv`, because they often quote the utterance.
+  The export holds IDs and labels only.
+- After discussion, change `label_final` in the exported CSV directly. Never change `label_initial`.
+
 ## Label file format
 
 Labels live in `data/annotations/levels_<round>.csv`, one row per utterance. **No utterance text goes in
