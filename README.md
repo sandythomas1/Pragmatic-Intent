@@ -34,8 +34,13 @@ The central hypothesis is that context helps more as requests become less explic
 
 ## Status
 
-🚧 **Phase 0: design.** Taxonomy, indirectness rubric, and analysis plan are in progress. See
-[`docs/research_plan.md`](docs/research_plan.md) for the phased plan and design decisions.
+**Data pipeline and evaluation development.** DIRECT is joined to MultiWOZ 2.1;
+annotation sampling, labeling and export are implemented. Calibration round 1 has
+15 labels and round 2 has 30 completed labels, with adjudication pending. See the
+[round 2 review](docs/round2_review.md) for proposed corrections and the coding path,
+and the [evaluation harness](src/evaluation/README.md) to run the first development
+baseline. The [research plan](docs/research_plan.md)'s existing-data revision governs
+the current design; the synthetic benchmark described above remains parked.
 
 ## Repository layout
 
