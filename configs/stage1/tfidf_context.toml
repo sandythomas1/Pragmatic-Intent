@@ -1,0 +1,15 @@
+# TF-IDF + logistic regression with separate utterance and context vocabularies.
+# Override the training context with --train-condition {one,full,mismatched,mismatched_one}.
+[run]
+name = "tfidf-context"
+kind = "tfidf"
+
+[data]
+train_condition = "full"
+levels = ["data/annotations/levels_round2.csv"]
+
+[tfidf]
+use_context = true
+ngram_max = 2
+min_df = 2
+c = 1.0
