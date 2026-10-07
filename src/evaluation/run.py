@@ -12,7 +12,6 @@ import collections
 import csv
 import hashlib
 import json
-import random
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -21,6 +20,7 @@ from typing import Any, Sequence
 
 from src.annotation.levels import normalize_label
 from src.data.direct_dataset import CONDITIONS
+from src.evaluation.metrics import bootstrap_accuracy_ci, classification_metrics
 
 LEVELS = ("L0", "L1", "L2", "L3", "INF", "NR")
 
@@ -104,33 +104,13 @@ def majority_predictions(examples: Sequence[Example]) -> list[dict[str, str]]:
 
 
 def _metrics(pairs: Sequence[tuple[Example, str]]) -> dict[str, Any]:
-    confusion = {gold: {predicted: 0 for predicted in LEVELS} for gold in LEVELS}
-    for example, prediction in pairs:
-        confusion[example.label][prediction] += 1
-    correct = sum(confusion[label][label] for label in LEVELS)
-    f1 = []
-    for label in LEVELS:
-        tp = confusion[label][label]
-        predicted_count = sum(confusion[gold][label] for gold in LEVELS)
-        gold_count = sum(confusion[label].values())
-        f1.append(2 * tp / (predicted_count + gold_count) if predicted_count + gold_count else 0.0)
-    return {"n": len(pairs), "accuracy": correct / len(pairs),
-            "macro_f1": sum(f1) / len(LEVELS), "confusion": confusion}
+    return classification_metrics([(e.label, prediction) for e, prediction in pairs], LEVELS)
 
 
 def _accuracy_ci(pairs: Sequence[tuple[Example, str]], samples: int, seed: int) -> list[float]:
     """Percentile bootstrap of whole dialogues, preserving correlated variants."""
-    grouped: dict[str, list[tuple[Example, str]]] = collections.defaultdict(list)
-    for pair in pairs:
-        grouped[pair[0].dialogue_id].append(pair)
-    groups = [grouped[key] for key in sorted(grouped)]
-    rng = random.Random(seed)
-    scores = []
-    for _ in range(samples):
-        draw = [pair for group in rng.choices(groups, k=len(groups)) for pair in group]
-        scores.append(sum(e.label == prediction for e, prediction in draw) / len(draw))
-    scores.sort()
-    return [scores[int((samples - 1) * 0.025)], scores[int((samples - 1) * 0.975)]]
+    return bootstrap_accuracy_ci([(e.dialogue_id, e.label == prediction) for e, prediction in pairs],
+                                 samples, seed)
 
 
 def build_report(

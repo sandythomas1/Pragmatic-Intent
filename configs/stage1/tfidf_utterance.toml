@@ -1,0 +1,15 @@
+# Utterance-only TF-IDF + logistic regression: the artifact probe.
+# It sees no context, so its predictions are identical under every eval condition.
+[run]
+name = "tfidf-utterance"
+kind = "tfidf"
+
+[data]
+train_condition = "none"
+levels = ["data/annotations/levels_round2.csv"]
+
+[tfidf]
+use_context = false
+ngram_max = 2
+min_df = 2
+c = 1.0

@@ -1,0 +1,27 @@
+# Cross-encoder fine-tuning (FacebookAI/roberta-base). Override the training context with
+# --train-condition {none,one,full,mismatched,mismatched_one}; every run is scored
+# under all five eval conditions. batch_size is the effective batch and must stay
+# fixed across machines; change only --micro-batch-size (RTX 5060: 8, or 4 with
+# --gradient-checkpointing; RTX 4090: 16 or 32).
+[run]
+name = "roberta-base"
+kind = "encoder"
+
+[data]
+train_condition = "full"
+levels = ["data/annotations/levels_round2.csv"]
+
+[encoder]
+pretrained = "FacebookAI/roberta-base"
+revision = "main"
+max_length = 512
+batch_size = 32
+micro_batch_size = 16
+eval_batch_size = 64
+learning_rate = 2e-5
+epochs = 2
+warmup_ratio = 0.06
+weight_decay = 0.01
+max_grad_norm = 1.0
+bf16 = true
+gradient_checkpointing = false
