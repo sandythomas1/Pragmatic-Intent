@@ -108,6 +108,55 @@ license texts, not legal advice.)
   - Dialogue history is **not** in the files. It is joined from MultiWOZ **2.1** on
     `dialogue_id`/`turn_index`: all 71,498 rows match (see [MultiWOZ 2.1](#multiwoz-21)).
   - Some crowd paraphrases are wrong. For example, a "direct" paraphrase turns "moderately priced" into "cheap".
+    See [Fact drift in rewrites](#fact-drift-in-rewrites-audited-2026-10-01).
+
+### Fact drift in rewrites (audited 2026-10-01)
+
+**Why it matters.** A rewrite that changes a stated fact (PMUL1762 turn 2: the target says Thursday,
+both rewrites say Tuesday) contradicts its own dialogue history in the `one` / `full` conditions. That
+adds noise to exactly the matched-vs-mismatched contrast the study rests on.
+
+**Method.** `python -m src.data.audit_fact_drift` compares each rewrite with its own target. A slot is
+*substituted* when the rewrite asserts a value the target doesn't **and** drops one the target had.
+Dropped values alone are normal for hints and are never flagged. Negated, comparative and relative
+mentions ("not cheap", "earlier than 21:36", "the day after Monday") don't count as assertions.
+Outputs go to the git-ignored `data/interim/direct/fact_drift.jsonl` and `fact_drift_summary.json`.
+The module docstring has the full rules.
+
+**Result.** 453 rewrites are flagged: 184 direct (0.26% of items) and 269 indirect (0.38%). By split
+they are train 371, dev 44, test 38. By slot: time 195, day 190, place 36, food 35.
+
+**Precision** (hand check by Claude of a fresh random sample, 12 flags per slot, after the tuning
+rounds):
+
+| Slot | Real drift / 12 | Typical false positive | Flags? |
+|---|---|---|---|
+| day | 10 | relative phrase after the day ("I work Friday, so … the day after that") | yes |
+| time | 11 | "half 6 pm" read as 18:00 | yes |
+| place | 9 | typos in the name ("Cambride", "archaelogy") | yes |
+| food | 6 | synonyms and plurals ("English"/"British", "gastropubs"); fixed after this check and not re-measured | yes |
+| area | ~3 | stated by exclusion: "anything but the south", "tired of the north, west, and south parts of town" | no, counted only |
+| price | ~2 | stated by exclusion: "non cheap", "my budget is pretty tight" | no, counted only |
+
+Weighted by flag volume, precision on the flagging slots is about 80–85%. Recall is unknown. This
+is string matching, so a drift that is paraphrased away ("the day before Friday" for a target of
+Wednesday) is missed, and 453 is a lower bound. Several true positives are not paraphrases at all:
+the "rewrite" is a system turn or a different user turn ("You are looking for a train. The train
+should…"), so the audit also catches misaligned rows.
+
+**Decision.** The drift is real but rare (well under 1% of rewrites), so it doesn't threaten the
+design. Don't delete anything. Report main results on all items and re-run the context contrasts
+without the flagged `(item_id, variant)` pairs as a sensitivity check
+(`audit_fact_drift.load_flags`).
+
+**Two side findings worth keeping for the paper:**
+- **Exclusion is a common indirect strategy for constraints.** Indirect rewrites often state area
+  and price by ruling things out ("anything but the south", "not interested in cheap or moderate
+  places"). This is a qualitative example of indirectness whose meaning depends on the alternatives
+  in context.
+- **Speaker-prefix artifact.** 95 direct and 34 indirect rewrites (and no targets) start with
+  `USER:` (one with `SER:`). A classifier could use that as a shortcut for "direct", so strip the
+  prefix before modeling.
 
 ### Novelty check: what DIRECT already did (checked 2026-09-25)
 
