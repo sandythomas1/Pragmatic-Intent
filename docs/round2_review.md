@@ -47,6 +47,17 @@ about vague references and prices are useful, but should not change the request
 form label (R1). All sentences have a main clause, so no additional fragment flags
 are proposed.
 
+### Rubric v2 applies at adjudication
+
+This review was written against rubric v1. Rubric v2 (R5–R7, from round 3, labeled 2026-09-30) was
+merged afterwards; see the changelog in `docs/annotation_guidelines.md`. Use v2 when adjudicating:
+
+- **r2-11:** R5 makes "I'm looking for X" statements `L0`.
+- **r2-10, r2-19:** R6's worked example labels a full-clause statement of wanted details `L2`.
+  Confirm that reading during adjudication.
+- **Other proposals:** check each against R7. A request formula fixes the level, whatever the
+  request's clarity.
+
 ## Continue coding this week
 
 The evaluation harness can be developed now. It scores six-way directness levels

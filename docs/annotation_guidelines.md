@@ -1,6 +1,6 @@
 # Annotation Guidelines: Request Directness Level
 
-_Rubric **v1**, 2026-09-26. Read this whole page before labeling. It is written so that a second
+_Rubric **v2**, 2026-09-30. Read this whole page before labeling. It is written so that a second
 annotator who has never seen the project can apply it._
 
 ## The task
@@ -55,20 +55,21 @@ it in the notes column, and don't let it change the level.
 | R2 | A **plain question** is `L0` when it asks for exactly the information wanted. A question about something else, asked in order to get something ("Is 7pm open?" in order to book), counts as a hint. | Gives requests for information a full L0–L3 scale, as action requests have. | Round 1 |
 | R3 | **Fragments** that only list details are `INF` with `fragment = 1`. | By wording alone they ask for nothing. Whether they act as requests in context is exactly what the context conditions measure. The flag allows fragments to be analyzed separately or excluded. | Round 1 |
 | R4 | A "no preference" answer is `INF`, and turning down an offer is `NR`. | "No preference" still constrains the task ("any area"). Declining gives the assistant nothing to act on. | Round 1 |
+| R5 | **"I'm looking for X"**, "I'm looking to …", and "I'd like to find X" are `L0` want statements, not `INF` or `L2`. | They work like "I want X", which CCSARP counts as direct. They ask the assistant to find something, so they aren't `INF`. They are very common opening turns in this data, and in round 3 four of them got three different labels, so they need a fixed rule. | Round 3 |
+| R6 | A hint that names a **detail of what's wanted** (destination, day, time, cuisine, party size) is `L2`, even if the thing itself ("a train", "a restaurant") is never named. `L3` is only for hints that name nothing wanted at all. | Matches the `L2` definition, which already counts time and party size. It gives `L3` a clear boundary instead of a sliding one. Example: "My destination is Broxbourne and I need to leave Tuesday afternoon." is `L2`. | Round 3 |
+| R7 | A **request formula** fixes the level however clear or vague the request is. "Can you find an attraction in the centre?" is `L1`, not `L0`, even though it's perfectly clear. "How about a gastropub then?" is `L1`, not `L3`, even though it needs context. Commands such as "Find me …" stay `L0`. | Applies R1 to the most common round-3 error, where clarity pushed labels toward `L0` and vagueness toward `L3`. | Round 3 |
 
-## Open questions (watch for these in round 2)
+## Open questions
 
-- **"I'm looking for X"** is very common in this data. It is provisionally `L0`, as a want statement:
-  it states the user's goal and names the thing. The alternative is `L2`, on the reading that it only
-  describes the user's situation. Decide once several examples have been seen.
+None open. Add new ones here as calibration finds them.
 
 ## Running a round
 
 ```bash
-python -m src.annotation.levels sample --round 2 --split dev --triples 10   # blinded, shuffled sheet
-python -m src.annotation.levels label  --round 2 --annotator A1             # terminal: one key per item; resumable
-python -m src.annotation.levels sheet  --round 2 --annotator A1             # or: an Excel-ready CSV to fill in
-python -m src.annotation.levels export --round 2 --annotator A1 --rubric v1 # writes data/annotations/levels_round2.csv
+python -m src.annotation.levels sample --round 4 --split dev --triples 10   # blinded, shuffled sheet
+python -m src.annotation.levels label  --round 4 --annotator A1             # terminal: one key per item; resumable
+python -m src.annotation.levels sheet  --round 4 --annotator A1             # or: an Excel-ready CSV to fill in
+python -m src.annotation.levels export --round 4 --annotator A1 --rubric v2 # writes data/annotations/levels_round4.csv
 ```
 
 **In Excel:** open `data/interim/labeling/round<N>/labels_<annotator>.csv`. Fill in `label` (`L0` `L1`
@@ -77,8 +78,8 @@ python -m src.annotation.levels export --round 2 --annotator A1 --rubric v1 # wr
 quotes, and the export rejects the file if that happens.
 
 - Calibration rounds draw from `dev`. The gold sample is drawn from `test` once the rubric is
-  frozen. (Round 1 was drawn from `test` before this rule existed. Its 5 turns are excluded from
-  every later draw, so they never enter the gold sample.)
+  frozen. (Rounds 1 and 3 were drawn from `test` before this rule existed. Their 5 and 8 turns are
+  excluded from every later draw, so they never enter the gold sample.)
 - Each draw takes whole DIRECT rows (all three variants), skips turn 0 (no context to vary) and
   rows with no mismatch donor, and skips turns labeled in any earlier round.
 - Don't open `key.csv` while labeling: it shows the variant.
@@ -105,6 +106,12 @@ these files**, because DIRECT's text can't be redistributed. The text is in the 
 
 ## Changelog
 
+- **v2 (2026-09-30):** added rules R5–R7 after calibration round 3 (24 items, 9/24 initial agreement
+  with the reference labels). The "I'm looking for" question is settled as R5. Most disagreements came
+  from request formulas being judged on clarity (R7) and from where the L2/L3 boundary sits (R6).
+  Round 3 was labeled on 2026-09-30, before round 2 was exported on 2026-10-06. Both were first
+  numbered round 2 on separate machines, and this one was renumbered to 3 (IDs `r3-xx`) when the two
+  histories were merged. Round 2 was labeled under v1.
 - **v1 (2026-09-26):** added rules R1–R4 after calibration round 1 (15 items, 8/15 initial agreement
   with the reference labels), and added the "I'm looking for" open question.
 - **v0 (2026-09-25):** initial labels L0–L3 (CCSARP), plus `INF`, `NR`, and `?`.
