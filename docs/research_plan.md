@@ -4,6 +4,9 @@ _Revised 2026-10-09 after Sandy Thomas's 2026-10-08 meeting with Dr. Benjamin Sa
 First deliverable: a class research paper and model results in December 2026. Publication follows.
 The exact class due date and WDSI conference year/deadline remain to be confirmed._
 
+The draft [master specification](../specs/001-pragmatic-intent-study/spec.md) consolidates this plan
+with requirements, dependencies and acceptance criteria. Its [offline interactive guide](../specs/001-pragmatic-intent-study/spec-guide.html) explains the full study.
+
 ## Research question: retained
 
 The original proposal asks:

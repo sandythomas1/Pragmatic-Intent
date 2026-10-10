@@ -25,6 +25,10 @@ a **December 2026 class paper and model results**, followed by publication devel
 
 See the [collection protocol](docs/source_collection_plan.md), [draft analysis plan](docs/analysis_plan.md)
 and [revision report and next steps](docs/research_revision_2026-10-09.md).
+Read the consolidated [master specification](specs/001-pragmatic-intent-study/spec.md) or open the
+[interactive research guide](specs/001-pragmatic-intent-study/spec-guide.html). The guide works offline
+and embeds the full draft; its controls do not launch experiments or change research files.
+
 The [original proposal](<docs/Pragmatic_Intent_Detection_Proposal_Plain .pdf>) is preserved.
 The [synthetic plan](docs/synthetic_data_plan.md) is historical and inactive.
 
