@@ -114,8 +114,28 @@ class ManifestValidationTests(unittest.TestCase):
         manifest = ds.load_manifest(ds.DEFAULT_MANIFEST)
         names = {source.name for source in manifest.sources}
         self.assertEqual(
-            names, {"direct", "indirect_requests", "circa", "clinc150", "massive", "conv_implicatures", "multiwoz"}
+            names,
+            {
+                "direct",
+                "indirect_requests",
+                "circa",
+                "clinc150",
+                "massive",
+                "conv_implicatures",
+                "multiwoz",
+                "aesop_jones1912",
+                "kjv_pg10",
+            },
         )
+
+    def test_literary_editions_are_pinned_single_files_on_gutenberg(self) -> None:
+        manifest = ds.load_manifest(ds.DEFAULT_MANIFEST)
+        literary = {source.name: source for source in manifest.sources if "literary-transfer" in source.intended_use}
+        self.assertEqual(set(literary), {"aesop_jones1912", "kjv_pg10"})
+        for source in literary.values():
+            (spec,) = source.files
+            self.assertTrue(spec.url.startswith("https://www.gutenberg.org/cache/epub/"), spec.url)
+            self.assertFalse(spec.extract)
 
     def test_missing_source_field_rejected(self) -> None:
         data = manifest_dict()

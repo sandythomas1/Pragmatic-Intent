@@ -2,7 +2,7 @@
 
 ## Active collection policy (2026-10-09)
 
-The [revised research plan](research_plan.md) and [human-source protocol](source_collection_plan.md) govern current source roles. The catalogue below preserves the 2026-09-25 acquisition record and its later audit notes; it is not a new verification of every license. Original MultiWOZ dialogue is the main gold-sample source. DIRECT rewrites remain auxiliary weak training/development data. LLM-generated IndirectRequests is excluded from the human-only main benchmark. New literary editions are candidates only, not downloaded sources; their inventory and screening requirements are in the collection protocol. Existing text-release restrictions remain.
+The [revised research plan](research_plan.md) and [human-source protocol](source_collection_plan.md) govern current source roles. The catalogue below preserves the 2026-09-25 acquisition record and its later audit notes; it is not a new verification of every license. Original MultiWOZ dialogue is the main gold-sample source. DIRECT rewrites remain auxiliary weak training/development data. LLM-generated IndirectRequests is excluded from the human-only main benchmark. Two literary editions (Aesop, Vernon Jones 1912; King James Bible) were pinned on 2026-10-10 for the literary transfer stratum ([spec 002](../specs/002-literary-sources/spec.md)). See [Literary editions](#literary-editions) below. Being pinned does not make any passage an eligible item; screening follows the collection protocol. Existing text-release restrictions remain.
 
 _Last verified: 2026-09-25. Machine-readable manifest: [`data/sources.toml`](../data/sources.toml)._
 
@@ -32,7 +32,7 @@ checksum mismatch aborts that source and makes the command exit with status 1. I
 archives it extracts only the named members, only if they are regular files, and only to paths
 inside `data/raw/<name>/`.
 
-**Manual steps:** none. All seven sources are public and download without a login, a license
+**Manual steps:** none. All nine sources are public and download without a login, a license
 click-through, or a form.
 
 ## Summary
@@ -46,6 +46,8 @@ click-through, or a form.
 | CLINC150 | git `828f809` (2021-06-01) | `clinc150/` | 23,700 (22,500 in-scope + 1,200 OOS) | CC BY 3.0 | Seed utterances, taxonomy reference |
 | MASSIVE (en-US) | 1.1 tarball | `massive/1.1/` | 16,521 (11,514 / 2,033 / 2,974) | CC BY 4.0 | Seed utterances, taxonomy reference |
 | Conversational Implicatures (George & Mamidi) | Figshare v7 (2023-05-31) | `conv_implicatures/` | 1,000 (context, response, implicature) | **CC BY 4.0 declared, but the text is third-party copyrighted** | Stage 2 annotation reference, `no_request`/implicature examples |
+| Aesop's Fables (Vernon Jones, 1912) | Gutenberg #11339, retrieved 2026-10-10 | `aesop_jones1912/` | 284 fables | Public domain (USA) | Literary transfer stratum (spec 002) |
+| King James Bible | Gutenberg #10, retrieved 2026-10-10 | `kjv_pg10/` | 66 books | Public domain (USA) | Literary transfer stratum (spec 002) |
 
 ### Licensing and release status: read this before publishing anything
 
@@ -662,6 +664,41 @@ git-ignored `data/interim/direct/`):
     doi = "10.6084/m9.figshare.10315505.v7"
 }
 ```
+
+---
+
+## Literary editions
+
+Pinned 2026-10-10 for the literary transfer stratum. The screening and segmentation tooling is
+`src/literary/` ([spec 002](../specs/002-literary-sources/spec.md)). The usage guide is in the
+[collection protocol](source_collection_plan.md#screening-tooling).
+
+| Source | Edition | File | Bytes | SHA-256 |
+|---|---|---|---|---|
+| `aesop_jones1912` | *Aesop's Fables: a new translation*, V. S. Vernon Jones (1912), introduction by G. K. Chesterton, [Gutenberg #11339](https://www.gutenberg.org/ebooks/11339) | `pg11339.txt` | 241,779 | `0a2e7b971b00b76164071563e7e4bfa9cf962118ef67db9259020fc7c3b83602` |
+| `kjv_pg10` | *The King James Version of the Bible*, [Gutenberg #10](https://www.gutenberg.org/ebooks/10) | `pg10.txt` | 4,455,950 | `0204adaed1f25700aa854218cae63c7172228c41088f335e99167a071eed83c0` |
+
+- **Rights:** the Gutenberg catalog lists both as public domain in the USA. The Project Gutenberg
+  License covers the eBook packaging and the "Project Gutenberg" trademark, not the
+  public-domain text. The constitution's rule still applies: committed files hold offsets and
+  hashes, not text. A release decision (FR-14) is separate, and it must check the release
+  territory. Modern translations or commentary of other editions are not covered.
+- **Locators:** offsets index the file decoded as UTF-8 **with CRLF line endings intact**, so
+  `text[start:end]` re-encodes to the source bytes exactly. Fables are segmented into title,
+  narrative and indented-moral paragraphs. The Bible is segmented into book/chapter/verse.
+  Episode IDs are `aesop:<title-slug>` and `kjv:<book>:<chapter>`.
+- **Format notes:** Aesop uses straight double quotes for speech. Morals are indented by
+  four spaces. KJV has no quotation marks, and verse markers can start mid-line. 1–2 Samuel carry
+  alias headings ("Otherwise Called: The First Book of the Kings"), which the segmenter ignores
+  by matching headings in table-of-contents order.
+- **Re-pin policy:** Gutenberg regenerates cache files occasionally, for example after header or
+  boilerplate changes. A changed upstream file fails its pin, by design. Keep (and back up) the
+  local `data/raw/` copy, which still verifies offline with `--verify-only`. Re-pinning changes
+  offsets, so it requires a documented migration of every committed literary locator for that
+  source. Don't re-pin silently.
+- **Access etiquette:** these are two single-file downloads of public books. Bulk or repeated
+  automated harvesting of gutenberg.org is against its robot policy. Use a mirror for anything
+  larger.
 
 ---
 

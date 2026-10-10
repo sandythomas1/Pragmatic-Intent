@@ -194,8 +194,8 @@ class RunnerTest(unittest.TestCase):
                 for d, turns in DIALOGUES.items()), encoding="utf-8")
             config_path = root / "run.toml"
             config_path.write_text(f'[run]\nname = "probe"\nkind = "tfidf"\nbootstrap_samples = 10\n'
-                                   f'[data]\ntrain_condition = "mismatched"\nitems = "{root / "items.jsonl"}"\n'
-                                   f'dialogues = "{root / "dialogues.jsonl"}"\n[tfidf]\nuse_context = true\n',
+                                   f'[data]\ntrain_condition = "mismatched"\nitems = "{(root / "items.jsonl").as_posix()}"\n'
+                                   f'dialogues = "{(root / "dialogues.jsonl").as_posix()}"\n[tfidf]\nuse_context = true\n',
                                    encoding="utf-8")
             args = argparse.Namespace(config=config_path, seed=1, train_condition=None, machine="test",
                                       out_root=root / "out", results=root / "results.jsonl",

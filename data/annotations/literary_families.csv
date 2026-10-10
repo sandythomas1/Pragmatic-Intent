@@ -1,0 +1,10 @@
+family_id,source,episode_ids,split,assignment,seed,pool_size,reason,assigned_on,protocol_version
+aesop:the-clown-and-the-countryman,aesop_jones1912,aesop:the-clown-and-the-countryman,dev,drawn,99,239,seeded uniform draw,2026-10-10,lit-screen-v1
+aesop:the-wolf-and-the-lion,aesop_jones1912,aesop:the-wolf-and-the-lion,dev,drawn,99,239,seeded uniform draw,2026-10-10,lit-screen-v1
+aesop:the-old-lion,aesop_jones1912,aesop:the-old-lion,dev,drawn,99,239,seeded uniform draw,2026-10-10,lit-screen-v1
+aesop:the-astronomer,aesop_jones1912,aesop:the-astronomer,dev,drawn,99,239,seeded uniform draw,2026-10-10,lit-screen-v1
+aesop:jupiter-and-the-monkey,aesop_jones1912,aesop:jupiter-and-the-monkey,dev,drawn,99,239,seeded uniform draw,2026-10-10,lit-screen-v1
+aesop:the-dog-in-the-manger,aesop_jones1912,aesop:the-dog-in-the-manger,dev,drawn,99,239,seeded uniform draw,2026-10-10,lit-screen-v1
+aesop:the-viper-and-the-file,aesop_jones1912,aesop:the-viper-and-the-file,dev,drawn,20261010,233,seeded uniform draw,2026-10-10,lit-screen-v1
+aesop:the-lion-and-the-boar,aesop_jones1912,aesop:the-lion-and-the-boar,dev,drawn,20261010,233,seeded uniform draw,2026-10-10,lit-screen-v1
+kjv:cana-wedding,kjv_pg10,kjv:john:2,dev,assigned,,,meeting candidate discussed with the professor 2026-10-08; already inspected so dev-only,2026-10-10,lit-screen-v1

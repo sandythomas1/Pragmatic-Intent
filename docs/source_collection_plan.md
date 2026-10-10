@@ -24,8 +24,9 @@ includes commissioned rewrites, and literature is crafted communication. Preserv
 
 ## Initial literary source inventory
 
-These **candidate editions** were checked on 2026-10-09. They have not been downloaded, hashed,
-screened or added to data/sources.toml. Source availability does not establish eligible examples.
+These candidate editions were checked on 2026-10-09. On 2026-10-10 the first two were **pinned** in
+`data/sources.toml` (see [data_sources.md](data_sources.md#literary-editions)). Neither has been
+screened yet. Source availability does not establish eligible examples.
 
 | Edition | Stable source | Pilot decision |
 |---|---|---|
@@ -35,8 +36,58 @@ screened or added to data/sources.toml. Source availability does not establish e
 
 Pin downloaded artifact, edition, translator, retrieval date, hash and reuse terms. An old work's
 status does not establish rights for modern translations/commentary. Preserve source notices and
-check intended release territory. Keep new text under ignored data/raw/literary/ until release
+check intended release territory. Keep new text under the ignored `data/raw/<source>/` until release
 status is recorded.
+
+## Screening tooling
+
+Implemented by [spec 002](../specs/002-literary-sources/spec.md) (`src/literary/`, standard library only).
+It covers registration, families, proposals and the inclusion/exclusion log. It does not cover
+contextual function or intent, which are spec 003.
+
+~~~bash
+python -m src.data.download_sources --only aesop_jones1912 kjv_pg10   # fetch + verify the pins
+
+# 1. Fix dev pilot families BEFORE reading them. Drawn fables are seeded and uniform over the
+#    fables that contain quoted speech. Explicit assignments need a logged reason.
+python -m src.literary.screening families draw --source aesop_jones1912 --count 8 --seed <seed>
+python -m src.literary.screening families assign --source kjv_pg10 --family-id kjv:cana-wedding     --episodes kjv:john:2 --reason "meeting candidate discussed 2026-10-08"
+python -m src.literary.screening families list
+
+# 2. Propose every speech-like span in those families (exhaustive, no model involved).
+python -m src.literary.screening propose     # -> data/interim/literary/screening_sheet.csv
+
+# 3. Screen in Excel, then save as "CSV UTF-8". Then export and validate the text-free log.
+python -m src.literary.screening export --screener A1
+python -m src.literary.screening validate
+~~~
+
+**Screening the sheet.** One row is one candidate.
+
+- **`target_text`:** copy the exact words of the utterance. Whitespace differences don't matter.
+  Trim KJV verses (flagged `needs_trim`) to the speech itself, and widen a proposal across
+  adjacent verses or paragraphs when the speech continues.
+- **`speaker` / `addressee`:** short role names from the text.
+- **`status`:** `include` means **eligible**, i.e. addressed speech with source-grounded prior
+  context, *whether or not it is a request*. Authentic non-requests are needed too. `exclude` needs
+  an `exclusion_reason`: `no_addressed_speech`, `no_context`, `uncertain_reading`, `out_of_scope`,
+  `duplicate_story`, `rights_pending`, `future_evidence_dependence` or `narrator_moral`. Leave the
+  status blank for pending.
+- **Missed utterances:** add a row with a blank `candidate_id`, the dev `family_id` and its
+  `target_text`. It is logged as `origin=manual`.
+- **Don'ts:** never delete rows or change IDs or families. Export reports every problem at once
+  and writes nothing until they are all fixed.
+
+**Grouping.** A drawn fable is its own family. A KJV episode is a whole chapter: John 2 includes
+both the Cana wedding (2:1–11) and the temple cleansing (2:13–22). The temple cleansing has
+Synoptic parallels (Matthew 21, Mark 11, Luke 19). If those are ever screened, assign them to the
+same family, because the validator can't detect retellings. Once a family has been screened, it
+is dev forever.
+
+Committed outputs are `data/annotations/literary_families.csv` and `literary_screening.csv`. They
+hold IDs, offsets, hashes, role names and enums. Locators include fable titles and book/verse
+references, never utterance or narrative text. The sheet and the proposal sidecar hold source
+text and stay local.
 
 ## Screening workflow
 

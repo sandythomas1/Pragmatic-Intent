@@ -36,9 +36,13 @@ The [synthetic plan](docs/synthetic_data_plan.md) is historical and inactive.
 
 The existing DIRECT + MultiWOZ join, annotation tools, calibration rounds 1-3, weak-supervision
 Stage 1 trainers, evaluation harness and rewrite fact-drift audit remain available. Round 2
-adjudication is pending. These tools do not yet ingest literature, represent contextual gold
-function, or score Stage 2 interpretations under the revised protocol. This revision is documentation
-only: no new corpus has been collected and no new model results are claimed.
+adjudication is pending. Literary editions (Aesop, King James Bible) are now pinned and have
+screening tooling: families, exhaustive candidate proposals and a validated text-free
+inclusion/exclusion log ([spec 002](specs/002-literary-sources/spec.md),
+[usage](docs/source_collection_plan.md#screening-tooling)). No literary pilot has been screened yet.
+The tools do not yet represent contextual gold function or score Stage 2 interpretations under the
+revised protocol. No new model results are claimed. Execution is tracked in the
+[roadmap](specs/001-pragmatic-intent-study/roadmap.md).
 
 The [Stage 1 baseline guide](docs/stage1_baselines.md) covers pinned environments and weak-label
 dev experiments on the RTX 5060 (WSL2) or lab RTX 4090. DIRECT variant labels are not human L0-L3
@@ -56,8 +60,8 @@ results/    reproducible run logs when experiments are performed
 ~~~
 
 Data commands and source terms are in [data_sources.md](docs/data_sources.md).
-Run the standard-library tests with Python 3.12 in WSL/Linux from the repository root
-(the revision report records an existing native-Windows TOML-fixture issue):
+Run the standard-library tests with Python 3.12 from the repository root. They pass in WSL/Linux
+and on native Windows (the TOML-fixture path issue was fixed on 2026-10-10):
 
 ~~~bash
 python -m unittest discover -s tests -t .

@@ -26,6 +26,10 @@ allowed_hosts = [
   # (/pfigshare-u-files/...). The regional host admits any bucket, which is
   # acceptable only because every file is pinned by size and SHA-256.
   "s3-eu-west-1.amazonaws.com",
+  # Project Gutenberg serves /cache/epub/<n>/pg<n>.txt directly (no redirect). Gutenberg
+  # regenerates files occasionally; a changed upstream file fails the pin by design
+  # (see "Literary editions" in docs/data_sources.md for the re-pin policy).
+  "www.gutenberg.org",
 ]
 
 # ---------------------------------------------------------------------------
@@ -225,3 +229,39 @@ url = "https://raw.githubusercontent.com/budzianowski/multiwoz/fe0c8e65cfcd8462b
 path = "LICENSE"
 size = 1086
 sha256 = "d84d5c0261e1cfc4b4f10f16497feb217800ae6bf89240ee5622a75f659f5124"
+
+# ---------------------------------------------------------------------------
+[[sources]]
+name = "aesop_jones1912"
+title = "Aesop's Fables: a new translation by V. S. Vernon Jones (1912), Project Gutenberg eBook #11339"
+homepage = "https://www.gutenberg.org/ebooks/11339"
+license = "Public domain in the USA (Project Gutenberg catalog); 1912 translation. Project Gutenberg License applies to the eBook packaging and trademark"
+license_url = "https://www.gutenberg.org/policy/license.html"
+citation_key = "aesop-jones-1912-fables"
+version = "Gutenberg cache file retrieved 2026-10-10; header 'Most recently updated: October 28, 2024'"
+intended_use = ["literary-transfer"]
+notes = "Literary stratum (spec 002). Segmented by src/literary/sources.py; offsets index the decoded file with CRLF intact."
+
+[[sources.files]]
+url = "https://www.gutenberg.org/cache/epub/11339/pg11339.txt"
+path = "pg11339.txt"
+size = 241779
+sha256 = "0a2e7b971b00b76164071563e7e4bfa9cf962118ef67db9259020fc7c3b83602"
+
+# ---------------------------------------------------------------------------
+[[sources]]
+name = "kjv_pg10"
+title = "The King James Version of the Bible, Project Gutenberg eBook #10"
+homepage = "https://www.gutenberg.org/ebooks/10"
+license = "Public domain in the USA (Project Gutenberg catalog). Project Gutenberg License applies to the eBook packaging and trademark"
+license_url = "https://www.gutenberg.org/policy/license.html"
+citation_key = "kjv-pg10"
+version = "Gutenberg cache file retrieved 2026-10-10; header 'Most recently updated: October 29, 2024'"
+intended_use = ["literary-transfer"]
+notes = "Literary stratum (spec 002). Screen addressed exchanges such as John 2:1-11; no gold reading is assumed. Offsets index the decoded file with CRLF intact."
+
+[[sources.files]]
+url = "https://www.gutenberg.org/cache/epub/10/pg10.txt"
+path = "pg10.txt"
+size = 4455950
+sha256 = "0204adaed1f25700aa854218cae63c7172228c41088f335e99167a071eed83c0"
