@@ -1,5 +1,9 @@
 # Data Sources and Provenance
 
+## Active collection policy (2026-10-09)
+
+The [revised research plan](research_plan.md) and [human-source protocol](source_collection_plan.md) govern current source roles. The catalogue below preserves the 2026-09-25 acquisition record and its later audit notes; it is not a new verification of every license. Original MultiWOZ dialogue is the main gold-sample source. DIRECT rewrites remain auxiliary weak training/development data. LLM-generated IndirectRequests is excluded from the human-only main benchmark. New literary editions are candidates only, not downloaded sources; their inventory and screening requirements are in the collection protocol. Existing text-release restrictions remain.
+
 _Last verified: 2026-09-25. Machine-readable manifest: [`data/sources.toml`](../data/sources.toml)._
 
 This page records where each third-party dataset comes from, the exact version we pinned, its

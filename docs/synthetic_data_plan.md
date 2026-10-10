@@ -1,10 +1,6 @@
 # Synthetic Data Plan (draft v0)
 
-> **Status: parked (2026-09-25).** The user switched the project to an existing-data design built on
-> DIRECT + MultiWOZ 2.1 (see "Design revision" at the top of [`research_plan.md`](research_plan.md)).
-> This plan and its decision log are kept for reference. The only part likely to return is a small
-> hand-written contrastive set, an optional add-on to the new design. Reuse this plan's §2 schema and
-> §3.2–3.3 filters for it. Nothing here is being generated.
+> **Status: historical and inactive (2026-10-09).** The [revised research plan](research_plan.md) excludes LLM-generated inputs, invented contexts and researcher-written input ladders/twins from the main benchmark. The earlier generation design and decisions below are retained as history, not current instructions. Collect source-authored exchanges under [source_collection_plan.md](source_collection_plan.md). No generation is authorized or implemented by this revision.
 
 _Drafted 2026-09-25 for Phase 2 of [`research_plan.md`](research_plan.md). **Status: proposal only.**
 No synthetic data has been generated and no generation code exists yet. Answers so far are in the

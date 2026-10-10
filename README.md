@@ -1,72 +1,70 @@
 # Pragmatic Intent
 
-**Pragmatic Intent Detection for AI Assistants: An Empirical Study of Conversational Context and Linguistic Indirectness**
-
-People rarely ask AI assistants for things directly. "It's freezing in here" can be a request to turn
-up the heat, and "I have an interview tomorrow and haven't practiced" can be a request for help
-preparing. This project measures how well machine-learning and language models recover what the user
-*means*, and how that ability depends on:
-
-- **Degree of indirectness.** Utterances range from direct requests ("Turn the heat up") to
-  conventionally indirect ones ("Can you turn the heat up?") to strong and mild hints.
-- **Amount of conversational context.** Models see the utterance alone, one prior turn, the full
-  dialogue history, or a mismatched history from a different conversation.
+**Pragmatic Intent Detection for AI Assistants: An Empirical Study of Conversational Context and Linguistic Ambiguity**
 
 ## Research question
 
-> How do conversational context and degree of linguistic indirectness interact when models detect and
-> interpret a user's underlying intent?
+> How do conversational context and linguistic ambiguity interact when machine learning and language models infer a user's underlying intent?
 
-The central hypothesis is that context helps more as requests become less explicit.
+The original question remains. The study compares detection of implied requests and recovery of
+their intended meaning. Context is varied within an item; request indirectness is annotated by
+wording, while ambiguity is measured separately.
 
-## Approach
+## Current plan
 
-- **Two-stage task.**
-  - Stage 1 (detection): is the user making a direct request, an indirect request, or no request?
-  - Stage 2 (interpretation): for indirect requests, what is the underlying request?
-- **Controlled benchmark.** About 8 assistant-intent categories × 4 indirectness levels (grounded in
-  the CCSARP request-strategy scale) × 4 context conditions. It includes contrastive items where the
-  same utterance is or isn't a request depending on context. Test items are human-validated.
-- **Model comparison.** A classical baseline (TF-IDF + logistic regression), fine-tuned transformer
-  encoders, prompted LLMs (open-weight and API), and a two-stage hybrid pipeline.
-- **Analysis.** A mixed-effects test of the context × indirectness interaction, a human baseline,
-  per-intent difficulty, and error analysis.
+The [research plan](docs/research_plan.md), revised after the October 8 professor meeting, prioritizes
+a **December 2026 class paper and model results**, followed by publication development toward WDSI.
 
-## Status
+- Collect human-authored assistant dialogue and addressed literary exchanges from fables, parables
+  and other eligible works. Preserve source wording and preceding context.
+- Exclude LLM-generated inputs and invented request ladders from the main benchmark.
+- Compare utterance-only, one-turn, full and mismatched context; measure missed requests and
+  unsupported intent inference.
+- Use assistant dialogue for the main experiment and report literary transfer separately.
+- Prioritize TF-IDF, one encoder, one LLM and a small two-stage hybrid within the class schedule.
 
-**Data pipeline and evaluation development.** DIRECT is joined to MultiWOZ 2.1;
-annotation sampling, labeling and export are implemented. Calibration round 1 has
-15 labels and round 2 has 30 completed labels, with adjudication pending. See the
-[round 2 review](docs/round2_review.md) for proposed corrections and the coding path,
-and the [evaluation harness](src/evaluation/README.md) to run the first development
-baseline. The [research plan](docs/research_plan.md)'s existing-data revision governs
-the current design; the synthetic benchmark described above remains parked.
+See the [collection protocol](docs/source_collection_plan.md), [draft analysis plan](docs/analysis_plan.md)
+and [revision report and next steps](docs/research_revision_2026-10-09.md).
+The [original proposal](<docs/Pragmatic_Intent_Detection_Proposal_Plain .pdf>) is preserved.
+The [synthetic plan](docs/synthetic_data_plan.md) is historical and inactive.
 
-**Stage 1 baselines are ready to run** on the RTX 5060 (WSL2) or the lab RTX 4090.
-They use a pinned `uv` environment (torch 2.11 + CUDA 12.8). Training uses explicit
-weak labels from DIRECT's train split, and scoring is on dev under every context
-condition, with paired context contrasts. The TF-IDF and cross-encoder trainers are
-included. See [Stage 1 baselines](docs/stage1_baselines.md) for the policy, setup and
-run order. No model has been trained yet.
+## Implementation status
+
+The existing DIRECT + MultiWOZ join, annotation tools, calibration rounds 1-3, weak-supervision
+Stage 1 trainers, evaluation harness and rewrite fact-drift audit remain available. Round 2
+adjudication is pending. These tools do not yet ingest literature, represent contextual gold
+function, or score Stage 2 interpretations under the revised protocol. This revision is documentation
+only: no new corpus has been collected and no new model results are claimed.
+
+The [Stage 1 baseline guide](docs/stage1_baselines.md) covers pinned environments and weak-label
+dev experiments on the RTX 5060 (WSL2) or lab RTX 4090. DIRECT variant labels are not human L0-L3
+gold. See the [round 2 review](docs/round2_review.md) and [evaluation guide](src/evaluation/README.md).
 
 ## Repository layout
 
-The layout will grow as the phases land:
+~~~text
+docs/       research plan, source collection, analysis draft, rubric and revision report
+configs/    reproducible Stage 1 model configurations
+scripts/    GPU experiment grids
+src/        data pipeline, annotation tools, Stage 1 trainers and evaluation
+data/       committed ID/label annotations; raw/interim source text stays local
+results/    reproducible run logs when experiments are performed
+~~~
 
-```text
-docs/       research plan, analysis plan, annotation guidelines
-configs/    experiment configs (one config = one reproducible run)
-scripts/    experiment grids for the GPU machines
-src/        data pipeline, annotation tools, Stage 1 trainers, evaluation harness
-data/       local datasets (raw sources are not committed; see their licenses)
-results/    run logs (JSONL) and figures
-```
+Data commands and source terms are in [data_sources.md](docs/data_sources.md).
+Run the standard-library tests with Python 3.12 in WSL/Linux from the repository root
+(the revision report records an existing native-Windows TOML-fixture issue):
+
+~~~bash
+python -m unittest discover -s tests -t .
+~~~
 
 ## License
 
-The code is released under the [MIT License](LICENSE). The benchmark data will be released
-separately under a license compatible with its source datasets.
+Code is released under the [MIT License](LICENSE). Third-party texts retain their own terms.
+Benchmark release will use permitted source text or annotations/source references with
+reconstruction instructions.
 
 ## Author
 
-Sandy Thomas. Started as a Machine & Deep Learning course project, Fall 2026.
+Sandy Thomas. Machine & Deep Learning course project, Fall 2026.

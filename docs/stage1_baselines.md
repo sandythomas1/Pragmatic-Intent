@@ -7,6 +7,10 @@ This is the "TF-IDF baseline with a distinct training source and dialogue-separa
 from the [round 2 review](round2_review.md), plus the cross-encoder runs that come after it. It does
 not settle the open annotation decisions. Human levels appear only as an evaluation slice.
 
+## Revised-study scope (2026-10-09)
+
+These trainers remain weak-label development tools under the [revised plan](research_plan.md). They do not yet ingest literary data or contextual gold function and Stage 2 interpretation. The new [analysis plan](analysis_plan.md) is an unfrozen draft; its existence does not authorize reported test runs. Complete its freeze checklist and the contextual adapter/scorers first. The existing supervision policy, code and configs are unchanged.
+
 ## Supervision policy `direct_variants_v1`
 
 Training labels come from DIRECT's **train** split and evaluation from its **dev** split
@@ -56,7 +60,7 @@ DIRECT's two rewrites is this". That approximates indirectness, but it is not th
   most of the signal is surface wording (research plan, Phase 3).
 - **Fixed recipe.** There is no early stopping or selection on dev: epochs and the learning rate are
   in the config. `--allow-test` is required before anything is scored on test. Keep test for the
-  frozen run, after `docs/analysis_plan.md` exists.
+  frozen run, after the draft `docs/analysis_plan.md` is frozen.
 
 ## Setup (once per machine: WSL2 on the 5060, Linux on the lab 4090)
 
@@ -141,4 +145,4 @@ python -m src.evaluation.stage1 --predictions outputs/stage1/<run>/train-full/se
   labeled L0, and `direct` paraphrases were labeled L1–L3 or INF. This is expected, given the noise
   noted above, and it is why weak labels must not stand in for levels.
 - Before reported experiments: adjudicate round 2, freeze the rubric, settle the six-way → Stage 1
-  mapping, label a frozen test sample, and write `docs/analysis_plan.md`.
+  mapping, label a frozen test sample, and freeze `docs/analysis_plan.md` under the revised collection protocol.

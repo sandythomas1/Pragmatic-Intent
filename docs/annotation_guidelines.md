@@ -3,6 +3,10 @@
 _Rubric **v2**, 2026-09-30. Read this whole page before labeling. It is written so that a second
 annotator who has never seen the project can apply it._
 
+## Revised-study scope (2026-10-09)
+
+Rubric v2 and existing calibration labels remain unchanged. The [collection protocol](source_collection_plan.md) requires a separate, versioned contextual-function and interpretation supplement for original dialogue and literary exchanges. This wording-only rubric does not establish contextual request status: an INF utterance may act as a request in context. The current exporter does not implement the new schema, and no existing labels have been automatically remapped.
+
 ## The task
 
 You will see one user utterance from a conversation with a booking/information assistant (restaurants,
