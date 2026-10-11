@@ -202,6 +202,15 @@ def load_families(dirs: Dirs) -> list[dict[str, str]]:
     return rows
 
 
+def load_log(dirs: Dirs) -> list[dict[str, str]]:
+    """The committed screening log, header-checked; a missing log is empty."""
+    if not dirs.log.exists():
+        return []
+    rows = _read(dirs.log)
+    _check_header(dirs.log, rows, LOG_FIELDS)
+    return rows
+
+
 def family_episodes(family: dict[str, str]) -> list[str]:
     return [episode for episode in family["episode_ids"].split(";") if episode]
 
@@ -472,10 +481,7 @@ def validate(dirs: Dirs, editions: Editions) -> int:
     """Re-derive and check the committed families file and screening log against the pinned sources."""
     families_list = load_families(dirs)
     problems = validate_families(families_list, editions)
-    rows: list[dict[str, str]] = []
-    if dirs.log.exists():
-        rows = _read(dirs.log)
-        _check_header(dirs.log, rows, LOG_FIELDS)
+    rows = load_log(dirs)
     families = {family["family_id"]: family for family in families_list}
     problems.extend(validate_rows(rows, families, editions))
     if problems:

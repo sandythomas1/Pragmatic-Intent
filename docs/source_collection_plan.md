@@ -115,6 +115,42 @@ Report coverage by request function, intent, wording level, source/genre, group 
 Empty cells stay visible. Literary-only L3 and dialogue-only L0 confound genre with level; do not
 pool them as H2 evidence.
 
+## Contextual annotation tooling
+
+Implemented by [spec 003](../specs/003-contextual-annotation/spec.md) (`src/annotation/context*.py`,
+standard library only). Labels are collected in **sealed passes** per annotator: form (target
+only), then context (prior context only), then reveal (later evidence). Each pass's sheet is
+built from the previous pass's committed export, so no first judgment is made after seeing more.
+
+~~~bash
+# 1. Dialogue pilot: 40 dev dialogues, one user turn (t > 0) each, uniform and seeded. Dialogues
+#    from any levels_round*.csv are excluded. Drawing again into the same batch is refused.
+python -m src.annotation.context draw --batch pilot1 --count 40 --seed 20261011
+
+# 2. Literary pilot: register every `include` row of the screening log (rerun after each export).
+python -m src.annotation.context register-literary --batch pilot1
+
+# 3. Form pass (wording only). Fill form (L0 L1 L2 L3 INF NR ?), fragment (0/1) and notes in
+#    Excel, save as "CSV UTF-8", then export. Re-running `sheet` later picks up newly registered items.
+python -m src.annotation.context sheet  --pass form --batch pilot1 --annotator A1
+python -m src.annotation.context export --pass form --batch pilot1 --annotator A1 --rubric v2
+~~~
+
+- Sheets and free text live in git-ignored `data/interim/context/`. **Back that folder up to
+  Google Drive after every export.** It holds the only copy of notes, and later of slot values
+  and paraphrases.
+- Committed files (`data/annotations/context_items.csv`, `context_<pass>_<annotator>.csv`) hold
+  IDs, labels and hashes only.
+- An exported label can't be changed by re-exporting. Corrections go through a logged `correct`
+  command (spec 003 T11).
+
+**Pilot draw record (2026-10-11).** `pilot1` = seed 20261011, approved by Sandy before drawing.
+The pool held 990 dev dialogues (1,000 minus round 2's 10). Only **1 of 40** drawn targets is
+social-only (thanks/bye/greet). Under this design the expected count is 8.2 (20.6% per draw), so
+this is about a 1-in-1,000 outcome. Simulating 2,000 seeds confirms the sampler is unbiased (mean
+8.29). The seed is kept: redrawing after seeing the result would be selection on outcome. The
+pilot under-represents easy social negatives, and coverage reports should say so.
+
 ## Annotation: separate form, function and interpretation
 
 Preserve [rubric v2](annotation_guidelines.md) for historical calibration. Create a versioned new

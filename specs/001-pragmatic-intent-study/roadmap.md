@@ -43,9 +43,9 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 |---|---|---|---|---|
 | WP-01 Deadline, resources, round 2 adjudication | Human | S | none | Open. Adjudication needs Sandy's decisions on `docs/round2_review.md`. |
 | WP-02 Register sources, screen dev pilot | Code + human | C tooling, S screening | **002** literary sources and screening | Tooling done. 9 dev families and 22 candidates proposed (2026-10-10). Screening is next (S). |
-| WP-02b Dialogue pilot draw (≈40 original MultiWOZ dev turns) | Code (small) + human | C, S | Folded into 003 | Not started. |
-| WP-03 Contextual annotation supplement and pilot labels | Code + human | C schema/tooling, S/P labels | **003** contextual annotation schema | Not started. |
-| WP-04 Collect untouched groups, validate splits | Code + human | C audit, S collection | 003 (split audit) | Not started. |
+| WP-02b Dialogue pilot draw (40 dev dialogues × 1 turn) | Code (small) + human | C, S | Folded into **003** | Spec 003 drafted 2026-10-11. |
+| WP-03 Contextual annotation supplement and pilot labels | Code + human | C schema/tooling, S/P labels | **003** contextual annotation (passes 1–3) | Spec 003 drafted 2026-10-11; condition judgments (pass 4) deferred to a later spec after D-02. |
+| WP-04 Collect untouched groups, validate splits | Code + human | C audit, S collection | Own spec (split audit), needed by Oct 26 | Not started. Moved out of 003 (2026-10-11). |
 | WP-05 Context renderer and invariants | Code | C | **004** context conditions | Not started. |
 | WP-06 Contextual adapters, Stage 2/routing scorers | Code | C | **005** scoring | Not started. |
 | WP-07 Models on dev | Code | **S**, C reviews | none (Sandy's code) | Existing weak Stage 1 trainers only. |
@@ -68,9 +68,17 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   in the tooling smoke test, where Claude saw those fables' quoted speech, so the same seeded
   draw was reused to keep the inspected fables in dev. 2 more come from seed 20261010. Both
   draws were uniform over fables with quoted speech; pool sizes are in `literary_families.csv`.
+- [ ] S: Label the dialogue form pass: `data/interim/context/pilot1/form_A1.csv`, then `export --pass form --batch pilot1 --annotator A1 --rubric v2` (usage in `docs/source_collection_plan.md#contextual-annotation-tooling`). Back up `data/interim/context/` to Google Drive.
 - [ ] S: Screen `data/interim/literary/screening_sheet.csv`, then run `export --screener A1` and
   `validate` (usage in `docs/source_collection_plan.md#screening-tooling`).
 - [ ] S: Adjudicate round 2 using `docs/round2_review.md` and rubric v2. `label_initial` stays untouched.
-- [ ] C: Next child spec, 003: contextual annotation schema, plus the ≈40-turn dialogue pilot draw (WP-02b/03).
+- [x] C: Spec 003 drafted (2026-10-11): sealed form → context → reveal passes, 40×1 dev dialogue draw, taxonomy v0 mechanism. Sandy chose: 40 dialogues × 1 turn; Claude drafts taxonomy v0 for S/P approval; split audit and condition judgments out of scope; free text local-only with hashes committed.
+- [x] C: `/spec-review 003` (2026-10-11): READY after R1–R14 (Sandy decided R1/R2/R5/R7/R8/R14).
+- [x] C: `/spec-decompose 003` (2026-10-11): 13 tasks; T1–T5 deliver the form sheet first (~Oct 14), T7 is the taxonomy/rubric approval gate.
+- [ ] C: Implement spec 003 T1–T13 (target: tooling ready by Oct 18).
+  - 2026-10-11: T1–T5 done. `pilot1` drawn (seed 20261011, 40 of 990 dev dialogues; only 1 social-only
+    target, a ~1-in-1,000 outcome of an unbiased sampler, so the seed is kept and this is disclosed). Form sheet
+    `data/interim/context/pilot1/form_A1.csv` is ready. Literary items are registered after screening export. Sandy pre-approved the T5 pilot draw (seed 20261011) and the T7 gate; the T7 taxonomy/rubric content is still shown to Sandy before the context sheet goes out.
+- [ ] S/P: Approve taxonomy v0 and the `ctx-v0` rubric before the context pass.
 - [ ] S/P: Ask the professor about second-rater availability (D-02) and the WDSI call (D-08).
 - [ ] S: Start the FR-11 literature search log (search strings and dates).

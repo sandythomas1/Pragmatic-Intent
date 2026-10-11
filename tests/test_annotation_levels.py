@@ -89,6 +89,15 @@ class RoundTest(unittest.TestCase):
         self.assertEqual(len(dialogues), 11)
         self.assertFalse(dialogues & {"ZERO.json", "NODONOR.json", "TEST.json", "D000.json"})
 
+    def test_labeled_dialogues_spans_every_round_and_all_turns(self) -> None:
+        header = "item_id,dialogue_id,turn_index,variant,label_initial,label_final,fragment,annotator,rubric_version\n"
+        (self.annotations_dir / "levels_round1.csv").write_text(header + "r1-01,D000.json,2,target,L0,L0,0,A1,v1\n", encoding="utf-8")
+        (self.annotations_dir / "levels_round3.csv").write_text(
+            header + "r3-01,D001.json,4,direct,L1,L1,0,A1,v2\nr3-02,D001.json,6,target,NR,NR,0,A1,v2\n", encoding="utf-8"
+        )
+        self.assertEqual(lv.labeled_dialogues(self.annotations_dir), {"D000.json", "D001.json"})
+        self.assertEqual(lv.labeled_dialogues(self.annotations_dir / "missing"), set())
+
     def test_sample_is_deterministic(self) -> None:
         self.sample(round_number=2)
         self.sample(round_number=3)
