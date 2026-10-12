@@ -58,7 +58,9 @@ NAME_RE = re.compile(r"[a-z][a-z0-9_]{0,39}")  # intent IDs and slot names
 TAXONOMY_VERSION_RE = re.compile(r"ctx-tax-v[0-9]{1,3}")
 DIALOGUE_ITEM_RE = re.compile(r"d:[A-Za-z0-9][A-Za-z0-9_-]{0,39}:t[0-9]{2,3}")
 LITERARY_ITEM_RE = re.compile(r"lit-[0-9a-f]{10}")  # the spec 002 candidate ID
-FORM_ROW_RE = re.compile(r"f-[0-9]{3,5}")  # opaque form-sheet row IDs
+FORM_ROW_RE = re.compile(r"f-[0-9]{3,5}")  # opaque sheet row IDs, one prefix per pass
+ROW_ID_RES = {"form": FORM_ROW_RE, "context": re.compile(r"c-[0-9]{3,5}"), "reveal": re.compile(r"r-[0-9]{3,5}")}
+BOOLEANS = ("true", "false")  # how derived flags are written to committed CSVs
 
 # Characters that never belong in a single-line cell: controls (incl. newline/tab), invisible
 # format characters (incl. bidi overrides), line/paragraph separators and lone surrogates.

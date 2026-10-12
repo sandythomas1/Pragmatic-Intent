@@ -1,7 +1,9 @@
 # Spec 003: Contextual annotation supplement and dialogue pilot draw
 
-Status: Reviewed. READY after revision (Claude adversarial review 2026-10-11; R1–R14 applied
-with Sandy's decisions, see [review.md](review.md)).
+Status: Implemented (T1–T13 done 2026-10-11; see [tasks.md](tasks.md)). The T7 taxonomy and
+rubric content awaits Sandy's approval before the real context sheet. Reviewed: READY after
+revision (Claude adversarial review 2026-10-11; R1–R14 applied with Sandy's decisions, see
+[review.md](review.md)).
 
 Parent: [spec 001](../001-pragmatic-intent-study/spec.md) WP-02b, WP-03, FR-03, FR-04, FR-05 (record
 side only). Acceptance scenarios AC-02, AC-03, AC-11. Builds on [spec 002](../002-literary-sources/spec.md).
@@ -121,14 +123,17 @@ the story's ending, before a judgment meant to be made without it. The dialogue 
    - `notes`.
 
    Rules:
-   - `request` requires `intent`.
-   - A non-request has blank `intent`, `alt_intent` and `slots`.
+   - `request` requires `intent` and `paraphrase`.
+   - A non-request (`inform`, `decline`, `social`, `other`) has blank `intent`, `alt_intent` and
+     `slots`. `uncertain` may record a candidate intent (amended 2026-10-11 in T9).
    - Every required slot of `intent` is present, either with a value or as `?`.
    - Every slot name belongs to `intent`.
    - Evidence indices satisfy `0 ≤ i < n_segments`.
 7. **FR7 Reveal pass (later evidence).** Eligible means that A's context row for the item is
    sealed. The sheet shows the continuation: the rest of the dialogue, or the rest of the episode
-   including the moral. The annotator records `future_dependence` ∈ {`none`, `corroborates`,
+   including the moral. Beside it, for reference only, are the target and the annotator's own
+   sealed context reading (amended 2026-10-11 in T10: the judgment is relative to that reading).
+   The annotator records `future_dependence` ∈ {`none`, `corroborates`,
    `conflicts`, `required`} and `notes`. The sheet carries no earlier-pass columns, and export
    rejects any it finds.
 8. **FR8 Sheet snapshots and export.**

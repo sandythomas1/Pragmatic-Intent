@@ -62,6 +62,26 @@ class Taxonomy:
     def versions(self) -> tuple[str, ...]:
         return tuple(sorted(self.intents))
 
+    @property
+    def latest(self) -> str:
+        """The newest version by number (``ctx-tax-v10`` is newer than ``ctx-tax-v9``)."""
+        return max(self.intents, key=lambda version: int(version.rsplit("v", 1)[1]))
+
+    def sha256(self, version: str) -> str:
+        """Canonical hash of one version's intents and slots (descriptions excluded).
+
+        Context rows record it (FR8), so editing a version in place after labels use it is
+        detectable: "append-only" protects against deletion, this protects against redefinition.
+        """
+        intents = self.intents.get(version)
+        if not intents:
+            raise cs.SchemaError(f"taxonomy_version {version!r} has no intents")
+        canonical = {
+            intent_id: f"{intent.stratum}|{';'.join(sorted(intent.required))}|{';'.join(sorted(intent.optional))}"
+            for intent_id, intent in intents.items()
+        }
+        return cs.canonical_hash(canonical, exclude=())
+
     def intent(self, version: str, intent_id: str) -> Intent:
         if version not in self.intents:
             raise cs.SchemaError(f"taxonomy_version {version!r} is not in {TAXONOMY_FILE}")
@@ -164,19 +184,8 @@ def missing_versions(taxonomy: Taxonomy, referenced: Iterable[str]) -> list[str]
 
 
 def version_sha256(rows: Iterable[Mapping[str, str]], version: str) -> str:
-    """Canonical hash of one version's intents and slots (descriptions excluded).
-
-    Context rows record it (T9), so editing a version in place after labels use it is detectable:
-    "append-only" protects against deletion, this protects against silent redefinition.
-    """
-    intents = build(row for row in rows if row["taxonomy_version"] == version).intents.get(version)
-    if not intents:
-        raise cs.SchemaError(f"taxonomy_version {version!r} has no intents")
-    canonical = {
-        intent_id: f"{intent.stratum}|{';'.join(sorted(intent.required))}|{';'.join(sorted(intent.optional))}"
-        for intent_id, intent in intents.items()
-    }
-    return cs.canonical_hash(canonical, exclude=())
+    """``Taxonomy.sha256`` straight from file rows."""
+    return build(row for row in rows if row["taxonomy_version"] == version).sha256(version)
 
 
 # --------------------------------------------------------------------------- slots

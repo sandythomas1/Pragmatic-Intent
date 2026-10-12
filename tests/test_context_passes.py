@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import io
 import json
 import random
 import unittest
-import unittest.mock
 
 from src.annotation import context_items as ci
 from src.annotation import context_passes as cp
@@ -117,10 +115,6 @@ class FormSheetTests(FormPassCase):
         fx.write_direct(self.dirs.direct_dir, self.items, self.dialogue_turns)
         self.assertEqual(self.sheet(), 1)
         self.assertFalse(self.paths.sheet.exists())
-
-    def test_only_form_is_available_until_later_tasks(self) -> None:
-        with self.assertRaises(SystemExit), unittest.mock.patch("sys.stderr", io.StringIO()):
-            self.cli("sheet", "--pass", "context", "--batch", "pilot1", "--annotator", "A1")
 
     def test_utterance_starting_with_a_formula_character_is_escaped(self) -> None:
         stem = next(row for row in self.registry() if row["stratum"] == "dialogue")

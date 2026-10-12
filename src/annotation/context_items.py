@@ -125,7 +125,7 @@ def validate_registry(rows: Sequence[Mapping[str, str]]) -> list[str]:
         if row["item_id"] in seen:
             problems.append(f"{label}: duplicate item_id")
         seen.add(row["item_id"])
-        problems.extend(f"{label}: {problem}" for problem in _row_problems(row))
+        problems.extend(f"{label}: {problem}" for problem in row_problems(row))
         group_splits[row["group_id"]].add(row["split"])
     problems.extend(
         f"group {group}: spans splits {sorted(splits)}" for group, splits in sorted(group_splits.items()) if len(splits) > 1
@@ -133,7 +133,7 @@ def validate_registry(rows: Sequence[Mapping[str, str]]) -> list[str]:
     return problems
 
 
-def _row_problems(row: Mapping[str, str]) -> list[str]:
+def row_problems(row: Mapping[str, str]) -> list[str]:
     problems: list[str] = []
     checks = (
         lambda: cs.item_id(row["item_id"]),
@@ -349,7 +349,7 @@ def literary_rows(
                 "protocol_version": cs.PROTOCOL_VERSION,
             }
         )
-    problems.extend(f"{row['item_id']}: {problem}" for row in rows for problem in _row_problems(row))
+    problems.extend(f"{row['item_id']}: {problem}" for row in rows for problem in row_problems(row))
     if problems:
         raise RegistryError(problems)
     return rows

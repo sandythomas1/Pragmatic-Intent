@@ -13,11 +13,11 @@ episode or retelling family share one split group.
 |---|---|---|
 | MultiWOZ original turns via existing join | Main assistant-dialogue gold sample | Verify contextual function, supported intent/slots and prior history; preserve official splits. |
 | DIRECT human-written rewrites | Existing weak training; separate paired diagnostics | Elicited paraphrase provenance; review fact drift. Variant names are not L0-L3 gold. |
-| Aesop dialogue | Literary pilot and held-out transfer | Addressed speech required; a moral alone is not request interpretation. |
+| Aesop dialogue | Optional literary add-on (since 2026-10-12): dev pilot, held-out set only if time allows | Addressed speech required; a moral alone is not request interpretation. |
 | Parables/religious narrative exchanges | Same, with translation/edition identified | Separate request evidence from theological interpretation and later outcomes. |
-| Other literature, including documented jokes | Additional sources if feasible | Verify rights, speaker/addressee and preceding context. Punchline meaning is not automatically a request. |
+| Other literature, including documented jokes | Not planned for December | Verify rights, speaker/addressee and preceding context. Punchline meaning is not automatically a request. |
 | Circa / George and Mamidi implicatures | Annotation reference; screened negatives/transfer | Indirect answers require independent function review. |
-| IndirectRequests / LLM-generated examples | Related work or separate later comparisons | Excluded from human-only December benchmark. |
+| IndirectRequests (published, LLM-generated) | Separate transfer test (spec 001 FR-15), as in the proposal | Used as published; never in the main benchmark, training data or git. No new generation. |
 
 Human-authored does not mean spontaneous: MultiWOZ is elicited task-oriented dialogue, DIRECT
 includes commissioned rewrites, and literature is crafted communication. Preserve these distinctions.
@@ -134,6 +134,24 @@ python -m src.annotation.context register-literary --batch pilot1
 #    Excel, save as "CSV UTF-8", then export. Re-running `sheet` later picks up newly registered items.
 python -m src.annotation.context sheet  --pass form --batch pilot1 --annotator A1
 python -m src.annotation.context export --pass form --batch pilot1 --annotator A1 --rubric v2
+
+# 4. Context pass (prior context only; rubric docs/context_supplement.md, taxonomy checked first).
+python -m src.annotation.context taxonomy-check
+python -m src.annotation.context sheet  --pass context --batch pilot1 --annotator A1
+python -m src.annotation.context export --pass context --batch pilot1 --annotator A1
+
+# 5. Reveal pass (the continuation, after the context pass is sealed).
+python -m src.annotation.context sheet  --pass reveal --batch pilot1 --annotator A1
+python -m src.annotation.context export --pass reveal --batch pilot1 --annotator A1
+
+# Fix a mistake in an exported row: prepare, edit the one-row sheet, apply with a reason.
+python -m src.annotation.context correct --pass form --annotator A1 --item <item_id> --prepare
+python -m src.annotation.context correct --pass form --annotator A1 --item <item_id> --reason typo
+
+# Check everything (after each export or correction, and after restoring from Google Drive),
+# then print per-annotator coverage tables. Coverage refuses data that fails validate.
+python -m src.annotation.context validate
+python -m src.annotation.context coverage --batch pilot1 > data/interim/context/coverage_pilot1.txt
 ~~~
 
 - Sheets and free text live in git-ignored `data/interim/context/`. **Back that folder up to
@@ -141,8 +159,11 @@ python -m src.annotation.context export --pass form --batch pilot1 --annotator A
   and paraphrases.
 - Committed files (`data/annotations/context_items.csv`, `context_<pass>_<annotator>.csv`) hold
   IDs, labels and hashes only.
-- An exported label can't be changed by re-exporting. Corrections go through a logged `correct`
-  command (spec 003 T11).
+- An exported label can't be changed by re-exporting. Corrections go through `correct`, which
+  keeps the old row as `superseded` and logs both hashes in `context_corrections.csv`.
+- `validate` rebuilds every target from its source and checks the registry, the screening log,
+  the taxonomy, every label rule, the hash chain, the corrections log and the local text. Each
+  problem names its rule (`[prior-chain]`, `[local-text]`, ...) and its item. It never writes.
 
 **Pilot draw record (2026-10-11).** `pilot1` = seed 20261011, approved by Sandy before drawing.
 The pool held 990 dev dialogues (1,000 minus round 2's 10). Only **1 of 40** drawn targets is

@@ -169,7 +169,7 @@ Tests use the stdlib `unittest` and invented fixtures only. Run them with
   - The rubric covers every enum value in `context_schema.py`, and a test asserts each value
     is mentioned.
   - Sandy's approval is recorded in the roadmap before T9's sheet is built for real.
-- Status: todo
+- Status: done (draft; Sandy approves the content before the real context sheet is built)
 
 ## T8: Prior segments and continuation views (`seg-v1`)
 - Description: Add `src/annotation/context_views.py` (FR4), which holds only pure functions.
@@ -192,7 +192,7 @@ Tests use the stdlib `unittest` and invented fixtures only. Run them with
     segments. A closing quote stays with its sentence.
   - The dialogue prior at `t` equals `direct_dataset.build_context(..., "full")` text for the
     same item.
-- Status: todo
+- Status: done
 
 ## T9: Context pass (sheet + export + local free text)
 - Description: The context pass, built on T4's machinery (FR6, FR8).
@@ -214,7 +214,7 @@ Tests use the stdlib `unittest` and invented fixtures only. Run them with
   - Every AC-003-6 rejection fires, naming the item.
   - The committed CSV contains no paraphrase, slot value or note fixture text. The local file's
     hash equals `text_sha256` (AC-003-11).
-- Status: todo
+- Status: done
 
 ## T10: Reveal pass (sheet + export)
 - Description: The reveal pass (FR7).
@@ -230,7 +230,7 @@ Tests use the stdlib `unittest` and invented fixtures only. Run them with
   - A sheet carrying a `function` or `form` column is rejected on export.
   - The derived `needs_adjudication` and `confirmatory_eligible` values match T1's table on the
     exported rows.
-- Status: todo
+- Status: done
 
 ## T11: Corrections
 - Description: `correct --pass P --annotator A --item I --reason R` (FR9).
@@ -248,7 +248,7 @@ Tests use the stdlib `unittest` and invented fixtures only. Run them with
     false otherwise. Both cases are tested.
   - An invalid reason, an unknown item, or correcting a row that doesn't exist each fail with
     a named rule.
-- Status: todo
+- Status: done
 
 ## T12: Full validation
 - Description: `validate` (FR12) recomputes everything from `dialogues.jsonl`, the pinned
@@ -272,7 +272,7 @@ Tests use the stdlib `unittest` and invented fixtures only. Run them with
   - Each of these edits fails with a named rule (AC-003-9): a committed label, a
     `prior_sha256`, a registry `target_sha256`, a group's split, a local text file.
   - A screening row flipped from `include` to `exclude` after registration is reported.
-- Status: todo
+- Status: done
 
 ## T13: Coverage report and exposure flag
 - Description: `coverage --batch B` (FR13, FR14). It shows per-annotator counts for every cell,
@@ -299,4 +299,4 @@ Tests use the stdlib `unittest` and invented fixtures only. Run them with
     non-screener annotator's item is not.
   - The full suite passes on native Windows Python 3.12 (AC-003-14), and the spec status,
     roadmap and decisions are updated.
-- Status: todo
+- Status: done

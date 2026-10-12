@@ -1,0 +1,18 @@
+taxonomy_version,intent_id,stratum,required_slots,optional_slots,description
+ctx-tax-v0,find_restaurant,dialogue,,area;price;food;name,Wants a restaurant suggested or looked up that fits stated constraints
+ctx-tax-v0,book_restaurant,dialogue,people;day;time,name,Wants a table reserved
+ctx-tax-v0,find_hotel,dialogue,,area;price;type;stars;parking;internet;name,Wants a place to stay suggested or looked up that fits stated constraints
+ctx-tax-v0,book_hotel,dialogue,people;day;stay,name,Wants rooms reserved
+ctx-tax-v0,find_attraction,dialogue,,area;type;name,Wants a place to visit suggested or looked up
+ctx-tax-v0,find_train,dialogue,,departure;destination;day;leave_at;arrive_by,Wants a train suggested or looked up
+ctx-tax-v0,book_train,dialogue,people,train_id,Wants train tickets booked
+ctx-tax-v0,book_taxi,dialogue,departure;destination,leave_at;arrive_by,Wants a taxi booked
+ctx-tax-v0,find_hospital,dialogue,,department,Wants a hospital or one of its departments looked up
+ctx-tax-v0,find_police,dialogue,,,Wants the police station looked up
+ctx-tax-v0,ask_attribute,dialogue,attribute,entity,Wants a detail of a place or booking (phone; address; postcode; fee; reference; travel time) told
+ctx-tax-v0,give,literary,,object;recipient,Wants the addressee to hand over or provide something
+ctx-tax-v0,help,literary,,task,Wants the addressee's aid or rescue
+ctx-tax-v0,permit,literary,,action,Wants the addressee to allow the speaker (or someone) to do something
+ctx-tax-v0,stop,literary,,action,Wants the addressee to stop or not do something
+ctx-tax-v0,inform_me,literary,,topic,Wants the addressee to tell the speaker something
+ctx-tax-v0,joint_action,both,,action,Proposes that speaker and addressee do something together (let us...; shall we...)
