@@ -2,6 +2,14 @@
 
 _2026-10-09. Prepared for Sandy Thomas following the 2026-10-08 meeting with Dr. Benjamin Sanders._
 
+> **Partly superseded on 2026-10-12.** Sandy's course professor, through whom this research is
+> conducted, asked that the proposal and plan stay as they are, with some of these data methods
+> added. The study now targets only the December class paper (as a computer-science paper).
+> The literary stratum is an optional add-on, IndirectRequests is back as a transfer test, and the
+> hallucination review and WDSI direction below are dropped. See
+> [spec 001 v1.1](../specs/001-pragmatic-intent-study/spec.md) and the
+> [roadmap](../specs/001-pragmatic-intent-study/roadmap.md). This file is kept as history.
+
 ## Outcome
 
 **Keep the original research question; change how the evidence is collected.** The December 2026
