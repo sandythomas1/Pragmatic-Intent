@@ -2,7 +2,7 @@
 
 **ID:** 001-pragmatic-intent-study
 
-**Version:** 1.1 draft, 2026-10-12 (1.0: 2026-10-09)
+**Version:** 1.2 draft, 2026-10-13 (1.1: 2026-10-12; 1.0: 2026-10-09)
 
 **Owner:** Sandy Thomas
 
@@ -28,6 +28,32 @@ optimized as a computer-science paper for the December class deadline. Therefore
 - The 2015–2025 hallucination review and all WDSI/publication items are removed. FR-11 is a normal
   related-work section; FR-13, FR-14, WP-12, AC-14 and D-08 are withdrawn.
 - "Professor" in this spec and its child specs means the course professor.
+
+**Version 1.2 direction (2026-10-13): option A, existing annotations instead of new labeling.**
+Sandy decided to stop new hand labeling. Where this block conflicts with the rest of this spec, this
+block wins; the affected sections are rewritten only once the professor has seen the change.
+
+- **Indirectness levels** are assigned mechanically by the versioned wording rules `auto-v1`
+  ([`src/data/auto_levels.py`](../../src/data/auto_levels.py)), a transcription of rubric v2.
+  They are reported as *rule-assigned*, never as human gold, always with their agreement against
+  the hand-labeled calibration rounds. First check (2026-10-13, rules frozen before scoring):
+  31/39 (79%), κ = 0.74 on the adjudicated rounds 1 and 3, which the rules were not written
+  from. Round 2 (unadjudicated) is reported separately.
+- **Stage 1** keeps DIRECT's direct/indirect rewrites; rule levels slice and replace the variant
+  names as the indirectness variable (about 27% of DIRECT's test "indirect" rewrites are L0 by
+  the rules).
+- **Stage 2 gold and intents** come from MultiWOZ user acts. The proposal's categories are
+  mapped by `cat-v1` ([`src/data/intent_categories.py`](../../src/data/intent_categories.py)):
+  information seeking, booking (action requests), travel (planning/scheduling, navigation) and
+  recommendation. Troubleshooting, advice/support and device control are a stated limitation.
+- **Test set:** DIRECT's test split under the existing comparable-turn rules, instead of
+  160–240 newly labeled turns. Spec 003's context and reveal passes and the `pilot1` form pass
+  are not run; the tooling stays for a possible second rater.
+- **Remaining human checks (small):** adjudicate round 2 (a fresh check for any later rule
+  version), mark about 40 rule-L3 turns OK/wrong (the level with the least human evidence),
+  and rate about 50 Stage 2 outputs pass/fail to validate an LLM judge.
+- **Claims:** the study becomes a weak-label, rule-levelled analysis. The context × level
+  interaction is reported with the rule agreement as an explicit limitation.
 
 ## 1. Purpose and source of truth
 

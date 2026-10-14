@@ -31,6 +31,18 @@ def classification_metrics(pairs: Sequence[tuple[str, str]], labels: Sequence[st
             "macro_f1": sum(f1) / len(labels), "confusion": confusion}
 
 
+def cohen_kappa(pairs: Sequence[tuple[str, str]]) -> float:
+    """Cohen's kappa for two raters' labels; 1.0 when both use one identical label throughout."""
+    if not pairs:
+        raise ValueError("no label pairs")
+    n = len(pairs)
+    observed = sum(a == b for a, b in pairs) / n
+    first = collections.Counter(a for a, _ in pairs)
+    second = collections.Counter(b for _, b in pairs)
+    expected = sum(first[label] * second[label] for label in first) / (n * n)
+    return 1.0 if expected == 1 else (observed - expected) / (1 - expected)
+
+
 def _percentile_interval(scores: list[float]) -> list[float]:
     scores.sort()
     last = len(scores) - 1

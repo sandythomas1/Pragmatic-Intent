@@ -9,6 +9,11 @@ research work stays here as checklist items. Owner key: **S** = Sandy, **P** = c
 (Sandy's Machine & Deep Learning professor, through whom this research is conducted),
 **C** = Claude (tooling only; Claude is never a gold annotator).
 
+**Direction, 2026-10-13 (spec 001 v1.2, option A).** No new hand labeling. Levels come from the
+frozen `auto-v1` wording rules (79%, κ = 0.74 against adjudicated rounds 1 and 3), intents from
+MultiWOZ acts (`cat-v1`), and the test set is DIRECT's test split. The form/context/reveal passes
+are dropped. See `specs/memory/decisions.md`, 2026-10-13.
+
 **Direction, 2026-10-12 (spec 001 v1.1).** The proposal is the governing design; the only target
 is the December class paper, written as a computer-science paper. The literary stratum is an
 optional add-on that is cut first. IndirectRequests is back as a separate transfer test (FR-15).
@@ -75,10 +80,19 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   in the tooling smoke test, where Claude saw those fables' quoted speech, so the same seeded
   draw was reused to keep the inspected fables in dev. 2 more come from seed 20261010. Both
   draws were uniform over fables with quoted speech; pool sizes are in `literary_families.csv`.
-- [ ] S: Label the dialogue form pass: `data/interim/context/pilot1/form_A1.csv`, then `export --pass form --batch pilot1 --annotator A1 --rubric v2` (usage in `docs/source_collection_plan.md#contextual-annotation-tooling`). Back up `data/interim/context/` to Google Drive.
+- [~] Dropped 2026-10-13 (option A). S: Label the dialogue form pass: `data/interim/context/pilot1/form_A1.csv`, then `export --pass form --batch pilot1 --annotator A1 --rubric v2` (usage in `docs/source_collection_plan.md#contextual-annotation-tooling`). Back up `data/interim/context/` to Google Drive.
 - [ ] S (optional add-on, only if time allows): Screen `data/interim/literary/screening_sheet.csv`,
   then run `export --screener A1` and `validate` (usage in `docs/source_collection_plan.md#screening-tooling`).
 - [ ] S: Adjudicate round 2 using `docs/round2_review.md` and rubric v2. `label_initial` stays untouched.
+  Under option A this is the fresh check for any later rule version (about 15 minutes). Rubric-v2
+  sheet: `data/interim/labeling/round2/adjudication_A1.csv`; decide Q1 in `docs/option_a_checks.md` first.
+- [x] C: Option A tooling (2026-10-13): `src/data/auto_levels.py` (`auto-v1` rules, `validate`,
+  `distribution`), `src/data/intent_categories.py` (`cat-v1`), Cohen's κ in `src/evaluation/metrics.py`.
+  24 new tests; 422 pass.
+- [ ] S/P: Tell the course professor about option A: send `docs/option_a_change_summary.pdf`.
+- [ ] S: Spot-check 40 rule-L3 turns (OK/wrong). Sheet drawn 2026-10-13 (dev, seed 20261013):
+  `data/interim/auto_levels/spotcheck_L3/sheet.csv`. Instructions: `docs/option_a_checks.md`.
+- [ ] C: Wire rule levels and `cat-v1` categories into Stage 1 scoring as slices (replacing the human-level slice).
 - [x] C: Spec 003 drafted (2026-10-11): sealed form → context → reveal passes, 40×1 dev dialogue draw, taxonomy v0 mechanism. Sandy chose: 40 dialogues × 1 turn; Claude drafts taxonomy v0 for S/P approval; split audit and condition judgments out of scope; free text local-only with hashes committed.
 - [x] C: `/spec-review 003` (2026-10-11): READY after R1–R14 (Sandy decided R1/R2/R5/R7/R8/R14).
 - [x] C: `/spec-decompose 003` (2026-10-11): 13 tasks; T1–T5 deliver the form sheet first (~Oct 14), T7 is the taxonomy/rubric approval gate.
@@ -92,7 +106,7 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   - 2026-10-11: T12–T13 done: `validate` (13 named rules, read-only, recomputes from sources) and
     `coverage --batch` (per-annotator tables, every cell, `prior_exposure`, `built_on_superseded`).
     397 tests pass. Real data: `validate` OK on the 40-item registry. Next: `/spec-retro 003`.
-- [ ] S/P: Approve taxonomy v0 (`data/annotations/intent_taxonomy.csv`) and the `ctx-v0` rubric
+- [~] Not needed under option A (2026-10-13). S/P: Approve taxonomy v0 (`data/annotations/intent_taxonomy.csv`) and the `ctx-v0` rubric
   (`docs/context_supplement.md`) before the context pass. Record the approval date here; edits
   before approval change v0 in place, edits after the first context export need `ctx-tax-v1`.
 - [x] S: Course professor's direction (2026-10-12): keep the proposal and plan, optionally add the

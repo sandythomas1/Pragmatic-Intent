@@ -5,6 +5,26 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-10-13: Option A, rule-assigned levels and MultiWOZ acts instead of new labeling (Spec 001 v1.2)
+Decision: no new hand labeling. Directness levels come from the frozen wording rules `auto-v1`, a
+transcription of rubric v2 (`src/data/auto_levels.py`). Intents come from MultiWOZ user acts,
+mapped onto the proposal's categories by `cat-v1` (`src/data/intent_categories.py`). The test set
+is DIRECT's test split. This is a scoped exception to the constitution's "human annotators decide
+every label": rule levels are mechanical, versioned, validated against human labels, and never
+called gold.
+Why: Sandy does not want to keep labeling. The remaining plan needed about 200–280 turns through
+three passes (roughly 10–13 hours). The rules were written from the rubric's text and its invented
+examples only, frozen, then scored once: 31/39 (79%), κ = 0.74 on the adjudicated rounds 1 and 3,
+above the plan's κ ≥ 0.6 bar for two humans. They give hundreds to thousands of test examples per
+level, against the plan's 25–40.
+Known rule errors on that check: answers with no detail labeled L3 where humans said INF (4), and
+"I need to leave/arrive …" labeled L0 where humans said L2 (3). Rubric v2 is itself inconsistent
+on the second case (R6's example vs. step 3). Fixes go in a new version (`auto-v2`) checked on
+labels the rules have not been tuned on (adjudicated round 2), never by editing `auto-v1`.
+Alternatives considered: (B) a form pass only on about 200 test turns (about an hour); keeps human
+gold levels. (C) LLM-assigned levels checked against human labels; circular when LLMs are also
+evaluated, and the constitution bars Claude as an annotator.
+
 ## 2026-10-12: Re-scope to the December class paper under the course professor (Spec 001 v1.1)
 Decision:
 - The research is conducted through Sandy's Machine & Deep Learning course professor. The
