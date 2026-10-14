@@ -92,7 +92,9 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 - [ ] S/P: Tell the course professor about option A: send `docs/option_a_change_summary.pdf`.
 - [ ] S: Spot-check 40 rule-L3 turns (OK/wrong). Sheet drawn 2026-10-13 (dev, seed 20261013):
   `data/interim/auto_levels/spotcheck_L3/sheet.csv`. Instructions: `docs/option_a_checks.md`.
-- [ ] C: Wire rule levels and `cat-v1` categories into Stage 1 scoring as slices (replacing the human-level slice).
+- [x] C: Wire rule levels and `cat-v1` categories into Stage 1 scoring as slices, replacing the
+  human-level slice (2026-10-14). `by_rule_level` and `by_category` on every condition and paired
+  contrast; `--levels` and the config `levels` key are gone. Usage: `docs/stage1_baselines.md#slices-option-a`.
 - [x] C: Spec 003 drafted (2026-10-11): sealed form → context → reveal passes, 40×1 dev dialogue draw, taxonomy v0 mechanism. Sandy chose: 40 dialogues × 1 turn; Claude drafts taxonomy v0 for S/P approval; split audit and condition judgments out of scope; free text local-only with hashes committed.
 - [x] C: `/spec-review 003` (2026-10-11): READY after R1–R14 (Sandy decided R1/R2/R5/R7/R8/R14).
 - [x] C: `/spec-decompose 003` (2026-10-11): 13 tasks; T1–T5 deliver the form sheet first (~Oct 14), T7 is the taxonomy/rubric approval gate.

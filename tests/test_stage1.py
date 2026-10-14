@@ -11,7 +11,7 @@ from typing import Any
 
 from src.data.direct_dataset import CONDITIONS, Turn
 from src.evaluation.metrics import paired_bootstrap_difference
-from src.evaluation.stage1 import build_report, load_levels
+from src.evaluation.stage1 import build_report, rule_slices
 from src.stage1 import runner
 from src.stage1.config import load_config
 from src.stage1.data import Stage1Example, build_examples, model_inputs, render_context
@@ -158,21 +158,29 @@ class ScoringTest(unittest.TestCase):
         result = paired_bootstrap_difference([("d1", True, True), ("d2", False, False)], 20, 1)
         self.assertEqual((result["difference"], result["ci95"]), (0.0, [0.0, 0.0]))
 
-    def test_human_levels_join_by_turn_variant_and_reject_conflicts(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "levels.csv"
-            header = "item_id,dialogue_id,turn_index,variant,label_initial,label_final,fragment,annotator,rubric_version\n"
-            path.write_text(header + "r-1,d1,2,indirect,L2,l2,0,A1,v1\nr-2,d1,2,target,L0,L0,0,A1,v1\n"
-                            "r-3,d2,2,direct,?,?,0,A1,v1\nr-4,d2,2,direct,L1,L1,0,A2,v1\n", encoding="utf-8")
-            levels = load_levels([path])
-            self.assertEqual(levels, {("d1", 2, "indirect"): "L2", ("d1", 2, "target"): "L0"})
-            report = build_report(self.EXAMPLES, self.rows("none", ["direct"] * 4), levels, bootstrap_samples=5)
-            self.assertEqual(report["n_with_human_level"], 1)
-            self.assertEqual(report["conditions"]["none"]["by_human_level"]["L2"]["accuracy"], 0.0)
-            conflict = Path(tmp) / "conflict.csv"
-            conflict.write_text(header + "r-9,d1,2,indirect,L3,L3,0,A1,v1\n", encoding="utf-8")
-            with self.assertRaises(ValueError):
-                load_levels([path, conflict])
+    def test_rule_levels_and_categories_slice_conditions_and_contrasts(self) -> None:
+        items = [item("a", indirect="Could you book a hotel?"), item("b", dialogue="d2", acts=THANKS)]
+        examples, _ = build_examples(items, "dev")
+        slices = rule_slices(examples, items)
+        self.assertEqual(slices["rule_level"],
+                         {"a:direct": "L0", "a:indirect": "L1", "b:direct": "NR", "b:indirect": "NR"})
+        self.assertEqual(slices["category"], {"a:direct": "recommendation", "a:indirect": "recommendation",
+                                              "b:direct": "no_request", "b:indirect": "no_request"})
+        predictions = [{"example_id": e.example_id, "condition": condition,
+                        "prediction": "direct" if condition == "none" else e.label}
+                       for condition in ("none", "full") for e in examples]
+        report = build_report(examples, predictions, slices, bootstrap_samples=5)
+        self.assertEqual(report["slices"], {"rule_level": {"version": "auto-v1", "n": 4},
+                                            "category": {"version": "cat-v1", "n": 4}})
+        by_level = report["conditions"]["none"]["by_rule_level"]
+        self.assertEqual({level: m["accuracy"] for level, m in by_level.items()}, {"L0": 1.0, "L1": 0.0, "NR": 0.0})
+        contrast = report["contrasts"]["full-none"]
+        self.assertEqual({k: v["difference"] for k, v in contrast["by_rule_level"].items()},
+                         {"L0": 0.0, "L1": 1.0, "NR": 1.0})
+        self.assertEqual({k: v["difference"] for k, v in contrast["by_category"].items()},
+                         {"no_request": 1.0, "recommendation": 0.5})
+        with self.assertRaises(ValueError):
+            build_report(examples, predictions, {"human_level": {}}, bootstrap_samples=5)
 
 
 class RunnerTest(unittest.TestCase):
@@ -215,6 +223,8 @@ class RunnerTest(unittest.TestCase):
             record = json.loads((root / "results.jsonl").read_text(encoding="utf-8"))
             self.assertEqual(record["conditions"]["full"]["accuracy"], 0.5)
             self.assertEqual(record["machine"], "test")
+            self.assertEqual(record["slices"]["rule_level"]["version"], "auto-v1")
+            self.assertEqual(sorted(record["contrasts"]["full-none"]["by_rule_level"]), ["L0", "L2"])
             self.assertNotIn("hostname", json.dumps(record))
             self.assertIn("hostname", json.loads((out / "metrics.json").read_text(encoding="utf-8"))["local"])
 

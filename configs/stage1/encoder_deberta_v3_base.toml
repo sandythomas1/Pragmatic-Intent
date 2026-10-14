@@ -9,7 +9,6 @@ kind = "encoder"
 
 [data]
 train_condition = "full"
-levels = ["data/annotations/levels_round2.csv"]
 
 [encoder]
 pretrained = "microsoft/deberta-v3-base"

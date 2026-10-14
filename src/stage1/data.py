@@ -3,7 +3,8 @@
 DIRECT gives each MultiWOZ user turn a crowd-written direct and indirect
 paraphrase. Those variant names are *weak* Stage 1 labels: they are not human
 L0–L3 levels (about 15% of "indirect" paraphrases still use an L1 request
-formula). Human levels enter only as an evaluation slice.
+formula). Rule-assigned ``auto-v1`` levels enter only as an evaluation slice
+(``src.evaluation.stage1.rule_slices``).
 
 Policy ``direct_variants_v1`` (one example per paraphrase):
 

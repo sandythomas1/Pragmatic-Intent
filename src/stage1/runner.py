@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from src.data.direct_dataset import load_dialogues, load_items
-from src.evaluation.stage1 import build_report, load_levels
+from src.evaluation.stage1 import Slices, build_report, rule_slices
 from src.stage1 import provenance
 from src.stage1.config import RunConfig, load_config
 from src.stage1.data import STAGE1_LABELS, Stage1Example, build_examples, contexts_defined, model_inputs
@@ -34,6 +34,7 @@ class Prepared:
     train_inputs: list[Pair]
     eval: list[Stage1Example]
     eval_inputs: dict[str, list[Pair]]
+    slices: Slices = field(default_factory=dict)
     counts: dict[str, Any] = field(default_factory=dict)
 
 
@@ -82,6 +83,7 @@ def prepare(config: RunConfig, smoke: bool = False) -> Prepared:
     prepared = Prepared(
         train=train, train_inputs=inputs(train, data.train_condition), eval=evaluation,
         eval_inputs={condition: inputs(evaluation, condition) for condition in data.eval_conditions},
+        slices=rule_slices(evaluation, items),
         counts={"train_excluded": train_excluded, "eval_excluded": eval_excluded},
     )
     if not prepared.train or not prepared.eval:
@@ -114,8 +116,8 @@ def finish(args: argparse.Namespace, config: RunConfig, prepared: Prepared,
            predictions: list[dict[str, Any]], model_info: dict[str, Any], started: float) -> Path:
     """Score, write outputs (IDs and labels only), and append to the results log."""
     data = config.data
-    levels = load_levels([Path(path) for path in data.levels])
-    report = build_report(prepared.eval, predictions, levels, config.bootstrap_samples, config.bootstrap_seed)
+    report = build_report(prepared.eval, predictions, prepared.slices, config.bootstrap_samples,
+                          config.bootstrap_seed)
     run = {
         "run": config.name, "kind": config.kind, "seed": args.seed, "machine": args.machine,
         "smoke": args.smoke, "policy": data.policy, "train_split": data.train_split,
@@ -138,9 +140,11 @@ def finish(args: argparse.Namespace, config: RunConfig, prepared: Prepared,
             **run, "output_dir": str(out),
             "conditions": {condition: {key: metrics[key] for key in ("n", "accuracy", "macro_f1", "accuracy_ci95")}
                            for condition, metrics in report["conditions"].items()},
+            "slices": report["slices"],
             "contrasts": {name: {"difference": c["difference"], "ci95": c["ci95"],
-                                 "by_variant": {v: {"difference": s["difference"], "ci95": s["ci95"]}
-                                                for v, s in c["by_variant"].items()}}
+                                 **{key: {v: {"difference": s["difference"], "ci95": s["ci95"]}
+                                          for v, s in breakdown.items()}
+                                    for key, breakdown in c.items() if key.startswith("by_")}}
                           for name, c in report["contrasts"].items()},
         })
     for condition, metrics in report["conditions"].items():

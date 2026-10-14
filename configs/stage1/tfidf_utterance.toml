@@ -6,7 +6,6 @@ kind = "tfidf"
 
 [data]
 train_condition = "none"
-levels = ["data/annotations/levels_round2.csv"]
 
 [tfidf]
 use_context = false

@@ -31,7 +31,6 @@ class DataConfig:
     train_split: str = "train"
     eval_split: str = "dev"
     eval_conditions: tuple[str, ...] = CONDITIONS
-    levels: tuple[str, ...] = ()  # human level CSVs, joined as an evaluation slice only
 
 
 @dataclass(frozen=True)

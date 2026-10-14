@@ -2,55 +2,59 @@
 
 Every scored condition must cover exactly the same examples, so differences
 between conditions are paired. Context contrasts (e.g. ``full - none``) use a
-paired bootstrap over dialogues; the ``by_variant`` contrasts are a descriptive
-proxy for the context x indirectness interaction (H2), not its test.
+paired bootstrap over dialogues; the ``by_variant`` and ``by_rule_level`` contrasts
+are descriptive proxies for the context x indirectness interaction (H2), not its test.
 
-Human levels (``--levels``) are joined on (dialogue, turn, variant) and reported as
-a slice only. Gold labels always come from the weak-supervision policy.
+Option A (spec 001 v1.2) slices every condition and contrast by the ``auto-v1``
+rule level of each example's own paraphrase and by the ``cat-v1`` primary category
+of its turn. Both are mechanical and reported as evaluation slices only; gold
+labels always come from the weak-supervision policy.
 
 Re-score a predictions file from the repository root::
 
     python -m src.evaluation.stage1 --predictions outputs/stage1/<run>/predictions.jsonl \\
-        --out outputs/stage1/<run>/metrics.json --levels data/annotations/levels_round2.csv
+        --out outputs/stage1/<run>/metrics.json
 """
 
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from src.annotation.levels import normalize_label
-from src.data.direct_dataset import CONDITIONS, load_items
+from src.data.audit_fact_drift import build_vocabulary
+from src.data.auto_levels import RULES_VERSION, level_item
+from src.data.direct_dataset import CONDITIONS, Item, load_items
+from src.data.intent_categories import MAPPING_VERSION, primary_category
 from src.evaluation.metrics import bootstrap_accuracy_ci, classification_metrics, paired_bootstrap_difference
 from src.stage1.data import POLICIES, STAGE1_LABELS, Stage1Example, build_examples
 
 CONTRASTS = (("one", "none"), ("full", "none"), ("full", "one"),
              ("full", "mismatched"), ("one", "mismatched_one"))
-LevelKey = tuple[str, int, str]  # (dialogue_id, turn_index, variant)
+SLICE_VERSIONS = {"rule_level": RULES_VERSION, "category": MAPPING_VERSION}
+Slices = dict[str, dict[str, str]]  # slice name -> example_id -> value
 
 
-def load_levels(paths: Sequence[Path], annotator: str = "A1") -> dict[LevelKey, str]:
-    """Final human levels by turn variant; ``?`` labels are skipped, conflicts are errors."""
-    levels: dict[LevelKey, str] = {}
-    for path in paths:
-        with path.open(encoding="utf-8-sig", newline="") as handle:
-            for row in csv.DictReader(handle):
-                if row["annotator"] != annotator:
-                    continue
-                label = normalize_label(row["label_final"])
-                if label is None:
-                    raise ValueError(f"invalid final label for {row['item_id']} in {path}")
-                if label == "?":
-                    continue
-                key = (row["dialogue_id"], int(row["turn_index"]), row["variant"])
-                if levels.setdefault(key, label) != label:
-                    raise ValueError(f"conflicting human levels for {key}")
-    return levels
+def rule_slices(examples: Sequence[Stage1Example], items: Sequence[Item]) -> Slices:
+    """``auto-v1`` level of each example's paraphrase and ``cat-v1`` primary category of its turn.
+
+    Pass every item, not just the scored split: the place/food vocabulary is built from all of
+    them, as in ``python -m src.data.auto_levels``, so the levels match its outputs.
+    """
+    vocab = build_vocabulary(items)
+    by_id = {item["item_id"]: item for item in items}
+    levels: dict[str, str] = {}
+    categories: dict[str, str] = {}
+    for e in examples:
+        item = by_id[e.item_id]
+        levels[e.example_id] = level_item(item, e.variant, vocab).level
+        category = primary_category(item)
+        if category is not None:
+            categories[e.example_id] = category
+    return {"rule_level": levels, "category": categories}
 
 
 def _check_predictions(
@@ -85,21 +89,26 @@ def _slices(examples: Sequence[Stage1Example], predicted: dict[str, str], key) -
 
 def build_report(
     examples: Sequence[Stage1Example], predictions: Sequence[dict[str, Any]],
-    levels: dict[LevelKey, str] | None = None, bootstrap_samples: int = 1000, seed: int = 20261006,
+    slices: Slices | None = None, bootstrap_samples: int = 1000, seed: int = 20261006,
 ) -> dict[str, Any]:
-    """Metrics per condition plus paired context contrasts; rejects partial prediction sets."""
+    """Metrics per condition plus paired context contrasts; rejects partial prediction sets.
+
+    ``slices`` (from ``rule_slices``) add a ``by_<name>`` breakdown to every condition and
+    contrast; examples missing from a slice are left out of that breakdown only.
+    """
     if not examples or bootstrap_samples < 1:
         raise ValueError("examples and a positive bootstrap sample count are required")
     by_condition = _check_predictions(examples, predictions)
-    levels = levels or {}
-
-    def level_of(e: Stage1Example) -> str | None:
-        return levels.get((e.dialogue_id, e.turn_index, e.variant))
+    slices = slices or {}
+    if set(slices) - set(SLICE_VERSIONS):
+        raise ValueError(f"unknown slices: {sorted(set(slices) - set(SLICE_VERSIONS))}")
+    groupings = {"variant": lambda e: e.variant,
+                 **{name: (lambda e, values=values: values.get(e.example_id)) for name, values in slices.items()}}
 
     report: dict[str, Any] = {
         "labels": list(STAGE1_LABELS), "n_examples": len(examples),
         "n_dialogues": len({e.dialogue_id for e in examples}),
-        "n_with_human_level": sum(level_of(e) is not None for e in examples),
+        "slices": {name: {"version": SLICE_VERSIONS[name], "n": len(values)} for name, values in slices.items()},
         "bootstrap": {"unit": "dialogue", "samples": bootstrap_samples, "seed": seed, "confidence": 0.95},
         "conditions": {}, "contrasts": {},
     }
@@ -113,8 +122,8 @@ def build_report(
         metrics["by_variant"] = _slices(examples, predicted, lambda e: e.variant)
         metrics["by_gold"] = _slices(examples, predicted, lambda e: e.label)
         metrics["by_domain"] = _slices(examples, predicted, lambda e: e.domain)
-        if levels:
-            metrics["by_human_level"] = _slices(examples, predicted, level_of)
+        for name, values in slices.items():
+            metrics[f"by_{name}"] = _slices(examples, predicted, groupings[name])
         report["conditions"][condition] = metrics
     for a, b in CONTRASTS:
         if a not in by_condition or b not in by_condition:
@@ -126,8 +135,9 @@ def build_report(
                   e.label == by_condition[b][e.example_id]) for e in subset], bootstrap_samples, seed)
 
         contrast = paired(examples)
-        contrast["by_variant"] = {variant: paired([e for e in examples if e.variant == variant])
-                                  for variant in sorted({e.variant for e in examples})}
+        for name, key in groupings.items():
+            values = sorted({key(e) for e in examples} - {None})
+            contrast[f"by_{name}"] = {value: paired([e for e in examples if key(e) == value]) for value in values}
         report["contrasts"][f"{a}-{b}"] = contrast
     return report
 
@@ -140,17 +150,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--items", type=Path, default=Path("data/interim/direct/items.jsonl"))
     parser.add_argument("--split", choices=("dev", "test"), default="dev")
     parser.add_argument("--policy", choices=POLICIES, default="direct_variants_v1")
-    parser.add_argument("--levels", type=Path, nargs="*", default=[], help="human level CSVs (slice only)")
-    parser.add_argument("--annotator", default="A1")
     parser.add_argument("--bootstrap-samples", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=20261006)
     args = parser.parse_args(argv)
     try:
-        examples, excluded = build_examples(load_items(args.items), args.split, args.policy,
-                                            require_comparable=True)
+        items = load_items(args.items)
+        examples, excluded = build_examples(items, args.split, args.policy, require_comparable=True)
         with args.predictions.open(encoding="utf-8") as handle:
             predictions = [json.loads(line) for line in handle if line.strip()]
-        report = build_report(examples, predictions, load_levels(args.levels, args.annotator),
+        report = build_report(examples, predictions, rule_slices(examples, items),
                               args.bootstrap_samples, args.seed)
         report.update(split=args.split, policy=args.policy, excluded=excluded)
         args.out.parent.mkdir(parents=True, exist_ok=True)

@@ -5,7 +5,8 @@ MultiWOZ join (data loading only). No model has been trained yet._
 
 This is the "TF-IDF baseline with a distinct training source and dialogue-separated dev evaluation"
 from the [round 2 review](round2_review.md), plus the cross-encoder runs that come after it. It does
-not settle the open annotation decisions. Human levels appear only as an evaluation slice.
+not settle the open annotation decisions. Rule-assigned levels and intent categories appear only as
+evaluation slices (see [Slices](#slices-option-a)).
 
 ## Revised-study scope (2026-10-09)
 
@@ -128,12 +129,30 @@ Copy that hash into the config's `revision` so later runs cannot pick up a chang
 | `…/config.resolved.json` | the exact config after overrides | no |
 | `results/stage1.jsonl` | one line per completed run: headline metrics and contrasts, config/data hashes, git commit and dirty flag, GPU, package versions, machine label | **yes**: commit it after runs |
 
-To re-score a predictions file, for example with a later round's human levels:
+To re-score a predictions file, for example after a new rule version:
 
 ```bash
 python -m src.evaluation.stage1 --predictions outputs/stage1/<run>/train-full/seed13/predictions.jsonl \
-  --out /tmp/rescored.json --levels data/annotations/levels_round2.csv
+  --out /tmp/rescored.json
 ```
+
+## Slices (option A)
+
+_Since 2026-10-14 ([spec 001 v1.2](../specs/001-pragmatic-intent-study/spec.md)); these replace the
+human-level slice._ Every condition and every paired context contrast is also broken down by:
+
+| Key | Value | Source |
+|---|---|---|
+| `by_rule_level` | `auto-v1` level (L0–L3, INF, NR) of the example's own paraphrase | [`src/data/auto_levels.py`](../src/data/auto_levels.py) |
+| `by_category` | `cat-v1` primary intent category of the target turn | [`src/data/intent_categories.py`](../src/data/intent_categories.py) |
+
+`metrics.json` and `results/stage1.jsonl` record each slice's version under `slices`. Gold labels
+stay the weak `direct_variants_v1` labels; the rule levels are the indirectness variable for the
+context × indirectness breakdown, and are never called gold. Report them with their agreement
+against the human calibration rounds (`python -m src.data.auto_levels validate`).
+
+On dev (comparable, 11,340 examples) the rules put 1,695 of 5,670 "indirect" paraphrases (30%) at
+L0, so `by_rule_level` and `by_variant` differ substantially.
 
 ## What these numbers can and cannot support
 
