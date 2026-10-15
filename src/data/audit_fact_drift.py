@@ -289,10 +289,10 @@ def compare_slot(target: Sequence[Mention], rewrite: Sequence[Mention], nested: 
 
 
 def _matches_any(mention: Mention, others: Sequence[Mention], nested: bool) -> bool:
-    return any(_values_match(value, other_value, nested) for other in others for value in mention for other_value in other)
+    return any(values_match(value, other_value, nested) for other in others for value in mention for other_value in other)
 
 
-def _values_match(a: str, b: str, nested: bool) -> bool:
+def values_match(a: str, b: str, nested: bool) -> bool:
     if a == b:
         return True
     if not nested:

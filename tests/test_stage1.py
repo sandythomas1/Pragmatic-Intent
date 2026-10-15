@@ -11,10 +11,11 @@ from typing import Any
 
 from src.data.direct_dataset import CONDITIONS, Turn
 from src.evaluation.metrics import paired_bootstrap_difference
-from src.evaluation.stage1 import build_report, rule_slices
-from src.stage1 import runner
+from src.evaluation.stage1 import ScoringSets, build_report, rule_slices
+from src.stage1 import length_check, runner
 from src.stage1.config import load_config
-from src.stage1.data import Stage1Example, build_examples, model_inputs, render_context
+from src.data.contexts import render_context
+from src.stage1.data import Stage1Example, build_examples, model_inputs
 from src.stage1.encoder import encode
 from src.stage1.env_check import has_kernels
 
@@ -51,11 +52,11 @@ class PolicyTest(unittest.TestCase):
         self.assertEqual(excluded, {"identical_paraphrases": 1, "no_user_acts": 1, "unacceptable_indirect": 1})
         self.assertNotIn("original", {e.text for e in examples})
 
-    def test_comparable_filter_drops_turn_zero_and_missing_donors(self) -> None:
+    def test_context_filter_drops_turn_zero_but_keeps_items_without_a_donor(self) -> None:
         examples, excluded = build_examples([item("a"), item("b", turn=0), item("c", donor=False)], "dev",
-                                            require_comparable=True)
-        self.assertEqual({e.item_id for e in examples}, {"a"})
-        self.assertEqual(excluded, {"not_comparable": 2})
+                                            require_context=True)
+        self.assertEqual({e.item_id for e in examples}, {"a", "c"})
+        self.assertEqual(excluded, {"no_prior_context": 1})
 
     def test_unknown_policy_and_duplicate_items_are_rejected(self) -> None:
         with self.assertRaises(ValueError):
@@ -76,6 +77,15 @@ class PolicyTest(unittest.TestCase):
         self.assertEqual(model_inputs(build_examples(no_donor, "dev")[0], {"b": no_donor[0]}, DIALOGUES,
                                       "mismatched"), [None, None])
         self.assertEqual(render_context([]), "")
+
+    def test_training_and_evaluation_inputs_share_the_budget(self) -> None:
+        long_turns = [Turn("user", " ".join(["w"] * 400)), Turn("system", "short reply"), Turn("user", "t")]
+        items = [item("tr", dialogue="long", split="train", donor=False), item("ev", dialogue="long", donor=False)]
+        by_id = {i["item_id"]: i for i in items}
+        pairs = [model_inputs(build_examples(items, split)[0], by_id, {"long": long_turns}, "full")
+                 for split in ("train", "dev")]
+        self.assertEqual(pairs[0], pairs[1])
+        self.assertEqual(pairs[0][0], ("System: short reply", "Book the hotel."))
 
 
 class ConfigTest(unittest.TestCase):
@@ -146,6 +156,46 @@ class ScoringTest(unittest.TestCase):
         self.assertEqual(list(report["contrasts"]), ["full-none"])
         self.assertEqual(report, build_report(self.EXAMPLES, predictions, bootstrap_samples=50, seed=3))
 
+    def test_mismatch_conditions_score_only_examples_with_a_donor(self) -> None:
+        sets = ScoringSets(frozenset({"a:direct", "a:indirect"}))
+        genuine = self.rows("none", ["direct", "indirect", "no_request", "direct"])
+        mismatch = [row for row in self.rows("mismatched", ["direct", "direct", "direct", "direct"])
+                    if row["example_id"].startswith("a:")]
+        full = self.rows("full", ["direct", "indirect", "no_request", "no_request"])
+        report = build_report(self.EXAMPLES, genuine + full + mismatch, sets=sets, bootstrap_samples=5)
+        self.assertEqual(report["sets"], {"genuine": 4, "mismatch": 2, "excluded_from_mismatch": {"no_donor": 2},
+                                          "cue_donors": {"mismatched": 0, "mismatched_one": 0}})
+        self.assertEqual((report["conditions"]["none"]["set"], report["conditions"]["none"]["n"]), ("genuine", 4))
+        self.assertEqual((report["conditions"]["mismatched"]["set"], report["conditions"]["mismatched"]["n"]),
+                         ("mismatch", 2))
+        self.assertEqual((report["contrasts"]["full-none"]["set"], report["contrasts"]["full-none"]["n"]),
+                         ("genuine", 4))
+        contrast = report["contrasts"]["full-mismatched"]
+        self.assertEqual((contrast["set"], contrast["n"], contrast["difference"]), ("mismatch", 2, 0.5))
+        self.assertEqual(contrast["without_cue_donors"]["n"], 2)
+        self.assertNotIn("without_cue_donors", report["contrasts"]["full-none"])
+        extra = {"example_id": "b:direct", "condition": "mismatched", "prediction": "direct"}
+        with self.assertRaises(ValueError):
+            build_report(self.EXAMPLES, genuine + full + mismatch + [extra], sets=sets, bootstrap_samples=5)
+        with self.assertRaises(ValueError):
+            build_report(self.EXAMPLES, genuine, sets=ScoringSets(frozenset({"z:direct"})), bootstrap_samples=5)
+
+    def test_sensitivity_line_drops_only_that_conditions_cue_donors(self) -> None:
+        sets = ScoringSets(frozenset(e.example_id for e in self.EXAMPLES), {"mismatched": frozenset({"a:direct"})})
+        predictions = [row for condition, labels in (
+            ("none", ["direct"] * 4), ("one", ["direct", "indirect", "no_request", "no_request"]),
+            ("full", ["direct", "indirect", "no_request", "no_request"]), ("mismatched", ["indirect"] * 4),
+            ("mismatched_one", ["direct"] * 4)) for row in self.rows(condition, labels)]
+        report = build_report(self.EXAMPLES, predictions, sets=sets, bootstrap_samples=5)
+        full_mm, one_mm = report["contrasts"]["full-mismatched"], report["contrasts"]["one-mismatched_one"]
+        self.assertEqual((full_mm["n"], full_mm["without_cue_donors"]["n"]), (4, 3))
+        self.assertEqual((full_mm["difference"], full_mm["without_cue_donors"]["difference"]), (0.75, 2 / 3))
+        self.assertEqual((one_mm["n"], one_mm["without_cue_donors"]["n"]), (4, 4))
+        self.assertEqual(report["sets"]["cue_donors"], {"mismatched": 1, "mismatched_one": 0})
+        with self.assertRaises(ValueError):
+            build_report(self.EXAMPLES, predictions, sets=ScoringSets(sets.mismatch_ids, {"full": frozenset()}),
+                         bootstrap_samples=5)
+
     def test_partial_duplicate_or_invalid_predictions_fail(self) -> None:
         valid = self.rows("none", ["direct"] * 4)
         for predictions in (valid[:3], valid + valid[:1], [{**valid[0], "prediction": "L0"}] + valid[1:],
@@ -195,11 +245,12 @@ class RunnerTest(unittest.TestCase):
             root = Path(tmp)
             items = [item("t1", split="train"), item("t2", split="train", acts=THANKS),
                      item("t3", split="train", turn=0), item("t4", split="train", donor=False),
-                     item("e1", turn=4), item("e2", turn=0)]
+                     item("e1", turn=4), item("e2", turn=0), item("e3", turn=2, donor=False)]
             (root / "items.jsonl").write_text("".join(json.dumps(i) + "\n" for i in items), encoding="utf-8")
+            cue_dialogues = {**DIALOGUES, "d2": [*DIALOGUES["d2"][:3], Turn("system", "w3 in the north")]}
             (root / "dialogues.jsonl").write_text("".join(
                 json.dumps({"dialogue_id": d, "turns": [{"speaker": t.speaker, "text": t.text} for t in turns]}) + "\n"
-                for d, turns in DIALOGUES.items()), encoding="utf-8")
+                for d, turns in cue_dialogues.items()), encoding="utf-8")
             config_path = root / "run.toml"
             config_path.write_text(f'[run]\nname = "probe"\nkind = "tfidf"\nbootstrap_samples = 10\n'
                                    f'[data]\ntrain_condition = "mismatched"\nitems = "{(root / "items.jsonl").as_posix()}"\n'
@@ -212,16 +263,37 @@ class RunnerTest(unittest.TestCase):
             prepared = runner.prepare(config)
             self.assertEqual(len(prepared.train), 6)  # turn-0 train items keep their empty context
             self.assertEqual(prepared.counts["train_excluded"]["no_mismatch_donor"], 2)
-            self.assertEqual([e.example_id for e in prepared.eval], ["e1:direct", "e1:indirect"])
+            self.assertEqual([e.example_id for e in prepared.eval],
+                             ["e1:direct", "e1:indirect", "e3:direct", "e3:indirect"])
             self.assertEqual(set(prepared.eval_inputs), set(CONDITIONS))
+            self.assertEqual([e.example_id for e in prepared.eval_sets["full"]],
+                             [e.example_id for e in prepared.eval])
+            for condition in ("mismatched", "mismatched_one"):
+                self.assertEqual([e.example_id for e in prepared.eval_sets[condition]], ["e1:direct", "e1:indirect"])
+            self.assertEqual(prepared.counts["mismatch_excluded"], {"no_donor": 2})
             predictions = [row for condition in CONDITIONS for row in
-                           runner.prediction_rows(prepared.eval, condition, [[0.9, 0.1, 0.0]] * 2)]
+                           runner.prediction_rows(prepared.eval_sets[condition], condition,
+                                                  [[0.9, 0.1, 0.0]] * len(prepared.eval_sets[condition]))]
             out = runner.finish(args, config, prepared, predictions, {"name": "fake"}, started=0.0)
             self.assertEqual(out, root / "out" / "probe" / "train-mismatched" / "seed1")
             written = (out / "predictions.jsonl").read_text(encoding="utf-8")
             self.assertNotIn("hotel would be nice", written)
             record = json.loads((root / "results.jsonl").read_text(encoding="utf-8"))
             self.assertEqual(record["conditions"]["full"]["accuracy"], 0.5)
+            self.assertEqual((record["conditions"]["full"]["n"], record["conditions"]["mismatched"]["n"]), (4, 2))
+            self.assertEqual(record["sets"]["excluded_from_mismatch"], {"no_donor": 2})
+            self.assertEqual((record["contrasts"]["full-mismatched"]["set"],
+                              record["contrasts"]["full-mismatched"]["n"]), ("mismatch", 2))
+            self.assertEqual(record["contrasts"]["full-none"]["n"], 4)
+            self.assertEqual(record["renderer_version"], "render-v1")
+            # e1's donor window ends "w3 in the north", and e1's acts name Area north.
+            self.assertEqual(record["sets"]["cue_donors"], {"mismatched": 2, "mismatched_one": 2})
+            self.assertEqual(record["contrasts"]["full-mismatched"]["without_cue_donors"],
+                             {"n": 0, "difference": None, "ci95": None})
+            self.assertNotIn("without_cue_donors", record["contrasts"]["full-none"])
+            metrics = json.loads((out / "metrics.json").read_text(encoding="utf-8"))
+            self.assertEqual(metrics["renderer_version"], "render-v1")
+            self.assertEqual(metrics["counts"]["mismatch_excluded"], {"no_donor": 2})
             self.assertEqual(record["machine"], "test")
             self.assertEqual(record["slices"]["rule_level"]["version"], "auto-v1")
             self.assertEqual(sorted(record["contrasts"]["full-none"]["by_rule_level"]), ["L0", "L2"])
@@ -233,6 +305,22 @@ class FakeTokenizer:
     def __call__(self, first: list[str], second: list[str] | None = None, **kwargs: Any) -> dict[str, list]:
         texts = first if second is None else [f"{a}|{b}" for a, b in zip(first, second)]
         return {"input_ids": [[len(t)] for t in texts], "text": texts}
+
+
+class LengthCheckTest(unittest.TestCase):
+    def test_untruncated_lengths_follow_the_encoder_input_shape(self) -> None:
+        class WordTokenizer:  # [CLS] a [SEP] b [SEP], or [CLS] b [SEP]
+            def __call__(self, first, second=None, truncation=None):
+                assert truncation is False
+                if second is None:
+                    return {"input_ids": [[0] * (len(b.split()) + 2) for b in first]}
+                return {"input_ids": [[0] * (len(a.split()) + len(b.split()) + 3) for a, b in zip(first, second)]}
+
+        lengths = length_check.token_lengths(WordTokenizer(), [("System: a b", "x y"), ("", "x y z"), ("c", "d")])
+        self.assertEqual(lengths, [8, 5, 5])
+        self.assertEqual(length_check.summarize({"eval/full": lengths, "train/none": []}, max_length=5),
+                         {"eval/full": {"n": 3, "max_tokens": 8, "over_max_length": 1},
+                          "train/none": {"n": 0, "max_tokens": 0, "over_max_length": 0}})
 
 
 class EncoderHelpersTest(unittest.TestCase):

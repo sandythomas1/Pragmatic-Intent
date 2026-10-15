@@ -1,6 +1,6 @@
 # Plan: Context conditions, invariants and the common-set manifest
 
-> **Phase:** Plan · **Status:** draft · **Date:** 2026-10-14
+> **Phase:** Plan · **Status:** validated · **Date:** 2026-10-14
 > The *how*. Derived from [`spec.md`](spec.md) (clarified 2026-10-14). Must not contradict the spec.
 
 ## Summary
@@ -27,7 +27,8 @@ src/data/direct_dataset.py   build_context()          (unchanged: none/one/full/
 src/data/contexts.py  NEW    render()  ── budget, dropped-turn count, input hash
                              cue_flags() ── donor / dropped-turn value overlap (reuses audit_fact_drift)
                              genuine() / in_mismatch_set()
-                             CLI: check | manifest [--verify]
+src/data/context_manifest.py NEW  CLI: check | manifest [--verify]
+                             (separate module: it needs src.stage1.data, which imports contexts)
             │                         │
             │                         └──► data/manifests/contexts_test.csv           (committed)
             │                              data/manifests/contexts_{dev,test}_summary.json (committed)
@@ -92,7 +93,7 @@ src/stage1/length_check.py NEW  tokenizer-only check of the 512-subword bound (S
 
 ### Checks (FR10)
 
-`python -m src.data.contexts check --split {dev,test}` runs over every genuine example and counts
+`python -m src.data.context_manifest check --split {dev,test}` runs over every genuine example and counts
 failures per rule. It exits 1 if any rule fails, naming the first example per rule:
 
 | Rule | Verifies |
@@ -111,7 +112,7 @@ belief states would need raw MultiWOZ, which is out of scope (see Risks).
 
 ### Manifest (FR11, FR12, FR14)
 
-`python -m src.data.contexts manifest --split test [--verify]` writes or verifies:
+`python -m src.data.context_manifest manifest --split test [--verify]` writes or verifies:
 
 - `contexts_<split>.csv`, one row per genuine example, sorted by `example_id`. Columns:
   `example_id, item_id, dialogue_id, turn_index, variant, mismatch_set (0/1), exclusion
@@ -190,7 +191,7 @@ itself also records `eval_inputs_at_max_length` per condition, next to the exist
 - **Library:** `contexts.render`, `contexts.render_context`, `contexts.input_sha256`,
   `contexts.genuine`, `contexts.in_mismatch_set`, `contexts.cue_flags`,
   `RENDERER_VERSION`, `BUDGET_WORDS`.
-- **CLI:** `python -m src.data.contexts {check,manifest} --split {dev,test} [--items]
+- **CLI:** `python -m src.data.context_manifest {check,manifest} --split {dev,test} [--items]
   [--dialogues] [--out-dir] [--verify]`. Exit 0 on success, 1 on a failed rule or invalid input,
   with logged counts. Re-running is idempotent.
 - **Breaking changes:** `build_examples(require_comparable=…)` becomes `require_context`;

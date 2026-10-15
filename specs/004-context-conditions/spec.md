@@ -1,6 +1,6 @@
 # Spec 004: Context conditions, invariants and the common-set manifest
 
-> **Phase:** Specify · **Status:** clarified · **Owner:** Sandy (decisions), Claude (tooling) · **Date:** 2026-10-14
+> **Phase:** Specify · **Status:** implemented (2026-10-14) · **Owner:** Sandy (decisions), Claude (tooling) · **Date:** 2026-10-14
 > The *what* and *why*. No implementation detail; that belongs in `plan.md`.
 
 Parent: [spec 001](../001-pragmatic-intent-study/spec.md) WP-05, FR-06 (context/donor side), FR-07,

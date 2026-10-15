@@ -45,7 +45,7 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 | D-03 intents/slots | Open | After the dev pilot (WP-03). |
 | D-04 test size/power | Open | Late October, from pilot coverage. |
 | D-05 models/budget | Open | Before model development. Sandy owns the model code. |
-| D-06 context windows | Open | Spec 004 proposes; Sandy decides before freeze. |
+| D-06 context windows | **Decided** (Sandy, 2026-10-14) | 350-word budget on `full`/`mismatched`, train and eval, `render-v1`. Truncates 0.9% of test examples. Encoder length check pending (S, WSL). |
 | D-07 statistics | Open | On dev, before the analysis freeze. |
 | D-08 WDSI | **Withdrawn** (2026-10-12) | The course professor: research goes through the class, December only. |
 
@@ -58,7 +58,7 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 | WP-02b Dialogue pilot draw (40 dev dialogues × 1 turn) | Code (small) + human | C, S | Folded into **003** | Done 2026-10-11: `pilot1` drawn (seed 20261011) by spec 003 T5. |
 | WP-03 Contextual annotation supplement and pilot labels | Code + human | C schema/tooling, S/P labels | **003** contextual annotation (passes 1–3) | Tooling done 2026-10-11 (T1–T13). Labels (S) and taxonomy approval pending; condition judgments (pass 4) deferred to a later spec after D-02. |
 | WP-04 Collect untouched groups, validate splits | Code + human | C audit, S collection | Own spec (split audit), needed by Oct 26 | Not started. Moved out of 003 (2026-10-11). |
-| WP-05 Context renderer and invariants | Code | C | **004** context conditions | Not started. |
+| WP-05 Context renderer and invariants | Code | C | **004** context conditions | Tooling done 2026-10-14 (T1–T16). `check` passes on dev and test; test manifest committed. |
 | WP-06 Contextual adapters, Stage 2/routing scorers, IndirectRequests transfer (FR-15) | Code | C | **005** scoring | Not started. IndirectRequests is already downloaded and pinned. |
 | WP-07 Models on dev | Code | **S**, C reviews | none (Sandy's code) | Existing weak Stage 1 trainers only. |
 | WP-08 Feasibility and freeze record | Human + code | S, C manifest | 004/005 freeze tooling | Not started. |
@@ -118,3 +118,13 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 - [ ] S: Start the FR-11 related-work reading from the proposal's five references; log any
   extra search strings and dates.
 - [ ] C: IndirectRequests transfer adapter and slot-value scorer (FR-15), inside spec 005.
+- [x] C: Spec 004, context conditions (2026-10-14): shared renderer `render-v1` with the D-06 budget,
+  genuine and mismatch sets in Stage 1 scoring, donor cue flags with a sensitivity line, `check`
+  and `manifest` (`python -m src.data.context_manifest`). Real data: all seven rules pass on dev
+  (11,394 examples) and test (11,195); 72 test examples (44 items) have no donor; the budget drops
+  turns from 104 test / 71 dev examples; donor cue flags 574 test / 534 dev. 452 tests pass.
+- [ ] S (before the freeze): run `uv run --group gpu python -m src.stage1.length_check --config
+  configs/stage1/<encoder>.toml` in WSL for each chosen encoder. Exit 1 means some input exceeds
+  512 subwords; tell Claude, and the budget drops for all models under `render-v2`.
+- [ ] S: run the full test suite on native Windows (`python -m unittest discover -s tests -t .`)
+  and `python -m src.data.context_manifest manifest --split test --verify` on the Windows/WSL checkout.

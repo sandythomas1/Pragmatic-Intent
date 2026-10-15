@@ -5,6 +5,26 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-10-14: D-06 context budget and separate genuine / mismatch sets (Spec 004)
+Decision: every model sees inputs from one renderer, `render-v1` (`src/data/contexts.py`). Under
+`full` and `mismatched`, context plus target is at most **350 whitespace tokens** (speaker tags
+count), in training and evaluation alike. The oldest whole turns are dropped first; the target is
+never cut. The budget is a renderer constant, not a run setting. Stage 1 scores none / one / full
+on the *genuine* set (every turn with prior context) and the mismatch conditions on the *mismatch*
+set (genuine turns with a donor). Donors that mention a target act value are disclosed, with one
+sensitivity line per mismatch contrast. The test manifest (`data/manifests/contexts_test.csv`,
+IDs and hashes only) is committed as the freeze object; dev is regenerated.
+Why: D-06 asks for a common input budget. Without one, the encoder silently left-truncated at 512
+subwords while an LLM would see the full history. 350 words truncates 104 of 11,195 test examples
+(0.9%) and 71 dev examples (0.6%). The old "comparable" filter dropped 72 test examples (44 items)
+without a donor from *every* condition, violating spec 001 AC-06.
+Alternatives considered: no budget (models see different windows); an evaluation-only budget
+(train and test inputs differ); a last-K-turns cap (long turns can still overflow the encoder);
+removing cue donors (shrinks the control); committing only manifest summaries (the freeze would
+depend on regeneration). Pending: `src.stage1.length_check` on the chosen encoders, run by Sandy
+in WSL before the freeze; if any input exceeds 512 subwords, the budget is lowered for all models
+under `render-v2`.
+
 ## 2026-10-13: Option A, rule-assigned levels and MultiWOZ acts instead of new labeling (Spec 001 v1.2)
 Decision: no new hand labeling. Directness levels come from the frozen wording rules `auto-v1`, a
 transcription of rubric v2 (`src/data/auto_levels.py`). Intents come from MultiWOZ user acts,

@@ -21,11 +21,12 @@ test row, paraphrase marked             that paraphrase excluded
 unacceptable by DIRECT's raters
 ======================================  ===========================================
 
-Context always comes from the *original* dialogue (``build_context``); only the
-target utterance is replaced by its paraphrase. Evaluation uses
-``comparable`` items only, so every context condition scores the same examples;
-training uses items whose contexts are all defined, so every training condition
-fits the same examples.
+Context always comes from the *original* dialogue, rendered by ``src.data.contexts``
+(the common D-06 budget applies); only the target utterance is replaced by its
+paraphrase. Evaluation uses items with prior context (``require_context``): none /
+one / full score all of them, the mismatch conditions only those with a donor
+(spec 004). Training uses items whose contexts are all defined, so every training
+condition fits the same examples.
 """
 
 from __future__ import annotations
@@ -34,7 +35,8 @@ import collections
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
-from src.data.direct_dataset import Item, Turn, build_context, is_social_only
+from src.data.contexts import genuine, render
+from src.data.direct_dataset import Item, Turn, is_social_only
 
 STAGE1_LABELS = ("direct", "indirect", "no_request")
 POLICIES = ("direct_variants_v1",)
@@ -58,16 +60,14 @@ def contexts_defined(item: Item) -> bool:
     return item["turn_index"] == 0 or item.get("mismatch") is not None
 
 
-def comparable(item: Item) -> bool:
-    """True when all context conditions are defined and differ from ``none``."""
-    return item["turn_index"] > 0 and contexts_defined(item)
-
-
 def build_examples(
     items: Iterable[Item], split: str, policy: str = "direct_variants_v1",
-    require_comparable: bool = False,
+    require_context: bool = False,
 ) -> tuple[list[Stage1Example], dict[str, int]]:
-    """Apply ``policy`` to the items of ``split``; return examples and exclusion counts."""
+    """Apply ``policy`` to the items of ``split``; return examples and exclusion counts.
+
+    ``require_context`` keeps only items with prior context (the genuine set, spec 004).
+    """
     if policy not in POLICIES:
         raise ValueError(f"unknown policy {policy!r}; expected one of {POLICIES}")
     examples: list[Stage1Example] = []
@@ -75,8 +75,8 @@ def build_examples(
     for item in items:
         if item["split"] != split:
             continue
-        if require_comparable and not comparable(item):
-            excluded["not_comparable"] += 1
+        if require_context and not genuine(item):
+            excluded["no_prior_context"] += 1
             continue
         if not item.get("user_acts"):
             excluded["no_user_acts"] += 1
@@ -102,18 +102,14 @@ def build_examples(
     return examples, dict(sorted(excluded.items()))
 
 
-def render_context(turns: Sequence[Turn]) -> str:
-    """Serialize context turns oldest first, one speaker-tagged line per turn."""
-    return "\n".join(f"{turn.speaker.capitalize()}: {turn.text}" for turn in turns)
-
-
 def model_inputs(
     examples: Sequence[Stage1Example], items_by_id: dict[str, Item],
     dialogues: dict[str, list[Turn]], condition: str,
 ) -> list[tuple[str, str] | None]:
-    """(context text, utterance) per example, or ``None`` when the condition is undefined."""
+    """(context text, utterance) per example from the shared ``render-v1`` renderer (budgeted),
+    or ``None`` when the condition is undefined. Training and evaluation both come through here."""
     inputs: list[tuple[str, str] | None] = []
     for example in examples:
-        turns = build_context(items_by_id[example.item_id], dialogues, condition)
-        inputs.append(None if turns is None else (render_context(turns), example.text))
+        rendered = render(items_by_id[example.item_id], example.text, dialogues, condition)
+        inputs.append(None if rendered is None else (rendered.context, rendered.target))
     return inputs

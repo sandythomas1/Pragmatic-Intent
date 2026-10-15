@@ -190,15 +190,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         training = train(model, train_features, train_labels, settings, pad_id, device, use_bf16, args.seed)
 
         predictions = []
+        eval_at_max_length = {}
         for condition, pairs in prepared.eval_inputs.items():
-            probabilities = predict(model, encode(tokenizer, pairs, settings.max_length),
-                                    settings.eval_batch_size, pad_id, device, use_bf16)
-            predictions += runner.prediction_rows(prepared.eval, condition, probabilities)
+            features = encode(tokenizer, pairs, settings.max_length)
+            eval_at_max_length[condition] = sum(len(f["input_ids"]) >= settings.max_length for f in features)
+            probabilities = predict(model, features, settings.eval_batch_size, pad_id, device, use_bf16)
+            predictions += runner.prediction_rows(prepared.eval_sets[condition], condition, probabilities)
         model_info = {
             "name": "cross_encoder", "pretrained": settings.pretrained,
             "resolved_revision": getattr(model.config, "_commit_hash", None),
             "bf16": use_bf16, "device": device.type,
             "train_inputs_at_max_length": sum(len(f["input_ids"]) >= settings.max_length for f in train_features),
+            "eval_inputs_at_max_length": eval_at_max_length,
             "peak_memory_gib": round(torch.cuda.max_memory_allocated() / 2**30, 2) if device.type == "cuda" else None,
             **training,
         }

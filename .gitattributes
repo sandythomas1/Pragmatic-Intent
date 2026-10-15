@@ -1,0 +1,2 @@
+# Spec 004 manifests are hashed byte for byte; never convert their line endings.
+data/manifests/*.csv -text

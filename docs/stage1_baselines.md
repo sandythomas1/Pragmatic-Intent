@@ -36,11 +36,25 @@ Counts on the real join:
 | | Examples | direct | indirect | no_request | Excluded |
 |---|---|---|---|---|---|
 | Train (every condition) | 101,460 | 41,450 | 41,450 | 18,560 | 5,939 rows with no acts, 1 identical pair, 85 rows with no mismatch donor (170 examples) |
-| Dev, comparable | 11,340 | 4,507 | 4,507 | 2,326 | 1,027 rows at turn 0 or with no donor, 674 rows with no acts |
+| Dev, genuine set (none / one / full) | 11,394 | 4,517 | 4,517 | 2,360 | 998 rows at turn 0, 676 rows with no acts |
+| Dev, mismatch set (mismatched, mismatched_one) | 11,340 | | | | the genuine set minus 54 examples (27 rows) with no donor |
 
-The training set is identical under every training condition. The dev set keeps only
-**comparable** turns: turn index > 0 with a mismatch donor. Every condition therefore scores the same
-11,340 examples, and differences between conditions are paired.
+The training set is identical under every training condition. Since spec 004 (2026-10-14) dev is
+scored on two sets ([spec 004](../specs/004-context-conditions/spec.md)):
+
+- the **genuine** set, every turn with prior context, for `none`, `one` and `full`;
+- the **mismatch** set, the genuine turns that have a mismatch donor, for `mismatched` and
+  `mismatched_one`.
+
+A contrast uses one set on both sides, so its difference is paired; `metrics.json` records each
+contrast's `set` and `n`. Before spec 004 every condition used the mismatch set, so turns without a
+donor (mostly long dialogues) silently left the genuine-context results too.
+
+**Context budget (D-06).** All inputs, training and evaluation, come from the shared renderer
+`src.data.contexts` (`render-v1`): under `full` and `mismatched`, context plus utterance is at most
+350 whitespace tokens, oldest whole turns dropped first, the utterance never cut. On dev this drops
+turns from 71 `full` examples (0.6%); on test from 104 (0.9%). The budget is a renderer constant,
+the same for every model, never a config key.
 
 **Known noise.** About 15% of DIRECT's indirect paraphrases still use an L1 formula ("could you…"),
 and some crowd paraphrases change the meaning. A model trained on these labels learns "which of
@@ -54,7 +68,9 @@ DIRECT's two rewrites is this". That approximates indirectness, but it is not th
   - Scoring a `full`-trained model under `mismatched` is the relevant-context control at test time.
 - **Paired contrasts.** `metrics.json` reports `one-none`, `full-none`, `full-one`,
   `full-mismatched` and `one-mismatched_one`, each as an accuracy difference with a 95% paired
-  bootstrap interval over dialogues, overall and **by variant**. A larger context benefit on
+  bootstrap interval over dialogues, overall and **by variant**. The two mismatch contrasts also
+  have a `without_cue_donors` line: the same contrast without examples whose donor context names a
+  value from the target turn's user acts (a sensitivity check, see spec 004 FR9). A larger context benefit on
   `indirect` than on `direct` paraphrases is the descriptive H2 signal. The mixed-effects test
   belongs in the analysis plan, not here.
 - **Artifact probe.** `tfidf-utterance` sees no context. If it already separates the variants well,
@@ -129,12 +145,40 @@ Copy that hash into the config's `revision` so later runs cannot pick up a chang
 | `…/config.resolved.json` | the exact config after overrides | no |
 | `results/stage1.jsonl` | one line per completed run: headline metrics and contrasts, config/data hashes, git commit and dirty flag, GPU, package versions, machine label | **yes**: commit it after runs |
 
-To re-score a predictions file, for example after a new rule version:
+To re-score a predictions file, for example after a new rule version (`--dialogues` defaults to
+`data/interim/direct/dialogues.jsonl` and is needed for the donor cue flags):
 
 ```bash
 python -m src.evaluation.stage1 --predictions outputs/stage1/<run>/train-full/seed13/predictions.jsonl \
   --out /tmp/rescored.json
 ```
+
+## Context checks and the manifest (spec 004)
+
+```bash
+python -m src.data.context_manifest check --split dev      # seven invariant rules; exit 1 on any failure
+python -m src.data.context_manifest manifest --split test  # data/manifests/contexts_test.csv + summary
+python -m src.data.context_manifest manifest --split test --verify   # rebuild and compare bytes
+```
+
+`check` slices the expected context straight from `dialogues.jsonl` (it never trusts the renderer)
+and verifies: identical target under every condition, no turn at or after the target, the budget,
+and the donor rules (same split, other dialogue, window `0..t` ending on a system turn, no shared
+act domain). The manifest holds IDs, set membership, budget drops, cue flags and SHA-256 hashes of
+every condition's input, no text. The test manifest and both summaries are committed (the test
+manifest is the freeze object; `.gitattributes` keeps it LF-only); the dev manifest is git-ignored
+and regenerated. Both splits take about 1–3 seconds.
+
+**Encoder length check (Sandy, WSL, before the freeze).** The budget is counted in words, so confirm
+that no budgeted input exceeds the encoder's 512 subword tokens:
+
+```bash
+uv run --group gpu python -m src.stage1.length_check --config configs/stage1/encoder_deberta_v3_base.toml
+uv run --group gpu python -m src.stage1.length_check --config configs/stage1/encoder_roberta_base.toml
+```
+
+It exits 1 if any input would be truncated; then the budget is lowered for every model under a new
+renderer version. Encoder runs also record `eval_inputs_at_max_length` per condition.
 
 ## Slices (option A)
 
@@ -151,7 +195,7 @@ stay the weak `direct_variants_v1` labels; the rule levels are the indirectness 
 context × indirectness breakdown, and are never called gold. Report them with their agreement
 against the human calibration rounds (`python -m src.data.auto_levels validate`).
 
-On dev (comparable, 11,340 examples) the rules put 1,695 of 5,670 "indirect" paraphrases (30%) at
+On dev (the 11,340-example mismatch set) the rules put 1,695 of 5,670 "indirect" paraphrases (30%) at
 L0, so `by_rule_level` and `by_variant` differ substantially.
 
 ## What these numbers can and cannot support
