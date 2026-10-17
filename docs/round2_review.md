@@ -6,8 +6,8 @@ Sheets download had three unnamed columns; these were imported as `label`,
 blinded sheet. The source download and previous blank labels file remain local.
 
 The export is `data/annotations/levels_round2.csv`. Original answers are in
-`label_initial`; `label_final` currently copies those answers and **has not been
-adjudicated**. Case is normalized, including `Inf` → `INF`. Blank fragment flags
+`label_initial`; `label_final` **was adjudicated on 2026-10-17** under rubric v2 (see
+[option A checks](option_a_checks.md#1-adjudicate-round-2)). Case is normalized, including `Inf` → `INF`. Blank fragment flags
 export as `0`. Notes and utterances remain in ignored local files.
 
 ## Proposed corrections to discuss

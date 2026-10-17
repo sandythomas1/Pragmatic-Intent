@@ -38,7 +38,7 @@ The [synthetic plan](docs/synthetic_data_plan.md) is historical and inactive.
 
 The existing DIRECT + MultiWOZ join, annotation tools, calibration rounds 1-3, weak-supervision
 Stage 1 trainers, evaluation harness and rewrite fact-drift audit remain available. Round 2
-adjudication is pending. Literary editions (Aesop, King James Bible) are now pinned and have
+was adjudicated on 2026-10-17. Literary editions (Aesop, King James Bible) are now pinned and have
 screening tooling: families, exhaustive candidate proposals and a validated text-free
 inclusion/exclusion log ([spec 002](specs/002-literary-sources/spec.md),
 [usage](docs/source_collection_plan.md#screening-tooling)). No literary pilot has been screened yet.

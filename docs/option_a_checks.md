@@ -8,11 +8,16 @@ the sheets hold DIRECT text, so they stay in git-ignored folders. Open them in E
 
 | # | Check | Sheet | Rows | Time | When |
 |---|---|---|---|---|---|
-| 1 | Adjudicate round 2 | `data/interim/labeling/round2/adjudication_A1.csv` | 30 | ~15 min | now |
-| 2 | Spot-check rule L3 | `data/interim/auto_levels/spotcheck_L3/sheet.csv` | 40 | ~15 min | now |
+| 1 | Adjudicate round 2 | `data/interim/labeling/round2/adjudication_A1.csv` | 30 | ~15 min | **done 2026-10-17** |
+| 2 | Spot-check rule L3 | `data/interim/auto_levels/spotcheck_L3/sheet.csv` | 40 | ~15 min | **done 2026-10-17** |
 | 3 | Rate Stage 2 outputs | not built yet; needs model outputs | ~50 | ~25 min | November |
 
 ## 1. Adjudicate round 2
+
+**Done 2026-10-17.** Q1 = **(a) `L0`**, recorded as rubric rule R8. `label_final` is written to
+`data/annotations/levels_round2.csv` (`rubric_version` v2); `label_initial` is unchanged. 30 rows:
+13 first labels kept, 16 changed to the suggestion, and r2-23 kept at `INF` against the `NR`
+suggestion. Round 1 and 3 gold was not edited to match Q1 (see the rubric changelog).
 
 **Why:** round 2 has never been checked against the rubric, and the rules were never tuned on it.
 Its final labels become the fresh test for any improved rule version (`auto-v2`).
@@ -39,6 +44,13 @@ Write your choice in the `notes` of the first `DECIDE` row. Send the sheet back 
 write `label_final` into `data/annotations/levels_round2.csv`. `label_initial` never changes.
 
 ## 2. Spot-check the rule's L3 turns
+
+**Done 2026-10-17. `auto-v1` L3 precision is 12/40 (30%).** When the rule was wrong, the right level was
+`NR` 12 times (closings such as "that's all I needed" that the social-act check misses), `L2` 11 times
+(a named detail outside the slot vocabulary), and otherwise `INF` 2, `L1` 2, `L0` 1. The rule's `L3`
+must not be reported as a level on its own until `auto-v2` fixes it. This sheet has now been read,
+so it can guide `auto-v2` but cannot test it: `auto-v2` needs a fresh L3 draw (a new seed, these
+turns excluded) along with adjudicated round 2.
 
 **Why:** only one of the 69 hand labels is `L3`, so the rules' `L3` has the least evidence behind
 it. These are 40 dev turns drawn at random from those the rules call `L3` (seed 20261013, turns

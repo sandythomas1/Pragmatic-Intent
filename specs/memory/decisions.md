@@ -5,6 +5,20 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-10-17: Round 2 adjudicated; "I need/want to leave" is L0 (Spec 001 / WP-01)
+Decision: Sandy adjudicated all 30 round 2 rows under rubric v2. Q1 is reading (a): "I need / I want
+to + travel verb" is an `L0` need/want statement, recorded as rubric rule R8, and R6's example is
+replaced. 13 first labels were kept, 16 changed to the suggestion, and 1 (r2-23) was kept at `INF`
+against the suggested `NR`. Round 1 and 3 gold is **not** re-adjudicated to match R8: its
+"need to leave/arrive" items stay `L2`: the 3 known `auto-v1` misses (r3-04 among them) and r3-24
+(R6's old example, which `auto-v1` already labels `L2`).
+Why: (a) follows the decision procedure, needs no new rule, and matches `auto-v1`. Editing round 3
+gold toward the rules after their predictions are known would raise the reported 79% / κ 0.74 after
+the fact. Adjudicated round 2 is the fresh check for `auto-v2`: per-item `auto-v1` errors on round 2
+should not be read while writing `auto-v2`.
+Alternatives considered: re-adjudicate round 3 to L0 and report both numbers (post hoc, toward the
+rules); reading (b) `L2` (consistent with round 3, but needs a v3 rule that `auto-v1` breaks).
+
 ## 2026-10-14: D-06 context budget and separate genuine / mismatch sets (Spec 004)
 Decision: every model sees inputs from one renderer, `render-v1` (`src/data/contexts.py`). Under
 `full` and `mismatched`, context plus target is at most **350 whitespace tokens** (speaker tags

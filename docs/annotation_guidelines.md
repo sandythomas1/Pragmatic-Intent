@@ -60,7 +60,8 @@ it in the notes column, and don't let it change the level.
 | R3 | **Fragments** that only list details are `INF` with `fragment = 1`. | By wording alone they ask for nothing. Whether they act as requests in context is exactly what the context conditions measure. The flag allows fragments to be analyzed separately or excluded. | Round 1 |
 | R4 | A "no preference" answer is `INF`, and turning down an offer is `NR`. | "No preference" still constrains the task ("any area"). Declining gives the assistant nothing to act on. | Round 1 |
 | R5 | **"I'm looking for X"**, "I'm looking to …", and "I'd like to find X" are `L0` want statements, not `INF` or `L2`. | They work like "I want X", which CCSARP counts as direct. They ask the assistant to find something, so they aren't `INF`. They are very common opening turns in this data, and in round 3 four of them got three different labels, so they need a fixed rule. | Round 3 |
-| R6 | A hint that names a **detail of what's wanted** (destination, day, time, cuisine, party size) is `L2`, even if the thing itself ("a train", "a restaurant") is never named. `L3` is only for hints that name nothing wanted at all. | Matches the `L2` definition, which already counts time and party size. It gives `L3` a clear boundary instead of a sliding one. Example: "My destination is Broxbourne and I need to leave Tuesday afternoon." is `L2`. | Round 3 |
+| R6 | A hint that names a **detail of what's wanted** (destination, day, time, cuisine, party size) is `L2`, even if the thing itself ("a train", "a restaurant") is never named. `L3` is only for hints that name nothing wanted at all. | Matches the `L2` definition, which already counts time and party size. It gives `L3` a clear boundary instead of a sliding one. Example: "We're heading to Broxbourne on Tuesday afternoon." is `L2`. | Round 3 (example replaced 2026-10-17, see R8) |
+| R8 | **"I need / I want to + travel verb"** ("I need to leave after 5", "I want to arrive by 9") is an `L0` need/want statement (step 3), even though it describes the user's own schedule. | Rubric v2 contradicted itself: step 3 said `L0`, and R6's old example, which contained "I need to leave", said `L2`. Step 3 is the simpler reading, and it is what `auto-v1` already does. | Round 2 adjudication (Q1), 2026-10-17 |
 | R7 | A **request formula** fixes the level however clear or vague the request is. "Can you find an attraction in the centre?" is `L1`, not `L0`, even though it's perfectly clear. "How about a gastropub then?" is `L1`, not `L3`, even though it needs context. Commands such as "Find me …" stay `L0`. | Applies R1 to the most common round-3 error, where clarity pushed labels toward `L0` and vagueness toward `L3`. | Round 3 |
 
 ## Open questions
@@ -110,6 +111,11 @@ these files**, because DIRECT's text can't be redistributed. The text is in the 
 
 ## Changelog
 
+- **v2 clarification (2026-10-17):** R8 resolves the step 3 / R6 contradiction in favor of step 3, and
+  R6's example is replaced with one that has no need clause. No other rule changes, so the version
+  stays `v2`. Labels finalized before this date are not changed: round 1 and 3 gold keeps its
+  "I need to leave/arrive" items at `L2` (the 3 known `auto-v1` misses, r3-04 among them, plus r3-24,
+  R6's old example), so the frozen `auto-v1` score stays as reported.
 - **v2 (2026-09-30):** added rules R5–R7 after calibration round 3 (24 items, 9/24 initial agreement
   with the reference labels). The "I'm looking for" question is settled as R5. Most disagreements came
   from request formulas being judged on clarity (R7) and from where the L2/L3 boundary sits (R6).

@@ -83,14 +83,14 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 - [~] Dropped 2026-10-13 (option A). S: Label the dialogue form pass: `data/interim/context/pilot1/form_A1.csv`, then `export --pass form --batch pilot1 --annotator A1 --rubric v2` (usage in `docs/source_collection_plan.md#contextual-annotation-tooling`). Back up `data/interim/context/` to Google Drive.
 - [ ] S (optional add-on, only if time allows): Screen `data/interim/literary/screening_sheet.csv`,
   then run `export --screener A1` and `validate` (usage in `docs/source_collection_plan.md#screening-tooling`).
-- [ ] S: Adjudicate round 2 using `docs/round2_review.md` and rubric v2. `label_initial` stays untouched.
+- [x] S: Adjudicate round 2 using `docs/round2_review.md` and rubric v2 (done 2026-10-17; Q1 = (a) `L0`, rubric R8). `label_initial` stays untouched.
   Under option A this is the fresh check for any later rule version (about 15 minutes). Rubric-v2
   sheet: `data/interim/labeling/round2/adjudication_A1.csv`; decide Q1 in `docs/option_a_checks.md` first.
 - [x] C: Option A tooling (2026-10-13): `src/data/auto_levels.py` (`auto-v1` rules, `validate`,
   `distribution`), `src/data/intent_categories.py` (`cat-v1`), Cohen's κ in `src/evaluation/metrics.py`.
   24 new tests; 422 pass.
 - [ ] S/P: Tell the course professor about option A: send `docs/option_a_change_summary.pdf`.
-- [ ] S: Spot-check 40 rule-L3 turns (OK/wrong). Sheet drawn 2026-10-13 (dev, seed 20261013):
+- [x] S: Spot-check 40 rule-L3 turns (OK/wrong). Done 2026-10-17: precision 12/40 (30%); see `docs/option_a_checks.md#2-spot-check-the-rules-l3-turns`. Sheet drawn 2026-10-13 (dev, seed 20261013):
   `data/interim/auto_levels/spotcheck_L3/sheet.csv`. Instructions: `docs/option_a_checks.md`.
 - [x] C: Wire rule levels and `cat-v1` categories into Stage 1 scoring as slices, replacing the
   human-level slice (2026-10-14). `by_rule_level` and `by_category` on every condition and paired
