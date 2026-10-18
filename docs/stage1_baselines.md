@@ -1,5 +1,10 @@
 # Stage 1 baselines: weak supervision, context ablation, how to run
 
+**2026-10-18:** standalone Stage 1 rescoring accepts `--rules-version auto-v2` for explicit
+provisional v2 slices; the default and existing model-run configs retain v1. The v2 source is
+frozen, its held-out round-2 agreement is 29/30 (the same as v1), and fresh L3 precision is pending.
+See [the rule check handoff](option_a_checks.md) and [Stage 2/transfer scoring](stage2_scoring.md).
+
 _Added 2026-10-07. Development code: it has been unit-tested and checked against the real DIRECT +
 MultiWOZ join (data loading only). No model has been trained yet._
 

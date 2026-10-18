@@ -43,7 +43,7 @@ SLICE_VERSIONS = {"rule_level": RULES_VERSION, "category": MAPPING_VERSION}
 Slices = dict[str, dict[str, str]]  # slice name -> example_id -> value
 
 
-def rule_slices(examples: Sequence[Stage1Example], items: Sequence[Item]) -> Slices:
+def rule_slices(examples: Sequence[Stage1Example], items: Sequence[Item], *, version: str = RULES_VERSION) -> Slices:
     """``auto-v1`` level of each example's paraphrase and ``cat-v1`` primary category of its turn.
 
     Pass every item, not just the scored split: the place/food vocabulary is built from all of
@@ -55,7 +55,7 @@ def rule_slices(examples: Sequence[Stage1Example], items: Sequence[Item]) -> Sli
     categories: dict[str, str] = {}
     for e in examples:
         item = by_id[e.item_id]
-        levels[e.example_id] = level_item(item, e.variant, vocab).level
+        levels[e.example_id] = level_item(item, e.variant, vocab, version=version).level
         category = primary_category(item)
         if category is not None:
             categories[e.example_id] = category
@@ -133,6 +133,7 @@ def build_report(
     examples: Sequence[Stage1Example], predictions: Sequence[dict[str, Any]],
     slices: Slices | None = None, sets: ScoringSets | None = None,
     bootstrap_samples: int = 1000, seed: int = 20261006,
+    *, rules_version: str = RULES_VERSION,
 ) -> dict[str, Any]:
     """Metrics per condition plus paired context contrasts; rejects partial prediction sets.
 
@@ -143,6 +144,8 @@ def build_report(
     """
     if not examples or bootstrap_samples < 1:
         raise ValueError("examples and a positive bootstrap sample count are required")
+    if rules_version not in {"auto-v1", "auto-v2"}:
+        raise ValueError("unknown rules version")
     ids = {e.example_id for e in examples}
     sets = sets or ScoringSets(frozenset(ids))
     if not sets.mismatch_ids <= ids or set(sets.cue_donor_ids) - set(MISMATCH_CONDITIONS):
@@ -163,10 +166,15 @@ def build_report(
                  "excluded_from_mismatch": {"no_donor": len(members["genuine"]) - len(members["mismatch"])},
                  "cue_donors": {condition: len(sets.cue_donor_ids.get(condition, frozenset()) & sets.mismatch_ids)
                                 for condition in MISMATCH_CONDITIONS}},
-        "slices": {name: {"version": SLICE_VERSIONS[name], "n": len(values)} for name, values in slices.items()},
+        "slices": {name: {"version": rules_version if name == "rule_level" else SLICE_VERSIONS[name],
+                          "n": len(values)} for name, values in slices.items()},
+        "rule_level_status": "provisional_fresh_L3_check_pending" if rules_version == "auto-v2" else "historical_auto_v1",
         "bootstrap": {"unit": "dialogue", "samples": bootstrap_samples, "seed": seed, "confidence": 0.95},
         "conditions": {}, "contrasts": {},
     }
+    if rules_version == "auto-v2":
+        from src.data.auto_levels_v2 import rules_sha256
+        report["rules_sha256"] = rules_sha256()
     for condition in CONDITIONS:
         if condition not in by_condition:
             continue
@@ -217,15 +225,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--policy", choices=POLICIES, default="direct_variants_v1")
     parser.add_argument("--bootstrap-samples", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=20261006)
+    parser.add_argument("--rules-version", choices=("auto-v1", "auto-v2"), default=RULES_VERSION)
     args = parser.parse_args(argv)
     try:
         items = load_items(args.items)
         examples, excluded = build_examples(items, args.split, args.policy, require_context=True)
         with args.predictions.open(encoding="utf-8") as handle:
             predictions = [json.loads(line) for line in handle if line.strip()]
-        report = build_report(examples, predictions, rule_slices(examples, items),
+        report = build_report(examples, predictions, rule_slices(examples, items, version=args.rules_version),
                               scoring_sets(examples, items, load_dialogues(args.dialogues)),
-                              args.bootstrap_samples, args.seed)
+                              args.bootstrap_samples, args.seed, rules_version=args.rules_version)
         report.update(split=args.split, policy=args.policy, excluded=excluded)
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")

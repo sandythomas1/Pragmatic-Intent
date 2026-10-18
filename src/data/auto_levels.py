@@ -178,8 +178,15 @@ def auto_level(text: str, social_only: bool, vocab: Vocabulary) -> AutoLevel:
     return AutoLevel("L3", "no_detail")
 
 
-def level_item(item: Item, variant: str, vocab: Vocabulary) -> AutoLevel:
-    return auto_level(item[f"{variant}_utterance"], is_social_only(item), vocab)
+def level_item(item: Item, variant: str, vocab: Vocabulary, *, version: str = RULES_VERSION) -> AutoLevel:
+    """Use an explicit rules version; historical callers retain auto-v1."""
+    if version == RULES_VERSION:
+        assign = auto_level
+    elif version == "auto-v2":
+        from src.data.auto_levels_v2 import auto_level as assign
+    else:
+        raise ValueError(f"unknown rules version {version!r}")
+    return assign(item[f"{variant}_utterance"], is_social_only(item), vocab)
 
 
 # ------------------------------------------------------------------ validation
@@ -214,7 +221,8 @@ def load_human_labels(paths: Iterable[Path], annotator: str = "A1") -> list[Huma
     return labels
 
 
-def validate(items: Sequence[Item], labels: Sequence[HumanLabel], vocab: Vocabulary) -> dict[str, Any]:
+def validate(items: Sequence[Item], labels: Sequence[HumanLabel], vocab: Vocabulary,
+             *, version: str = RULES_VERSION) -> dict[str, Any]:
     """Agreement of ``auto-v1`` with the human labels, per round and pooled (IDs and counts only)."""
     by_turn = {(item["dialogue_id"], item["turn_index"]): item for item in items}
     rows: list[dict[str, Any]] = []
@@ -222,7 +230,7 @@ def validate(items: Sequence[Item], labels: Sequence[HumanLabel], vocab: Vocabul
         item = by_turn.get((label.dialogue_id, label.turn_index))
         if item is None:
             raise ValueError(f"{label.item_id}: no DIRECT item for {label.dialogue_id} turn {label.turn_index}")
-        auto = level_item(item, label.variant, vocab)
+        auto = level_item(item, label.variant, vocab, version=version)
         rows.append({"round": label.round_name, "item_id": label.item_id, "variant": label.variant,
                      "initial": label.initial, "final": label.final, "auto": auto.level, "rule": auto.rule})
 
@@ -231,7 +239,7 @@ def validate(items: Sequence[Item], labels: Sequence[HumanLabel], vocab: Vocabul
         groups[row["round"]].append(row)
         groups["all"].append(row)
     report = {name: _agreement(group) for name, group in sorted(groups.items())}
-    return {"rules_version": RULES_VERSION, "agreement": report, "rows": rows}
+    return {"rules_version": version, "agreement": report, "rows": rows}
 
 
 def _agreement(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
@@ -253,7 +261,7 @@ def _agreement(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
-def distribution(items: Sequence[Item], vocab: Vocabulary) -> dict[str, Any]:
+def distribution(items: Sequence[Item], vocab: Vocabulary, *, version: str = RULES_VERSION) -> dict[str, Any]:
     """Level and rule counts per split and DIRECT variant, over items that have user acts."""
     counts: dict[str, dict[str, collections.Counter[str]]] = {}
     rules: collections.Counter[str] = collections.Counter()
@@ -261,11 +269,11 @@ def distribution(items: Sequence[Item], vocab: Vocabulary) -> dict[str, Any]:
         if not item.get("user_acts"):
             continue
         for variant in VARIANTS:
-            auto = level_item(item, variant, vocab)
+            auto = level_item(item, variant, vocab, version=version)
             counts.setdefault(item["split"], {}).setdefault(variant, collections.Counter())[auto.level] += 1
             rules[f"{auto.level}:{auto.rule}"] += 1
     return {
-        "rules_version": RULES_VERSION,
+        "rules_version": version,
         "levels": {split: {variant: {level: c[level] for level in LEVELS} for variant, c in sorted(by_v.items())}
                    for split, by_v in sorted(counts.items())},
         "rules": dict(sorted(rules.items())),
@@ -278,6 +286,7 @@ def distribution(items: Sequence[Item], vocab: Vocabulary) -> dict[str, Any]:
 def draw_spotcheck(
     items: Sequence[Item], vocab: Vocabulary, level: str, count: int, seed: int,
     exclude_turns: set[tuple[str, int]] = frozenset(),
+    *, version: str = RULES_VERSION,
 ) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
     """Seeded uniform draw of ``count`` dev utterances the rules put at ``level``: (sheet rows, key rows).
 
@@ -286,12 +295,14 @@ def draw_spotcheck(
     """
     if level not in LEVELS:
         raise ValueError(f"unknown level {level!r}")
+    if count < 1:
+        raise ValueError("spot-check count must be positive")
     pool: list[tuple[Item, str, AutoLevel]] = []
     for item in items:
         if item["split"] != "dev" or (item["dialogue_id"], item["turn_index"]) in exclude_turns:
             continue
         for variant in VARIANTS:
-            auto = level_item(item, variant, vocab)
+            auto = level_item(item, variant, vocab, version=version)
             if auto.level == level:
                 pool.append((item, variant, auto))
     if len(pool) < count:
@@ -307,14 +318,21 @@ def draw_spotcheck(
     return sheet, key
 
 
-def spotcheck_report(sheet: Sequence[dict[str, str]], key: Sequence[dict[str, str]]) -> dict[str, Any]:
+def spotcheck_report(sheet: Sequence[dict[str, str]], key: Sequence[dict[str, str]],
+                     *, version: str = RULES_VERSION) -> dict[str, Any]:
     """Precision of the rule level from a filled sheet; every row needs a verdict."""
     rules = {row["row_id"]: row["rule"] for row in key}
     problems: list[str] = []
+    if len(rules) != len(key) or not rules:
+        problems.append("key has duplicate row IDs or is empty")
+    seen: set[str] = set()
     verdicts: collections.Counter[str] = collections.Counter()
     better: collections.Counter[str] = collections.Counter()
     for row in sheet:
         row_id = row.get("row_id", "")
+        if row_id in seen:
+            problems.append(f"{row_id}: duplicate sheet row")
+        seen.add(row_id)
         verdict = (row.get("verdict") or "").strip().lower()
         if row_id not in rules:
             problems.append(f"{row_id or '(blank)'}: not in the key")
@@ -330,12 +348,16 @@ def spotcheck_report(sheet: Sequence[dict[str, str]], key: Sequence[dict[str, st
                 problems.append(f"{row_id}: a wrong row needs better_level (L0 L1 L2 L3 INF NR ?)")
                 continue
             better[label] += 1
+        elif (row.get("better_level") or "").strip():
+            problems.append(f"{row_id}: ok verdict must have blank better_level")
+    if seen != set(rules):
+        problems.append("sheet IDs do not match the key")
     if len(sheet) != len(rules):
         problems.append(f"sheet has {len(sheet)} rows, key has {len(rules)}")
     if problems:
         raise ValueError("spot-check sheet has problems:\n  " + "\n  ".join(problems))
     total = sum(verdicts.values())
-    return {"rules_version": RULES_VERSION, "n": total, "ok": verdicts["ok"], "wrong": verdicts["wrong"],
+    return {"rules_version": version, "n": total, "ok": verdicts["ok"], "wrong": verdicts["wrong"],
             "precision": round(verdicts["ok"] / total, 4), "better_level_when_wrong": dict(better.most_common())}
 
 

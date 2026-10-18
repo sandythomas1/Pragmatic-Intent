@@ -27,9 +27,9 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 
 | Window | Work | Exit evidence |
 |---|---|---|
-| Oct 12–18 | Adjudicate round 2. Label the 40-turn dialogue pilot (form pass). Start related-work reading. Literary screening only if time allows. | Dialogue form labels; adjudicated round 2. |
-| Oct 19–25 | Pilot contextual labels. Coverage/feasibility check. Weak baselines on dev (S). Spec 004 renderer. | Feasibility note and taxonomy (D-03, D-04). |
-| Oct 26–Nov 1 | Collect untouched test groups. Spec 005 scorers and IndirectRequests adapter. **Freeze** gold, splits, contexts and the analysis plan. | Freeze record (WP-08 data side). |
+| Oct 12–18 | Round 2 and original L3 check done. Renderer/manifest verified on Windows; spec 005 scoring tooling and provisional v2 rules implemented. Related-work reading can proceed. | Verified tooling; v2 frozen before held-out check. |
+| Oct 19–25 | Fresh v2 L3 precision check; WSL encoder length checks; weak baselines and Stage 2 outputs on dev (S). | Rule audit, input-length evidence and dev predictions. |
+| Oct 26–Nov 1 | Audit official test groups and prior inspection. **Freeze** references, splits, contexts and the analysis plan. | Freeze record (WP-08 data side). |
 | Nov 2–8 | Models on dev (S, WSL 5060 / lab 4090). LLM prompt chosen on dev. Pin recipes. Draft related work and methods sections. | Pinned recipes and dev predictions. |
 | Nov 9–13 | Run the frozen test grid, hybrid and IndirectRequests transfer (S). | Validated predictions and provenance. |
 | Nov 14–19 | Paired contrasts, intervals, error audit. | Tables, figures, limits. |
@@ -41,9 +41,9 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 | ID | Status | Note |
 |---|---|---|
 | D-01 due date | **Estimated Dec 3** (Sandy, 2026-10-10) | Unconfirmed; replan if the syllabus says otherwise. |
-| D-02 second rater | Open: unknown | Tooling is rater-agnostic (pseudonymous IDs, blinded sheets). Gold stays provisional until resolved. |
-| D-03 intents/slots | Open | After the dev pilot (WP-03). |
-| D-04 test size/power | Open | Late October, from pilot coverage. |
+| D-02 second rater | Not required for option A's mechanical labels | Any later human/LLM-judge agreement still needs its own raters and limitations. |
+| D-03 intents/slots | `cat-v1` / MultiWOZ acts under option A | Spec 005 scores observed Inform values and Request names; no contextual-taxonomy approval gate. |
+| D-04 test size/power | Official DIRECT test split; inferential status open | Audit prior inspection and coverage before the study freeze; sparse/noisy rule levels can remain exploratory. |
 | D-05 models/budget | Open | Before model development. Sandy owns the model code. |
 | D-06 context windows | **Decided** (Sandy, 2026-10-14) | 350-word budget on `full`/`mismatched`, train and eval, `render-v1`. Truncates 0.9% of test examples. Encoder length check pending (S, WSL). |
 | D-07 statistics | Open | On dev, before the analysis freeze. |
@@ -53,13 +53,13 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 
 | WP | Kind | Owner | Child spec | Status |
 |---|---|---|---|---|
-| WP-01 Deadline, resources, round 2 adjudication | Human | S | none | Open. Adjudication needs Sandy's decisions on `docs/round2_review.md`. |
+| WP-01 Deadline, resources, round 2 adjudication | Human | S | none | Round 2 adjudicated 2026-10-17; due date/resources remain open. |
 | WP-02 Register sources, screen dev pilot | Code + human | C tooling, S screening | **002** literary sources and screening | Tooling done. 9 dev families and 22 candidates proposed (2026-10-10). Screening is **optional** since 2026-10-12. |
 | WP-02b Dialogue pilot draw (40 dev dialogues × 1 turn) | Code (small) + human | C, S | Folded into **003** | Done 2026-10-11: `pilot1` drawn (seed 20261011) by spec 003 T5. |
-| WP-03 Contextual annotation supplement and pilot labels | Code + human | C schema/tooling, S/P labels | **003** contextual annotation (passes 1–3) | Tooling done 2026-10-11 (T1–T13). Labels (S) and taxonomy approval pending; condition judgments (pass 4) deferred to a later spec after D-02. |
-| WP-04 Collect untouched groups, validate splits | Code + human | C audit, S collection | Own spec (split audit), needed by Oct 26 | Not started. Moved out of 003 (2026-10-11). |
+| WP-03 Contextual annotation supplement and pilot labels | Historical tooling | C | **003** | Tooling retained; form/context/reveal passes and taxonomy approval dropped under option A on 2026-10-13. No form-A1 work remains. |
+| WP-04 Audit official groups, prior inspection and splits | Code + human | C audit, S review | Own spec (split audit), needed before freeze | Pending; option A uses the official test split rather than a new sample. |
 | WP-05 Context renderer and invariants | Code | C | **004** context conditions | Tooling done 2026-10-14 (T1–T16). `check` passes on dev and test; test manifest committed. |
-| WP-06 Contextual adapters, Stage 2/routing scorers, IndirectRequests transfer (FR-15) | Code | C | **005** scoring | Not started. IndirectRequests is already downloaded and pinned. |
+| WP-06 Act references, Stage 2/routing scorers, IndirectRequests transfer (FR-15) | Code | C | **005** scoring | Tooling implemented 2026-10-18; dev inputs prepared. Model outputs and later adequacy/LLM-judge calibration pending. |
 | WP-07 Models on dev | Code | **S**, C reviews | none (Sandy's code) | Existing weak Stage 1 trainers only. |
 | WP-08 Feasibility and freeze record | Human + code | S, C manifest | 004/005 freeze tooling | Not started. |
 | WP-09 Held-out grid and hybrid | Code run | S | none | Blocked on WP-08. |
@@ -117,7 +117,7 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   (D-02), and the expected paper format/length.
 - [ ] S: Start the FR-11 related-work reading from the proposal's five references; log any
   extra search strings and dates.
-- [ ] C: IndirectRequests transfer adapter and slot-value scorer (FR-15), inside spec 005.
+- [x] C: IndirectRequests transfer adapter and slot-value scorer (FR-15), inside [spec 005](../005-scoring/spec.md), 2026-10-18.
 - [x] C: Spec 004, context conditions (2026-10-14): shared renderer `render-v1` with the D-06 budget,
   genuine and mismatch sets in Stage 1 scoring, donor cue flags with a sensitivity line, `check`
   and `manifest` (`python -m src.data.context_manifest`). Real data: all seven rules pass on dev
@@ -126,5 +126,18 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 - [ ] S (before the freeze): run `uv run --group gpu python -m src.stage1.length_check --config
   configs/stage1/<encoder>.toml` in WSL for each chosen encoder. Exit 1 means some input exceeds
   512 subwords; tell Claude, and the budget drops for all models under `render-v2`.
-- [ ] S: run the full test suite on native Windows (`python -m unittest discover -s tests -t .`)
-  and `python -m src.data.context_manifest manifest --split test --verify` on the Windows/WSL checkout.
+- [x] C: Native-Windows verification (2026-10-18): 452 tests before spec 005; all seven context
+  checks pass on dev/test; the 11,195-row test manifest reproduces byte-for-byte. WSL was not rerun.
+- [x] C: Spec 005 deterministic Stage 2/oracle/routed scorer, slot normalization and separate
+  IndirectRequests adapter/scorer implemented. Real adapter schemas: 123/136/194 pinned records.
+  Dev routed/oracle inputs and transfer validation inputs are in `data/interim/stage2/`.
+  Conflicting act values exclude 2 dev and 8 test examples from interpretation only.
+- [x] C: Add and freeze `auto-v2` before checking adjudicated round 2 (2026-10-18): 29/30,
+  κ = 0.9286, the same round-2 agreement as v1. There are no gold L3 rows in round 2.
+  Full-corpus v1 predictions are unchanged; v1 remains the default. [Verification](../005-scoring/verification.md).
+- [ ] S: Complete the fresh, small v2 L3 precision check at
+  `data/interim/auto_levels/auto-v2/spotcheck_L3/sheet.csv` (40 rows, seed 20261018;
+  63 historical/original-check turns excluded), then `python -m src.data.auto_levels_v2 spotcheck-report`.
+  This does not resume the dropped three-pass annotation pipeline. V2 L3 remains provisional.
+- [ ] S: Supply dev model outputs using [the Stage 2 contract](../../docs/stage2_scoring.md).
+  The tooling runs no models and does not yet evaluate free-paraphrase adequacy.

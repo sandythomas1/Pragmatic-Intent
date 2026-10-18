@@ -6,6 +6,24 @@ No new labeling rounds are planned. These three small checks are the only human 
 the sheets hold DIRECT text, so they stay in git-ignored folders. Open them in Excel and save with
 **File → Save As → CSV UTF-8**._
 
+**2026-10-18 continuation:** frozen `auto-v2` is implemented, with the same 29/30 (96.7%,
+κ = 0.929) agreement as v1 on adjudicated round 2. That round contains no gold L3 examples.
+A fresh precision check is ready at
+`data/interim/auto_levels/auto-v2/spotcheck_L3/sheet.csv` (40 dev utterances, seed 20261018,
+historical turns and the original v1 sample's turns excluded). This is the small rule audit,
+not the dropped form/context/reveal annotation pipeline. Fill `verdict` and, for wrong rows,
+`better_level`; keep `better_level` blank for an OK row. Save CSV UTF-8, then run:
+
+```bash
+python -m src.data.auto_levels_v2 spotcheck-report
+```
+
+The rules remain provisional until that fresh check is completed. V1 remains the default;
+no L3 improvement is claimed from round 2 or the old development sheet. The freeze hash and
+verification evidence are in [spec 005](../specs/005-scoring/verification.md).
+Stage 2 and transfer input/scoring tools are now built; usage is in
+[stage2_scoring.md](stage2_scoring.md). Model runs and the later human adequacy ratings remain pending.
+
 | # | Check | Sheet | Rows | Time | When |
 |---|---|---|---|---|---|
 | 1 | Adjudicate round 2 | `data/interim/labeling/round2/adjudication_A1.csv` | 30 | ~15 min | **done 2026-10-17** |

@@ -1,5 +1,9 @@
 # Contextual Annotation Supplement (`ctx-v0`)
 
+**Historical, inactive under option A (spec 001 v1.2).** No form/context/reveal sheets or taxonomy
+approval are required for the active study. Use [Stage 2 act/transfer scoring](stage2_scoring.md)
+instead. This draft remains available for possible later annotation work.
+
 _Draft 2026-10-11, **awaiting Sandy's approval** (spec 003 T7). Rubric `ctx-v0`, intent taxonomy
 `ctx-tax-v0` ([intent_taxonomy.csv](../data/annotations/intent_taxonomy.csv)), segmenter `seg-v1`.
 Every example on this page is invented. Read the whole page before your first context sheet._

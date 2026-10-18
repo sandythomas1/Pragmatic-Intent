@@ -5,6 +5,25 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-10-18: Explicit provisional auto-v2 and separate oracle/transfer scoring (Spec 005)
+Decision: Sandy requested both the rule revision and Stage 2/IndirectRequests scoring. V1 stays
+the default and retains every corpus prediction; v2 is an explicit selection, source-frozen
+before adjudicated round 2. Both score 29/30 on that check; no L3 validation is inferred because
+there are no gold L3 rows. A fresh seeded dev audit excludes all historical/original-check turns.
+
+Stage 2 uses `cat-v1` primary categories, explicit Inform values and Request names. Conflicting
+act values have no single structured reference and leave interpretation only, with a named
+count (2 dev / 8 test examples); detection keeps them. Oracle predictions are a separate complete
+stream, so route misses fail end-to-end without shrinking oracle coverage. Required-slot recovery
+means observed acts, not execution completeness. Free-paraphrase/LLM-judge adequacy is deferred
+until model outputs and Sandy's small rating sample exist.
+
+IndirectRequests remains pinned, none-context-only and separate, with ambiguous slices, boolean
+aliases, generation labels and explicit model-family metadata. Inputs contain no situation or
+gold fields. Alternatives rejected: replacing v1 silently; tuning on round-2 per-item errors;
+pooling generated transfer data with the benchmark; or equating act exact match with paraphrase
+adequacy. Details: [spec 005](../005-scoring/spec.md).
+
 ## 2026-10-17: Round 2 adjudicated; "I need/want to leave" is L0 (Spec 001 / WP-01)
 Decision: Sandy adjudicated all 30 round 2 rows under rubric v2. Q1 is reading (a): "I need / I want
 to + travel verb" is an `L0` need/want statement, recorded as rubric rule R8, and R6's example is

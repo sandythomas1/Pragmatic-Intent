@@ -1,6 +1,6 @@
 # Tasks: Context conditions, invariants and the common-set manifest
 
-> **Phase:** Tasks · **Status:** done (T17 and the Windows run are Sandy's) · **Date:** 2026-10-14
+> **Phase:** Tasks · **Status:** tooling and native-Windows verification done; T17 remains Sandy's · **Date:** 2026-10-18
 > Derived from [`plan.md`](plan.md). Each task is small, ordered, and independently verifiable.
 > `/implement` works top to bottom, checking boxes and committing logical units.
 
@@ -107,8 +107,8 @@ check build on it.
 - [x] 11. **No-text scan.** A test builds the manifest and summary from fixtures and asserts that
   no fixture utterance, context turn or slot value appears in either file. (dep: 8) @qa
 - [x] 12. **Full suite.** Run the full suite; fix any regressions in `test_stage1.py` callers of
-  `require_comparable`/`comparable`. Native Windows Python 3.12 is confirmed by Sandy on the
-  Windows machine. (dep: 10, 11) @qa
+  `require_comparable`/`comparable`. Native Windows Python 3.12 verified by Codex on 2026-10-18:
+  452 tests before spec 005 changes. (dep: 10, 11) @qa
 - [x] 13. **Real-data smoke check (reported, not CI).** On `data/interim/direct/`: `check` passes
   on dev and test; `manifest` builds dev and test; the test summary shows 44 items / 72 examples
   excluded `no_donor`, the budget's dropped counts (about 104 test examples), and the cue-flag
@@ -144,7 +144,10 @@ check build on it.
 - [x] V9. AC-004-9: the Stage 1 report states the set and `n` of every contrast; `full-mismatched` uses the mismatch set on both sides (T4, T10).
 - [x] V10. AC-004-10: real-data smoke: `check` passes on dev and test, 44 test items without a donor (T13).
 - [x] V11. AC-004-11: D-06 is recorded in `decisions.md` and the roadmap with the budget and the share truncated (T16).
-- [~] V12. AC-004-12: the full suite passes on native Windows Python 3.12 (T12; Windows run by Sandy).
+- [x] V12. AC-004-12: the full suite passes on native Windows Python 3.12 (Codex, 2026-10-18: 452 tests before spec 005).
 - [x] V13. AC-004-13: each mismatch contrast has a `without_cue_donors` line with its `n` (T6, T10).
-- [~] V14. AC-004-14: `manifest --split test --verify` regenerates the committed test manifest byte-identically, on macOS and on Sandy's Windows/WSL checkout (T8, T12, T13).
-- [ ] V15. Capture a learning in `~/development/memory/lessons_learned.md` if anything was non-obvious.
+- [x] V14. AC-004-14: `manifest --split test --verify` regenerates all 11,195 rows byte-identically on native Windows (Codex, 2026-10-18); prior platform evidence is T13. WSL was not rerun.
+- [x] V15. Captured the platform/branch handoff learning in shared memory on 2026-10-18.
+
+2026-10-18 smoke: all seven `check` rules have zero failures on dev (11,394 examples) and test
+(11,195). This verifies renderer integrity, not model performance or the WP-08 study freeze.

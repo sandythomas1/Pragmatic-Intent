@@ -42,9 +42,12 @@ was adjudicated on 2026-10-17. Literary editions (Aesop, King James Bible) are n
 screening tooling: families, exhaustive candidate proposals and a validated text-free
 inclusion/exclusion log ([spec 002](specs/002-literary-sources/spec.md),
 [usage](docs/source_collection_plan.md#screening-tooling)). No literary pilot has been screened yet.
-Contextual annotation tooling (form, context and reveal passes, `validate`, `coverage`) is built
-([spec 003](specs/003-contextual-annotation/spec.md)), and the 40-turn dialogue pilot is drawn.
-The tools do not yet score Stage 2 interpretations under the revised protocol. No new model
+Option A (spec 001 v1.2) uses fixed wording rules and MultiWOZ act categories; the historical
+spec 003 form/context/reveal pilot is not run. The shared context renderer and committed test
+manifest are built ([spec 004](specs/004-context-conditions/spec.md)). Stage 2 act/slot recovery,
+separate oracle/routed scoring and the IndirectRequests transfer adapter are now available
+([usage](docs/stage2_scoring.md), [spec 005](specs/005-scoring/spec.md)). `auto-v2` is frozen and
+provisional pending its fresh L3 spot check; `auto-v1` remains the default. No new model
 results are claimed. Execution is tracked in the
 [roadmap](specs/001-pragmatic-intent-study/roadmap.md).
 

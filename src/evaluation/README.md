@@ -1,5 +1,10 @@
 # Directness evaluation harness
 
+**Option A update (2026-10-18):** the deterministic Stage 2 act/slot scorer, separate oracle
+stream and IndirectRequests transfer adapter are described in [the Stage 2 guide](../../docs/stage2_scoring.md).
+They reuse the shared renderer and genuine/mismatch sets; they do not run models or assess
+free-paraphrase adequacy. The historical calibration harness follows.
+
 Requires Python 3.11+ and the standard library. Labels come from exported human
 annotations; source metadata comes from the existing DIRECT + MultiWOZ join.
 Original/direct/indirect variants are dataset provenance, not level labels.

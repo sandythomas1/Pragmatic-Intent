@@ -1,5 +1,10 @@
 # Spec 003: Contextual annotation supplement and dialogue pilot draw
 
+**Historical tooling:** spec 001 v1.2 / option A (2026-10-13) dropped the form/context/reveal
+passes and their taxonomy-approval gate from the active study. The implementation below remains
+available for possible later use; it is not the current task list. See the
+[active roadmap](../001-pragmatic-intent-study/roadmap.md).
+
 Status: Implemented (T1–T13 done 2026-10-11; see [tasks.md](tasks.md)). The T7 taxonomy and
 rubric content awaits Sandy's approval before the real context sheet. Reviewed: READY after
 revision (Claude adversarial review 2026-10-11; R1–R14 applied with Sandy's decisions, see
