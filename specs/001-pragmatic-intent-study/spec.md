@@ -2,17 +2,58 @@
 
 **ID:** 001-pragmatic-intent-study
 
-**Version:** 1.0 draft, 2026-10-09
+**Version:** 1.2 draft, 2026-10-13 (1.1: 2026-10-12; 1.0: 2026-10-09)
 
 **Owner:** Sandy Thomas
 
-**Faculty discussion:** Dr. Benjamin Sanders, meeting 2026-10-08
+**Faculty advisor:** Sandy's Machine & Deep Learning course professor (Fall 2026). The research is
+conducted through this course.
 
-**First milestone:** class research paper and model results, December 2026; exact due date pending
-
-**Second milestone:** publication development toward WDSI; official year/deadline/format pending
+**Milestone:** class research paper and model results, December 2026 (working estimate Dec 3;
+confirm with the course professor). There is no second milestone in this plan.
 
 **Status:** specification for review; not an approved study protocol, preregistration or completed experiment
+
+**Version 1.1 direction (2026-10-12).** The course professor asked that the research plan and
+proposal stay as they are, with some of the newer data methods added, and that the paper be
+optimized as a computer-science paper for the December class deadline. Therefore:
+
+- The original [proposal](<../../docs/Pragmatic_Intent_Detection_Proposal_Plain .pdf>) is the
+  governing design: question, two-stage task, indirectness × context variables, model panel and
+  10-week plan.
+- Screened literary exchanges (an idea from a 2026-10-08 discussion with Dr. Benjamin Sanders)
+  are an **optional add-on**: small, reported separately, and cut first under time pressure.
+- IndirectRequests, named in the proposal, returns as a separately reported **transfer test**.
+  Nothing new is generated, and the main benchmark stays human-written.
+- The 2015–2025 hallucination review and all WDSI/publication items are removed. FR-11 is a normal
+  related-work section; FR-13, FR-14, WP-12, AC-14 and D-08 are withdrawn.
+- "Professor" in this spec and its child specs means the course professor.
+
+**Version 1.2 direction (2026-10-13): option A, existing annotations instead of new labeling.**
+Sandy decided to stop new hand labeling. Where this block conflicts with the rest of this spec, this
+block wins; the affected sections are rewritten only once the professor has seen the change.
+
+- **Indirectness levels** are assigned mechanically by the versioned wording rules `auto-v1`
+  ([`src/data/auto_levels.py`](../../src/data/auto_levels.py)), a transcription of rubric v2.
+  They are reported as *rule-assigned*, never as human gold, always with their agreement against
+  the hand-labeled calibration rounds. First check (2026-10-13, rules frozen before scoring):
+  31/39 (79%), κ = 0.74 on the adjudicated rounds 1 and 3, which the rules were not written
+  from. Round 2 (unadjudicated) is reported separately.
+- **Stage 1** keeps DIRECT's direct/indirect rewrites; rule levels slice and replace the variant
+  names as the indirectness variable (about 27% of DIRECT's test "indirect" rewrites are L0 by
+  the rules).
+- **Stage 2 gold and intents** come from MultiWOZ user acts. The proposal's categories are
+  mapped by `cat-v1` ([`src/data/intent_categories.py`](../../src/data/intent_categories.py)):
+  information seeking, booking (action requests), travel (planning/scheduling, navigation) and
+  recommendation. Troubleshooting, advice/support and device control are a stated limitation.
+- **Test set:** DIRECT's test split under the existing comparable-turn rules, instead of
+  160–240 newly labeled turns. Spec 003's context and reveal passes and the `pilot1` form pass
+  are not run; the tooling stays for a possible second rater.
+- **Remaining human checks (small):** adjudicate round 2 (a fresh check for any later rule
+  version), mark about 40 rule-L3 turns OK/wrong (the level with the least human evidence),
+  and rate about 50 Stage 2 outputs pass/fail to validate an LLM judge.
+- **Claims:** the study becomes a weak-label, rule-levelled analysis. The context × level
+  interaction is reported with the rule agreement as an explicit limitation.
 
 ## 1. Purpose and source of truth
 
@@ -32,7 +73,8 @@ the historical proposal. The [revised research plan](../../docs/research_plan.md
 [revision report](../../docs/research_revision_2026-10-09.md) supply detailed methods and history.
 This master spec consolidates their revised design; a later methodological change must update
 this spec and the applicable detailed document, with rationale and version/date. The analysis
-plan requires a separate freeze record before reported test runs.
+plan requires a separate freeze record before reported test runs. The interactive guide still
+shows version 1.0 (literary quota, WDSI roadmap); where they differ, this file wins.
 
 ## 2. Problem and retained research question
 
@@ -53,18 +95,19 @@ autonomous execution of inferred actions.
 
 ### Goals
 
-- Preserve the question and detection/interpretation comparison.
-- Adopt the professor's human-authored source-gathering methods, including screened literature.
+- Preserve the proposal's question, design and detection/interpretation comparison.
 - Measure context benefits, indirectness effects, ambiguity and unsupported inference.
-- Deliver reproducible class results and a paper by the actual December deadline.
-- Produce a defensible foundation for stronger validation and later publication.
+- Deliver reproducible class results and a computer-science paper by the actual December deadline.
+- Optionally add screened literary exchanges as a small, separately reported data method.
 
 ### Non-goals for December
 
 - Invent a new neural architecture or solve general pragmatics.
 - Infer morals, theological truth, joke explanations or all character motives as assistant requests.
-- Generate main-benchmark utterances, contexts, synthetic contrastive twins or complete request ladders.
-- Guarantee H2 significance, a target accuracy, publication acceptance or pretraining absence.
+- Generate main-benchmark utterances, contexts, synthetic contrastive twins or complete request
+  ladders. (The existing IndirectRequests set is used as published, as a separate transfer test.)
+- Publication, venue submission or work planned past the class deadline.
+- Guarantee H2 significance, a target accuracy or pretraining absence.
 - Deploy an assistant, call real tools on inferred requests, recruit participants without the
   relevant determination, or start paid model runs from this specification.
 - Expand to every genre, language, intent category and model family before the class deliverable.
@@ -133,18 +176,18 @@ is an independently annotated exploratory evidence-chain feature, not an alterna
 
 | Profile | Sample goal | Models and outputs | Claim boundary |
 |---|---|---|---|
-| December target | 160-240 dialogue test items across at least 50 groups; 20-40 literary items across at least 10 story families. | Majority/TF-IDF, one encoder, one LLM, small hybrid; complete context comparisons and paper. | Confirmatory H2 only if pilot coverage/power and frozen protocol justify it. |
-| December fallback | 120 dialogue test items across at least 30 groups plus a documented literary pilot. | Preserve simple baselines, feasible model comparisons, Stage 2 and paired context results; drop added model families/genres first. | Exploratory/pilot claims where necessary; independent-rater absence remains explicit. |
-| Publication extension | Pilot-informed expansion; no fixed size or deadline invented here. | More source groups/works, raters and model families; replication and permitted release. | Stronger validation and justified inferential power; confirmed venue requirements. |
+| December target | 160-240 dialogue test items across at least 50 groups, plus the IndirectRequests transfer test (194 test items). | Majority/TF-IDF, one encoder, one LLM, small hybrid; complete context comparisons and paper. | Confirmatory H2 only if pilot coverage/power and frozen protocol justify it. |
+| December fallback | 120 dialogue test items across at least 30 groups. | Preserve simple baselines, feasible model comparisons, Stage 2 and paired context results; drop added model families, the literary add-on and the transfer test first. | Exploratory/pilot claims where necessary; independent-rater absence remains explicit. |
+| Optional add-on | Screened literary exchanges, about 20 dev items and, only if time allows, a small held-out set. | Same frozen models; no training or prompt examples from literature. | Separate exploratory table; never pooled with dialogue. |
 
 These are collection goals, not current counts, power guarantees or acceptance thresholds.
-The development pilot is additional: approximately 60 screened candidates, 40 original dialogue
-and 20 literary. Pilot groups never enter test. Aim for 25-40 requests per L0-L3 level plus
-authentic negatives. Exact quotas and represented intents are fixed after pilot review.
+The development pilot is additional: 40 original dialogue turns (drawn 2026-10-11) plus any
+screened literary candidates. Pilot groups never enter test. Aim for 25-40 requests per L0-L3
+level plus authentic negatives. Exact quotas and represented intents are fixed after pilot review.
 Do not manufacture rare levels, empty intent cells or genre balance.
 
 Independent validation is a goal, not an assumption about staffing. Seek full test double labeling;
-minimum course goal is a stratified 25% and difficult literary cases. A solo-rater deliverable is
+minimum course goal is a stratified 25%. A solo-rater deliverable is
 a provisional pilot, with no independent agreement or human-baseline claim. Study quality is
 not inferred from item count alone.
 
@@ -156,13 +199,18 @@ not inferred from item count alone.
   using the current join. Preserve official train/dev/test dialogue assignments.
 - **Auxiliary training/diagnostics:** DIRECT's human-written rewrites, with explicit weak label
   policy and fact-drift review. They are elicited paraphrases, not natural gold indirectness.
-- **Literary transfer:** addressed speech from pinned human-authored editions, initially held
-  out of fine-tuning and prompt examples. Screen Aesop and the meeting's John 2:1-11 candidate;
-  no gold reading is assumed from the story's fame.
+- **IndirectRequests transfer test (proposal week 2):** the published 453-item set (service-disjoint
+  123/136/194 splits). Every item is an LLM-written, crowd-filtered indirect request with a gold slot
+  value from a closed candidate set and no dialogue history. Use it for Stage 1 recall
+  (utterance-only) and Stage 2 slot-value recovery; report it separately and flag GPT-family
+  models on it. It is not human gold and never enters the main benchmark.
+- **Literary add-on (optional):** addressed speech from pinned human-authored editions, held
+  out of fine-tuning and prompt examples. The screening pilot covers Aesop and John 2:1-11;
+  no gold reading is assumed from the story's fame. Cut first if the schedule slips.
 - **Reference/optional screened controls:** Circa and conversational-implicature resources,
   independently reviewed for contextual function.
-- **Excluded from the main human-only benchmark:** LLM-generated IndirectRequests or newly
-  written input ladders, twins and invented contexts.
+- **Excluded from the main human-only benchmark:** newly generated or researcher-written input
+  ladders, twins and invented contexts.
 
 Every source and item has an inclusion/exclusion record. Candidate selection must not depend
 on model errors. Narration without addressed speech may support an exploratory pragmatics
@@ -175,7 +223,7 @@ OCR corrections are logged; modernization/paraphrase creates a different input a
 2. Original full-context function and request presence/type.
 3. Supported intent/required slots/paraphrase, evidence and alternatives.
 4. Independent none/one/full judgments where feasible, assigned to avoid full-story recall.
-5. Exploratory evidence-chain depth under a separately piloted rubric.
+5. Exploratory evidence-chain depth under a separately piloted rubric. Not planned for December.
 
 Preserve initial labels, final adjudication and rubric version separately. Published explanations,
 later replies and story outcomes are corroboration, not gold authority or model input.
@@ -245,10 +293,11 @@ publishable metadata/aggregate results cannot expose prohibited text or annotato
 | FR-08 | Compare a feasible December model panel | December | Extend existing |
 | FR-09 | Score the new tasks and routing failures | December | Planned |
 | FR-10 | Analyze the interaction with honest uncertainty | December | Draft |
-| FR-11 | Position the study with a bounded review | December | Planned |
+| FR-11 | Position the study in related work | December | Planned |
 | FR-12 | Produce the December paper and results package | December | Planned |
-| FR-13 | Extend the study for publication | Publication | Later |
-| FR-14 | Release a source-compatible research package | Publication | Later |
+| FR-13 | _Withdrawn 2026-10-12 (publication extension)_ | none | none |
+| FR-14 | _Withdrawn 2026-10-12 (public release package)_ | none | none |
+| FR-15 | Evaluate transfer on IndirectRequests | December | Planned |
 
 ### FR-01: Preserve the research question
 
@@ -262,7 +311,7 @@ Retain the original context-and-linguistic-ambiguity question, two-stage framing
 
 **Scope:** December. **Starting state:** Extend existing.
 
-Use original assistant dialogue for primary gold; collect addressed literary exchanges as transfer. Record editions, locators, provenance, rights, hashes and exclusions. Main benchmark inputs are not generated or rewritten for balance.
+Use original assistant dialogue for primary gold. Optionally collect addressed literary exchanges as a separately reported add-on. Record editions, locators, provenance, rights, hashes and exclusions. Main benchmark inputs are not generated or rewritten for balance.
 
 **Acceptance:** Every accepted item reconstructs to a pinned source with speaker, addressee and prior evidence; inclusion is independent of model performance.
 
@@ -270,7 +319,7 @@ Use original assistant dialogue for primary gold; collect addressed literary exc
 
 **Scope:** December. **Starting state:** Planned.
 
-Screen about 60 candidates: 40 original dialogue and 20 literary. Inspect level, function, intent, genre and group coverage before selecting quotas.
+Label the 40-turn original-dialogue pilot (plus any screened literary candidates). Inspect level, function, intent and group coverage before selecting quotas.
 
 **Acceptance:** Pilot inventory and inclusion/exclusion log exist; no pilot group enters the untouched test sample.
 
@@ -286,7 +335,7 @@ Preserve rubric v2 and initial historical labels. Add contextual function, reque
 
 **Scope:** December. **Starting state:** Decision pending.
 
-Seek independent labeling of all new test items; minimum course goal is a stratified 25% plus difficult literary items. Use initial labels for agreement and separate adjudication. Independent condition judgments support a human baseline.
+Seek independent labeling of all new test items; minimum course goal is a stratified 25%. Use initial labels for agreement and separate adjudication. Independent condition judgments support a human baseline.
 
 **Acceptance:** Agreement has raters, denominator, sampling and rubric version. Without independent raters, gold is provisional and human-baseline/ambiguity agreement claims are absent.
 
@@ -330,37 +379,34 @@ Freeze paired contrasts, grouped bootstrap, dependence model or descriptive fall
 
 **Acceptance:** A context main effect is not labeled an interaction; sparse/underpowered analyses remain exploratory; null findings can satisfy study completion.
 
-### FR-11: Position the study with a bounded review
+### FR-11: Position the study in related work
 
 **Scope:** December. **Starting state:** Planned.
 
-Map pragmatic inference and unsupported interpretation literature from 2015-2025 plus a separate 2026 competitor update. Log search dates/strings, screening and task-specific metrics.
+Write a standard related-work section from the proposal's five references (DIRECT, George & Mamidi, IndirectRequests, Żelasko et al., DRInQ) plus closely related recent work found by a short logged search (search strings and dates). No systematic or hallucination review.
 
-**Acceptance:** Paper explains the gap with primary references; incomparable hallucination metrics are not pooled into a worldwide accuracy.
+**Acceptance:** The paper states the gap (context × indirectness across model families, detection and interpretation) against primary references, and names the closest competitors honestly.
 
 ### FR-12: Produce the December paper and results package
 
 **Scope:** December. **Starting state:** Planned.
 
-Deliver a paper, model comparison tables, context-by-level figures, source/annotation datasheet, error audit, configs, predictions and reproduction instructions.
+Deliver a computer-science research paper (abstract, introduction, related work, data and annotation, task and models, experimental setup, results, analysis and error audit, limitations, ethics, conclusion), plus model comparison tables, context-by-level figures, a source/annotation datasheet, configs, predictions and reproduction instructions. The course professor guides the paper's final form.
 
 **Acceptance:** Every reported number links to a frozen run and denominator; the class due date determines final writing/reproduction buffer.
 
-### FR-13: Extend the study for publication
+### FR-13, FR-14: Withdrawn
 
-**Scope:** Publication. **Starting state:** Later.
+Withdrawn 2026-10-12. Publication extension and public release are outside this class study.
+The data-handling rules (no restricted DIRECT text or annotator identity in git) still apply under NFR-03.
 
-After the class, expand independent raters, groups, literary works and model families; replicate with justified power and verify the WDSI call and format.
+### FR-15: Evaluate transfer on IndirectRequests
 
-**Acceptance:** Venue date/format are confirmed; stronger validation and a separate replication support publication-level claims.
+**Scope:** December. **Starting state:** Planned. **Added:** 2026-10-12 (restores proposal week 2).
 
-### FR-14: Release a source-compatible research package
+Run the frozen models on the IndirectRequests test split under the `none` condition: Stage 1 request recall (every item is a request) and Stage 2 recovery of the gold slot value from its closed candidate set. Items whose target is `<ambiguous>` form a separate slice. Use the train/validation splits only for dev checks, never for selecting test results.
 
-**Scope:** Publication. **Starting state:** Later.
-
-Release only source-permitted text or stable references, own annotations and reconstruction instructions. Preserve notices and keep restricted text and secrets local.
-
-**Acceptance:** Release manifest assigns permitted content per source; no restricted DIRECT text or private annotator identity enters GitHub.
+**Acceptance:** Results are a separate table labeled as LLM-generated transfer data, with GPT-family models flagged; no IndirectRequests item enters the main benchmark, training data or git.
 
 ## 11. Technical boundaries and work packages
 
@@ -374,23 +420,23 @@ HTML/CSS/JavaScript because an offline explainer does not require the preferred 
 | Annotation | src/annotation/ and historical form-label CSVs exist. | Contextual supplement, separate evidence/function records and validation. |
 | Context rendering | DIRECT loader supports context and donors. | Source-aware original/literary rendering, invariant checks and manifests. |
 | Model runs | src/stage1/ supports weak TF-IDF/encoder training. | Contextual gold adapter, structured LLM outputs and declared hybrid routing. |
-| Evaluation | src/evaluation/ supports form/weak-label dev scoring. | Stage 2, oracle/end-to-end, invalid-output handling and source/group reporting. |
+| Evaluation | src/evaluation/ supports form/weak-label dev scoring. | Stage 2, oracle/end-to-end, invalid-output handling and source/group reporting; IndirectRequests transfer loader and slot-value scorer (FR-15). |
 | Analysis/report | Draft methods exist. | Frozen analysis implementation, figures/tables and reproducible class report. |
 
 | Package | Work | Dependencies | Done evidence |
 |---|---|---|---|
 | WP-01 | Resolve course deadline/resources; adjudicate round 2. | Existing context/rubric. | Due date record; immutable initial and documented final labels. |
-| WP-02 | Register sources and screen dev pilot. | WP-01 scope. | Candidate inventory/exclusion log; source hashes/locators. |
+| WP-02 | Register sources; screen the optional literary pilot. | WP-01 scope. | Candidate inventory/exclusion log; source hashes/locators. |
 | WP-03 | Pilot contextual supplement and independent judgments. | WP-02. | Versioned rubric, agreement/limitations and taxonomy. |
 | WP-04 | Collect untouched groups and validate splits. | WP-03 decisions. | Group leakage audit and source/label manifest. |
 | WP-05 | Render contexts and verify donor/cue invariants. | WP-03 stable contract; WP-04 for final freeze. | Deterministic common-set manifest and target equality. |
-| WP-06 | Build contextual adapters and Stage 2/routing scorers. | WP-03 stable contract; dev fixtures. | Contract/error/denominator tests; dev predictions. |
+| WP-06 | Build contextual adapters, Stage 2/routing scorers and the IndirectRequests transfer adapter. | WP-03 stable contract; dev fixtures. | Contract/error/denominator tests; dev predictions. |
 | WP-07 | Train/run models on dev; choose recipes/prompts. | WP-05/06 dev interfaces. | Baseline outputs and pinned candidate recipes. |
 | WP-08 | Decide H2 feasibility and freeze dataset/analysis/models. | WP-04/05/06/07; pilot statistics. | Freeze record, hashes, final comparison list. |
 | WP-09 | Run the held-out grid and hybrid. | WP-08. | Complete validated predictions and provenance. |
 | WP-10 | Analyze, audit errors and produce figures. | WP-09, frozen analysis. | Traceable contrasts, intervals, exclusions and limitations. |
-| WP-11 | Write/reproduce December paper and demo. | WP-10; literature review may start at WP-01. | Course delivery package and reproduction evidence. |
-| WP-12 | Expand validation and replicate for publication. | WP-11 and confirmed venue requirements. | Stronger study, manuscript and permitted release. |
+| WP-11 | Write/reproduce December paper and demo. | WP-10; related-work reading may start at WP-01. | Course delivery package and reproduction evidence. |
+| WP-12 | _Withdrawn 2026-10-12 (publication)._ | none | none |
 
 Model development and scorer work can proceed on dev while final annotation is collected.
 No reported test run bypasses WP-08. The task breakdown is a dependency plan, not a claim that
@@ -448,11 +494,12 @@ is an item property, not a reason to drop a model error after seeing its predict
 ## 14. Schedule and deliverables
 
 These dates are working windows from the existing revised plan, not verified submission dates.
+The [roadmap](roadmap.md) compresses them to the Dec 3 estimate (D-01) and governs day to day.
 
 | Window | Milestone | Work | Exit deliverable |
 |---|---|---|---|
-| Oct 12–18 | Frame + screen | Adjudicate round 2, screen the 60-candidate dev pilot, confirm deadline and resources. | Source inventory, exclusion log and provisional taxonomy. |
-| Oct 19–25 | Calibrate + decide | Pilot contextual labels, inspect level/genre coverage, run weak-label baselines on dev. | Agreement/feasibility report or explicit solo-rater limits. |
+| Oct 12–18 | Frame + label | Adjudicate round 2, label the 40-turn dialogue pilot, confirm deadline and resources; screen literary candidates only if time allows. | Pilot labels and provisional taxonomy. |
+| Oct 19–25 | Calibrate + decide | Pilot contextual labels, inspect level/intent coverage, run weak-label baselines on dev. | Agreement/feasibility report or explicit solo-rater limits. |
 | Oct 26–Nov 1 | Collect + freeze | Collect untouched groups; freeze gold, context, splits and proposed analysis. | Manifest, hashes, datasheet and analysis freeze record. |
 | Nov 2–8 | Build + validate | Implement task adapters and Stage 2 scoring; train baseline/encoder; validate LLM on dev. | Verified scorers, reproducible dev outputs and pinned models. |
 | Nov 9–15 | Run the core grid | Use frozen models/prompts on held-out context conditions; run hybrid. | Complete predictions, seeds, runtime/cost and provenance. |
@@ -465,19 +512,14 @@ buffer earlier; do not delete freeze, leakage, scorer verification or honest-lim
 
 ### December package
 
-- Class paper with problem/question, literature positioning, source/annotation methods,
-  model recipes, paired results, error analysis, limitations and conclusions.
+- Computer-science class paper (FR-12 structure) with problem/question, related work,
+  source/annotation methods, model recipes, paired results, error analysis, limitations and conclusions.
 - Frozen source/label/split/context datasheet and reconstruction manifest.
 - Verified prediction files, run provenance, metrics, model comparison tables and
   context-by-level figures with uncertainty and explicit denominators.
+- Separate IndirectRequests transfer table and, if collected, a separate literary add-on table.
 - Reproduction commands/configs and a small explanation/demo of the two-stage task.
 - Transparent fallback/pilot classification if coverage or annotation cannot support stronger claims.
-
-### Publication package
-
-Expand independent validation, literary works/source groups, model families and replication.
-Confirm WDSI's official call, year, deadline and paper format with the professor. Release only
-permitted materials; no publication or external submission is made merely by completing this spec.
 
 ## 15. Acceptance scenarios and traceability
 
@@ -496,7 +538,8 @@ permitted materials; no publication or external submission is made merely by com
 | AC-11 | Only Sandy can annotate. | Gold is provisional; no fabricated kappa, independent human baseline or validated-benchmark claim. | FR-05/12 |
 | AC-12 | A table is included in the class paper. | Its inputs, endpoint/denominator, run/model/data hashes and reproduction command are traceable. | FR-12 |
 | AC-13 | HTML controls are changed offline. | Pipeline, context explanation, workload, roadmap and requirement search work; no external requests or fake results. | NFR-07/08/09 |
-| AC-14 | Publication release contains third-party text. | Source-permitted release mode/notices are checked; restricted material is replaced by source references. | FR-14 |
+| AC-14 | _Withdrawn 2026-10-12 with FR-14._ | none | none |
+| AC-15 | A model is run on IndirectRequests. | Results sit in a separate transfer table labeled LLM-generated; GPT-family models are flagged; no item is in the main benchmark, training data or git. | FR-15 |
 
 ## 16. Risks, fallbacks and unresolved decisions
 
@@ -504,25 +547,26 @@ permitted materials; no publication or external submission is made merely by com
 |---|---|---|
 | Sparse L3/intent coverage | Interaction cannot be estimated defensibly. | Collect genuine candidates; restrict represented taxonomy; exploratory fallback. |
 | Source/level confounding | Genre shortcuts resemble pragmatic ability. | Separate strata; inspect shared support and utterance-only probes. |
-| Single-rater gold | Independent reliability/human baseline unavailable. | Report provisional pilot; expand raters for publication. |
-| Famous literary passages | Memorization can resemble inference. | Avoid unnecessary identifying titles, audit canonical familiarity, expand lesser-known sources; no contamination-free claim. |
+| Single-rater gold | Independent reliability/human baseline unavailable. | Report provisional pilot; ask the course professor about a second rater (D-02). |
+| Famous literary passages | Memorization can resemble inference. | Avoid unnecessary identifying titles, audit canonical familiarity; no contamination-free claim. Only applies if the add-on is collected. |
+| Generated transfer text | IndirectRequests was written by GPT models, which may favor GPT-family systems. | Separate table, GPT-family flag, never pooled with or substituted for human gold. |
 | Future evidence leakage | Artificially easy interpretation. | Prior-only renderer; separate annotation evidence and eligibility flags. |
 | Rewrite fact drift | Context effects reflect contradiction errors. | Review flags and report auxiliary-source sensitivity; original gold remains distinct. |
 | GPU/API/access constraints | Model grid threatens December deadline. | One feasible encoder/LLM before extras; baseline-first; record recipe limits. |
 | Statistical instability | Unreliable mixed-effects estimates. | Freeze supported implementation or descriptive fallback on dev. |
-| Timeline or venue ambiguity | Wrong deadline becomes the plan. | Confirm class date now; publication call separately. |
+| Timeline ambiguity | Wrong deadline becomes the plan. | Confirm the class date with the course professor now. |
 | Explainer mistaken for live tracker | Local simulations imply completed research. | Draft/status labels; no real-run actions or completion percentage. |
 
 | Decision | Topic | Owner | Resolve by | Current position |
 |---|---|---|---|---|
 | D-01 | Exact December due date | Sandy + course instructor | Before scheduling the final buffer | December priority confirmed; exact date pending. |
-| D-02 | Independent second rater | Sandy + professor | Before collecting non-author judgments | Availability and university determination pending. |
-| D-03 | Supported intents and required slots | Sandy + professor | After the dev pilot; before freeze | Original six-to-eight-category ambition retained; exact represented subset pending. |
-| D-04 | Test size and H2 power | Sandy with statistical advice | Late October; before test scoring | Target 160–240 dialogue / ≥50 groups plus 20–40 literary / ≥10 families; fallback 120 / ≥30 groups. |
+| D-02 | Independent second rater | Sandy + course professor | Before collecting non-author judgments | Availability and university determination pending. |
+| D-03 | Supported intents and required slots | Sandy + course professor | After the dev pilot; before freeze | Original six-to-eight-category ambition retained; exact represented subset pending. |
+| D-04 | Test size and H2 power | Sandy with statistical advice | Late October; before test scoring | Target 160–240 dialogue / ≥50 groups; fallback 120 / ≥30 groups. Literary add-on size is optional. |
 | D-05 | Model/version, budget and lab access | Sandy | Before model development and paid runs | Pinned existing encoder environment; checkpoint/API snapshot and cap pending. |
 | D-06 | Context and mismatch rendering | Sandy | Before dataset freeze | None/one/full plus separate corrupted mismatch; exact windows pending. |
 | D-07 | Statistical implementation | Sandy with statistical advice | On dev; before analysis freeze | Grouped paired contrasts; mixed-effects interaction only if supported. |
-| D-08 | WDSI year, call and format | Sandy + professor | Before publication submission planning | WDSI direction confirmed; official year/deadline unverified. |
+| D-08 | _Withdrawn 2026-10-12 (WDSI is not part of this study)._ | none | none | none |
 
 ## 17. Definition of done and guide review
 
@@ -534,9 +578,6 @@ workload counts have been checked; original code/data are unchanged; unresolved 
 **The December study is done when:** the course paper and actual model-result package meet FR-12
 and the relevant acceptance scenarios, with every downgrade/pilot limitation disclosed.
 The HTML/spec alone does not satisfy this condition.
-
-**The publication phase is ready when:** FR-13/14 have evidence, faculty/venue requirements are
-confirmed, and a reviewable expanded manuscript/release is prepared. Acceptance is not guaranteed.
 
 ### Guide interaction contract
 

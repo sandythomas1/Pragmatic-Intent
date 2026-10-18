@@ -64,7 +64,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         predictions = []
         for condition, pairs in prepared.eval_inputs.items():
             probabilities = classifier.predict_proba(features(pairs))  # columns: classes 0, 1, 2
-            predictions += runner.prediction_rows(prepared.eval, condition, probabilities)
+            predictions += runner.prediction_rows(prepared.eval_sets[condition], condition, probabilities)
         model_info = {"name": "tfidf_logreg", "use_context": settings.use_context,
                       "n_features": train_features.shape[1], "iterations": int(max(classifier.n_iter_))}
         runner.finish(args, config, prepared, predictions, model_info, started)

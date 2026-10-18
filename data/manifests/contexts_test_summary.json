@@ -1,0 +1,84 @@
+{
+  "budget_words": 350,
+  "built_at": "2026-10-15T00:56:53Z",
+  "cue_flags": {
+    "donor_cue": 574,
+    "donor_cue_one": 99,
+    "dropped_cue": 2
+  },
+  "donor_domain_check": "acts_only",
+  "dropped": {
+    "full": {
+      "examples": 104,
+      "turns": 229
+    },
+    "mismatched": {
+      "examples": 54,
+      "turns": 108
+    }
+  },
+  "genuine": 11195,
+  "inputs": {
+    "dialogues_sha256": "574ae000db5562521e3a767f4ee55e4e64abdf89e60d9038c47f4f7d25059949",
+    "items_sha256": "c7f56b41bde43598f04b867ad6a52189d632c53578cf49734d44b6034550fe83"
+  },
+  "lengths_words": {
+    "full": {
+      "max": 350,
+      "mean": 137.0,
+      "median": 128,
+      "n": 11195,
+      "over_budget": 0,
+      "p95": 278
+    },
+    "mismatched": {
+      "max": 350,
+      "mean": 132.6,
+      "median": 123,
+      "n": 11123,
+      "over_budget": 0,
+      "p95": 265
+    },
+    "mismatched_one": {
+      "max": 77,
+      "mean": 27.9,
+      "median": 27,
+      "n": 11123,
+      "over_budget": 0,
+      "p95": 43
+    },
+    "none": {
+      "max": 45,
+      "mean": 11.9,
+      "median": 11,
+      "n": 11195,
+      "over_budget": 0,
+      "p95": 21
+    },
+    "one": {
+      "max": 70,
+      "mean": 29.1,
+      "median": 29,
+      "n": 11195,
+      "over_budget": 0,
+      "p95": 44
+    }
+  },
+  "manifest_file": "contexts_test.csv",
+  "manifest_sha256": "3dd59868379a94c83d298e6f7f3d3a765b3bb7f96d1d7b7ab5592d899413a977",
+  "mismatch": 11123,
+  "mismatch_excluded": {
+    "no_donor": 72
+  },
+  "policy": "direct_variants_v1",
+  "policy_excluded": {
+    "no_prior_context": 1000,
+    "no_user_acts": 618,
+    "unacceptable_direct": 18,
+    "unacceptable_indirect": 295
+  },
+  "renderer_version": "render-v1",
+  "schema_version": "context-manifest-v1",
+  "split": "test",
+  "target_over_budget": 0
+}

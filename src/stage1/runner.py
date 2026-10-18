@@ -1,7 +1,8 @@
 """Shared plumbing for Stage 1 trainers: arguments, data preparation, outputs, result log.
 
 A trainer fits on ``train_split`` under ``train_condition`` and predicts the
-comparable ``eval_split`` examples under every ``eval_conditions`` entry. Training
+``eval_split`` examples under every ``eval_conditions`` entry: the genuine set under
+none / one / full, the mismatch set under the mismatch conditions (spec 004). Training
 a ``full``-context model and scoring it under ``mismatched`` is the
 relevant-context control; training under each condition separately gives the
 context ablation.
@@ -18,8 +19,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from src.data.contexts import MISMATCH_CONDITIONS, in_mismatch_set
 from src.data.direct_dataset import load_dialogues, load_items
-from src.evaluation.stage1 import build_report, load_levels
+from src.evaluation.stage1 import ScoringSets, Slices, build_report, rule_slices, scoring_sets
 from src.stage1 import provenance
 from src.stage1.config import RunConfig, load_config
 from src.stage1.data import STAGE1_LABELS, Stage1Example, build_examples, contexts_defined, model_inputs
@@ -32,8 +34,11 @@ Pair = tuple[str, str]  # (context text, utterance); empty context means none
 class Prepared:
     train: list[Stage1Example]
     train_inputs: list[Pair]
-    eval: list[Stage1Example]
-    eval_inputs: dict[str, list[Pair]]
+    eval: list[Stage1Example]  # the genuine set
+    eval_sets: dict[str, list[Stage1Example]]  # per condition: genuine, or the mismatch subset
+    eval_inputs: dict[str, list[Pair]]  # aligned with eval_sets
+    slices: Slices = field(default_factory=dict)
+    sets: ScoringSets | None = None
     counts: dict[str, Any] = field(default_factory=dict)
 
 
@@ -68,10 +73,13 @@ def prepare(config: RunConfig, smoke: bool = False) -> Prepared:
     kept = [e for e in train if contexts_defined(items_by_id[e.item_id])]
     train_excluded["no_mismatch_donor"] = len(train) - len(kept)
     train = kept
-    evaluation, eval_excluded = build_examples(items, data.eval_split, data.policy, require_comparable=True)
+    evaluation, eval_excluded = build_examples(items, data.eval_split, data.policy, require_context=True)
     if smoke:  # strided, so every class and many dialogues survive
         train = train[:: max(1, len(train) // 1000)][:1000]
         evaluation = evaluation[:: max(1, len(evaluation) // 300)][:300]
+    mismatch = [e for e in evaluation if in_mismatch_set(items_by_id[e.item_id])]
+    eval_sets = {condition: mismatch if condition in MISMATCH_CONDITIONS else evaluation
+                 for condition in data.eval_conditions}
 
     def inputs(examples: list[Stage1Example], condition: str) -> list[Pair]:
         pairs = model_inputs(examples, items_by_id, dialogues, condition)
@@ -80,9 +88,12 @@ def prepare(config: RunConfig, smoke: bool = False) -> Prepared:
         return pairs  # type: ignore[return-value]
 
     prepared = Prepared(
-        train=train, train_inputs=inputs(train, data.train_condition), eval=evaluation,
-        eval_inputs={condition: inputs(evaluation, condition) for condition in data.eval_conditions},
-        counts={"train_excluded": train_excluded, "eval_excluded": eval_excluded},
+        train=train, train_inputs=inputs(train, data.train_condition), eval=evaluation, eval_sets=eval_sets,
+        eval_inputs={condition: inputs(examples, condition) for condition, examples in eval_sets.items()},
+        slices=rule_slices(evaluation, items),
+        sets=scoring_sets(evaluation, items, dialogues),
+        counts={"train_excluded": train_excluded, "eval_excluded": eval_excluded,
+                "mismatch_excluded": {"no_donor": len(evaluation) - len(mismatch)}},
     )
     if not prepared.train or not prepared.eval:
         raise ValueError("no training or evaluation examples after applying the policy")
@@ -114,8 +125,8 @@ def finish(args: argparse.Namespace, config: RunConfig, prepared: Prepared,
            predictions: list[dict[str, Any]], model_info: dict[str, Any], started: float) -> Path:
     """Score, write outputs (IDs and labels only), and append to the results log."""
     data = config.data
-    levels = load_levels([Path(path) for path in data.levels])
-    report = build_report(prepared.eval, predictions, levels, config.bootstrap_samples, config.bootstrap_seed)
+    report = build_report(prepared.eval, predictions, prepared.slices, prepared.sets,
+                          config.bootstrap_samples, config.bootstrap_seed)
     run = {
         "run": config.name, "kind": config.kind, "seed": args.seed, "machine": args.machine,
         "smoke": args.smoke, "policy": data.policy, "train_split": data.train_split,
@@ -136,11 +147,14 @@ def finish(args: argparse.Namespace, config: RunConfig, prepared: Prepared,
     if not args.smoke:
         provenance.append_result(args.results, {
             **run, "output_dir": str(out),
-            "conditions": {condition: {key: metrics[key] for key in ("n", "accuracy", "macro_f1", "accuracy_ci95")}
+            "renderer_version": report["renderer_version"], "sets": report["sets"], "slices": report["slices"],
+            "conditions": {condition: {key: metrics[key] for key in ("set", "n", "accuracy", "macro_f1", "accuracy_ci95")}
                            for condition, metrics in report["conditions"].items()},
-            "contrasts": {name: {"difference": c["difference"], "ci95": c["ci95"],
-                                 "by_variant": {v: {"difference": s["difference"], "ci95": s["ci95"]}
-                                                for v, s in c["by_variant"].items()}}
+            "contrasts": {name: {"set": c["set"], "n": c["n"], "difference": c["difference"], "ci95": c["ci95"],
+                                 **({"without_cue_donors": c["without_cue_donors"]} if "without_cue_donors" in c else {}),
+                                 **{key: {v: {"difference": s["difference"], "ci95": s["ci95"]}
+                                          for v, s in breakdown.items()}
+                                    for key, breakdown in c.items() if key.startswith("by_")}}
                           for name, c in report["contrasts"].items()},
         })
     for condition, metrics in report["conditions"].items():

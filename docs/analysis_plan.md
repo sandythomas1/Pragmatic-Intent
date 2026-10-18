@@ -8,7 +8,8 @@ Retain the proposal's context/linguistic-ambiguity question. Operationalize indi
 independent wording labels; measure ambiguity separately. Follow the
 [research plan](research_plan.md) and [collection protocol](source_collection_plan.md).
 
-Assistant dialogue is the primary December stratum; literature is separate transfer/pilot analysis.
+Assistant dialogue is the primary December stratum. IndirectRequests (FR-15) and the optional
+literary add-on are separate transfer analyses, never pooled into the primary interaction.
 Original full preceding context establishes historical gold, held fixed across ablations.
 Reduced-context scores measure recovery of that historical intent, not the sole reasonable reading
 without context. Also report human uncertainty and supported alternative readings by condition.
@@ -43,7 +44,10 @@ task error measure, not a worldwide hallucination estimate.
 - H4: detection and oracle interpretation on identical gold indirect items/conditions; show routing
   losses. Different denominators would make the comparison uninterpretable.
 - H5: supported intent slices; small cells and clarification are exploratory.
-- Literary transfer: separate genre, canonical familiarity, function and exploratory depth reporting.
+- IndirectRequests transfer: utterance-only Stage 1 recall (every item is a request) and Stage 2
+  slot-value accuracy over the closed candidate set, on the test split; `<ambiguous>` targets as a
+  separate slice. Label the table LLM-generated and flag GPT-family models.
+- Literary add-on (if collected): separate genre, canonical familiarity and function reporting.
   Do not pool source-confounded cells into the primary interaction.
 
 Bootstrap complete dialogue/episode groups, preserving every item's conditions/model outputs.

@@ -19,6 +19,7 @@ venv/
 data/raw/
 data/external/
 data/interim/
+data/manifests/contexts_dev.csv
 
 # Model artifacts and experiment tracking
 checkpoints/

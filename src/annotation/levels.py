@@ -155,6 +155,11 @@ def labeled_turns(annotations_dir: Path) -> set[tuple[str, int]]:
     return seen
 
 
+def labeled_dialogues(annotations_dir: Path) -> set[str]:
+    """Every dialogue_id with at least one turn in any committed round: the annotator has read it."""
+    return {dialogue_id for dialogue_id, _ in labeled_turns(annotations_dir)}
+
+
 def eligible_items(items: Sequence[dict[str, Any]], split: str, exclude: set[tuple[str, int]]) -> list[dict[str, Any]]:
     eligible = [
         item

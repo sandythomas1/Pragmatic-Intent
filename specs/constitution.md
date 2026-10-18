@@ -14,6 +14,9 @@ Where they conflict, spec 001 wins and this file is updated.
   of a model's prediction. Exhaustive enumeration within a drawn group beats hand-picking.
 - **Claude is never a gold annotator.** Claude may build tooling, propose candidates
   mechanically and seal its own labels for comparison. Human annotators decide every label.
+  *Scoped exception (2026-10-13, spec 001 v1.2):* directness levels may come from fixed,
+  versioned wording rules that are frozen before they are scored against human labels. They are
+  reported as rule-assigned with their agreement, never as human gold.
 - **Leakage is controlled by group.** Every turn, variant, retelling and translation of one
   episode/family shares one split. Anything a researcher has inspected for calibration or a
   pilot never enters untouched test.
