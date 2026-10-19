@@ -3,13 +3,13 @@
 Input is ``[CLS] context [SEP] utterance [SEP]``, or the utterance alone when the
 context is empty. Context is truncated from the left, so the turns nearest the
 target survive; the utterance is never truncated. Training uses fp32 master
-weights with bf16 autocast, which both the RTX 5060 (sm_120) and RTX 4090
-(sm_89) support. The effective batch size comes from the config. On a smaller
-GPU, lower ``--micro-batch-size``; gradient accumulation keeps the optimization
-the same.
+weights with bf16 autocast, which the RTX 5060 and RTX 5090 (both sm_120) and
+the RTX 4090 (sm_89) support. The effective batch size comes from the config. On
+a smaller GPU, lower ``--micro-batch-size``; gradient accumulation keeps the
+optimization the same.
 
-    python -m src.stage1.encoder --config configs/stage1/encoder_deberta_v3_base.toml \\
-        --seed 13 --train-condition full --machine lab-4090
+    python -m src.stage1.encoder --config configs/stage1/encoder_deberta_v3_large.toml \\
+        --seed 13 --train-condition full --machine lab-5090
     python -m src.stage1.encoder --config configs/stage1/encoder_deberta_v3_base.toml \\
         --seed 13 --train-condition full --machine rtx5060-wsl --micro-batch-size 8 --smoke
 """

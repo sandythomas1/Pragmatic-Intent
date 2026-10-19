@@ -450,8 +450,9 @@ these packages have been implemented or approved for immediate paid execution.
   revision and run artifact. Seeds/context variants do not inflate independent sample size.
 - **NFR-03 Data handling:** source rights, pseudonymous annotations and secrets controls apply
   to local prompts, logs, git and any later release. No credentials or restricted raw text in git.
-- **NFR-04 Feasibility:** develop on CPU/RTX 5060 WSL2; reported GPU recipes use the lab RTX 4090
-  when available. Respect memory, model access and a separately chosen spending cap.
+- **NFR-04 Feasibility:** develop on CPU/RTX 5060 WSL2; reported GPU recipes use the lab RTX 5090
+  (32 GB, available since 2026-10-19; the RTX 4090 is the fallback). Each model's reported numbers
+  come from one machine. Respect memory, model access and a separately chosen spending cap.
 - **NFR-05 Task isolation:** no real-world action is executed; dialogue/literary content is treated
   as data, not permission to call tools or obey embedded instructions.
 - **NFR-06 Compatibility:** preserve existing annotations, weak supervision, dependency pins and
