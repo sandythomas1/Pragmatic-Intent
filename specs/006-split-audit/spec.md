@@ -1,6 +1,6 @@
 # Spec 006: Split and prior-inspection audit
 
-> **Phase:** Implemented · **Status:** T1–T9 done 2026-10-19 ([verification](verification.md)); WSL `audit --verify` pending · **Owner:** Sandy (decisions), Claude (tooling) · **Date:** 2026-10-19
+> **Phase:** Implemented · **Status:** T1–T9 done 2026-10-19 ([verification](verification.md)); WSL `audit --verify` passed · **Owner:** Sandy (decisions), Claude (tooling) · **Date:** 2026-10-19
 > The *what* and *why*. No implementation detail; that belongs in `plan.md`.
 
 Parent: [spec 001](../001-pragmatic-intent-study/spec.md) WP-04, FR-06, AC-04; WP-08 (freeze).

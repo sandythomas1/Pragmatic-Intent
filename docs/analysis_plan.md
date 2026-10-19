@@ -120,8 +120,8 @@ checks and source-separated results. Do not claim naturally occurring wording wa
 - [ ] Taxonomy, form/function supplement, required slots and gold policy settled.
 - [ ] Pilot agreement, coverage and sample/power decision recorded; single-rater limits explicit.
 - [ ] IDs, source/group splits, exclusions, context/donor mappings and hashes frozen. (Spec 006
-      audit built 2026-10-19, content hash `432e402c841b…`; rerun the transcript scan just before
-      the freeze, and have Sandy run `audit --verify` in WSL.)
+      audit built 2026-10-19, content hash `432e402c841b…`; verified byte-identical on Windows
+      and WSL. Rerun the transcript scan before the freeze if test data is touched again.)
 - [ ] Model revisions, training-label policies, prompts, token budgets, seeds and retry rules pinned.
 - [ ] Contextual adapter, Stage 2 scorer and routing tested on dev.
 - [ ] Endpoint/test, bootstrap settings, secondary comparison family, statistical implementation

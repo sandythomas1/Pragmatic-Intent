@@ -223,8 +223,8 @@ Python 3.12 with `unittest`, invented fixtures only, and no command prints utter
     run's console output contains no test utterance text.
   - The full suite passes on native Windows Python 3.12. The docs, decisions and roadmap record
     the policies (AC-006-12).
-- Status: done (2026-10-19), except Sandy's WSL `audit --verify` (command in
-  [verification.md](verification.md)).
+- Status: done (2026-10-19). WSL `audit --verify` passed the same day, with identical input
+  hashes; the transcript rescan found nothing new ([verification.md](verification.md)).
   - The registry holds **51** `pre_freeze` dialogues, not 49. Two session-log dialogues appear only
     inside item IDs, which the earlier count's pattern missed. Both are explained in
     verification.md.

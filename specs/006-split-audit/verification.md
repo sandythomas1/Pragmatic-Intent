@@ -63,6 +63,20 @@ Under the conservative session-log policy (Sandy approved R2), all four are regi
 - **No build timestamp in the summary.** Both files are fully deterministic, so `--verify` compares
   them byte for byte.
 
+## Cross-OS check and rescan (2026-10-19, after the PR opened)
+
+- **WSL `audit --verify`: passed (exit 0)** on WSL, Python 3.12.15, using Sandy's WSL data:
+  - WSL `items.jsonl` and `dialogues.jsonl` have the same SHA-256 as on Windows (`c7f56b41…`,
+    `574ae000…`);
+  - `check` passes;
+  - both audit files match a fresh build byte for byte (content `432e402c841b…`).
+
+  It ran from a temporary detached worktree of the pushed branch (`e8cd23a`). The worktree was
+  then removed, leaving Sandy's own WSL checkout (`stage1/encoder-dev-5060`) untouched.
+- **Transcript rescan:** 22 log files, 22 test dialogues mentioned, **0 not yet registered**. The
+  registry and audit are unchanged. Rerun it once more if any session works with test data before
+  the freeze.
+
 ## For Sandy (WSL, before the freeze)
 
 ```bash

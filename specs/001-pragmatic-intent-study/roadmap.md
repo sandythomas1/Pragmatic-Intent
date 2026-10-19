@@ -57,7 +57,7 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 | WP-02 Register sources, screen dev pilot | Code + human | C tooling, S screening | **002** literary sources and screening | Tooling done. 9 dev families and 22 candidates proposed (2026-10-10). Screening is **optional** since 2026-10-12. |
 | WP-02b Dialogue pilot draw (40 dev dialogues × 1 turn) | Code (small) + human | C, S | Folded into **003** | Done 2026-10-11: `pilot1` drawn (seed 20261011) by spec 003 T5. |
 | WP-03 Contextual annotation supplement and pilot labels | Historical tooling | C | **003** | Tooling retained; form/context/reveal passes and taxonomy approval dropped under option A on 2026-10-13. No form-A1 work remains. |
-| WP-04 Audit official groups, prior inspection and splits | Code + human | C audit, S review | **006** split audit | Tooling done 2026-10-19 (T1–T9). Registry: 51 inspected test dialogues (13 label-round, 10 obsolete sheet, 24 fact-drift, 4 session logs), plus 5 cross-split duplicates excluded. Primary set: 10,585 genuine / 10,513 mismatch examples. Pending: Sandy's WSL `audit --verify`. |
+| WP-04 Audit official groups, prior inspection and splits | Code + human | C audit, S review | **006** split audit | Tooling done 2026-10-19 (T1–T9). Registry: 51 inspected test dialogues (13 label-round, 10 obsolete sheet, 24 fact-drift, 4 session logs), plus 5 cross-split duplicates excluded. Primary set: 10,585 genuine / 10,513 mismatch examples. WSL `audit --verify` passed. |
 | WP-05 Context renderer and invariants | Code | C | **004** context conditions | Tooling done 2026-10-14 (T1–T16). `check` passes on dev and test; test manifest committed. |
 | WP-06 Act references, Stage 2/routing scorers, IndirectRequests transfer (FR-15) | Code | C | **005** scoring | Tooling implemented 2026-10-18; dev inputs prepared. Model outputs and later adequacy/LLM-judge calibration pending. |
 | WP-07 Models on dev | Code | **S**, C reviews | none (Sandy's code) | Existing weak Stage 1 trainers only. |
@@ -153,9 +153,9 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   - Stage 1 and Stage 2 test scoring now require it.
   - The registry has 51 dialogues, not 49; why is in [verification](../006-split-audit/verification.md).
   - `dup_exact` is 15.0% of primary examples, mostly NR thanks/bye lines; `needs_decision` is false.
-- [ ] S (WSL, before the freeze): `uv run python -m src.data.split_audit audit --verify` must exit 0.
-- [ ] C (immediately before the freeze): rerun `split_audit scan --transcripts ...` with IDs masked,
-  then `register`/`audit` again if it adds rows.
+- [x] WSL `audit --verify` passed 2026-10-19: same input hashes as Windows, byte-identical audit.
+- [x] C: Transcript rescan 2026-10-19: no new test dialogues. Rerun just before the freeze only if a
+  session works with test data in the meantime.
 - [ ] C: `/spec-retro 006`.
 - [ ] S: Supply dev model outputs using [the Stage 2 contract](../../docs/stage2_scoring.md).
   The tooling runs no models and does not yet evaluate free-paraphrase adequacy.
