@@ -5,6 +5,19 @@ running curriculum, so review it periodically.
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-10-19: An AI assistant's session logs are an inspection record (006)
+- **Pattern choice changes the count.** A word-boundary regex (`\bMUL1234\b`) silently misses IDs
+  embedded in compound keys (`MUL1234_t02`), because `_` is a word character. The session-log
+  count moved from 2 to 4 hits with a boundary-safe pattern.
+- **Check real data, not only fixtures.** Real sheets break assumptions that fixtures never test:
+  one ragged row in a hand-made CSV, and another spec's key-file convention.
+- **Audit the auditor's own leaks.** A real test ID typed into a unit-test fixture is itself an
+  exposure. Every real-data command in this session piped its output through an ID mask, so the
+  transcript gained no new test IDs. Use invented IDs (`PMUL9xxx`) in fixtures.
+- **Choose what is hashed.** Leaving a timestamp out of a deterministic summary keeps `--verify`
+  meaningful. Putting disclosure-only counts outside the content hash keeps post-scoring
+  inspection from moving a frozen set.
+
 ## 2026-10-18: Sync the active branch before resuming spec work (004/005)
 The local research branch was behind the user's actual branch, `feature/option-a-auto-levels`.
 Fetch found the missing remote ref; the prior session's uncommitted closeout notes were stashed,

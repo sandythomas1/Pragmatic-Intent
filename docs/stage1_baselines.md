@@ -83,11 +83,17 @@ DIRECT's two rewrites is this". That approximates indirectness, but it is not th
 - **Fixed recipe.** There is no early stopping or selection on dev: epochs and the learning rate are
   in the config. `--allow-test` is required before anything is scored on test. Keep test for the
   frozen run, after the draft `docs/analysis_plan.md` is frozen.
+- **Test audit (spec 006).** With `eval_split = "test"`, the trainer checks the committed split audit
+  in `prepare`, before any training: a missing or stale audit stops the run. Only primary examples
+  are predicted and scored. Every contrast gains a `primary_minus_dup` line, and `metrics.json`
+  and `results/stage1.jsonl` record a `test_audit` block. `python -m src.evaluation.stage1
+  --split test` applies the same gate. Dev runs are unchanged.
 
-## Setup (once per machine: WSL2 on the 5060, Linux on the lab 4090)
+## Setup (once per machine: WSL2 on the 5060, Linux on the lab 5090 or 4090)
 
 Keep the repo under `~/`, not `/mnt/c`. On WSL, install only the Windows NVIDIA driver; CUDA 12.8
-wheels need driver 570 or newer.
+wheels need driver 570 or newer. The 5090 is sm_120, like the 5060, so the same `uv.lock` torch
+build covers it; `env_check` confirms this.
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh          # uv, if not installed
@@ -105,7 +111,7 @@ Compare it across machines to confirm both built the same dataset.
 
 ## Run order
 
-Always pass `--machine` (e.g. `rtx5060-wsl`, `lab-4090`). It is the machine label written to the
+Always pass `--machine` (e.g. `rtx5060-wsl`, `lab-5090`). It is the machine label written to the
 committed results log; the hostname stays in the run's local `metrics.json`.
 
 ```bash
@@ -120,18 +126,33 @@ done
 uv run --group gpu python -m src.stage1.encoder --config configs/stage1/encoder_deberta_v3_base.toml \
   --seed 13 --train-condition full --machine rtx5060-wsl --micro-batch-size 8 --smoke
 
-# 3. Full grids: 4 training conditions x 3 seeds, resumable (on the 4090 for reported numbers)
-scripts/stage1_grid.sh configs/stage1/encoder_deberta_v3_base.toml lab-4090
-scripts/stage1_grid.sh configs/stage1/encoder_roberta_base.toml lab-4090
+# 3. Large-encoder smoke test on the 5090: check the loss falls and read peak_memory_gib
+uv run --group gpu python -m src.stage1.encoder --config configs/stage1/encoder_deberta_v3_large.toml \
+  --seed 13 --train-condition full --machine lab-5090 --smoke
+
+# 4. Full grids: 4 training conditions x 5 seeds, resumable (on the 5090 for reported numbers)
+scripts/stage1_grid.sh configs/stage1/encoder_deberta_v3_large.toml lab-5090
+scripts/stage1_grid.sh configs/stage1/encoder_roberta_large.toml lab-5090
 ```
+
+**Encoders (2026-10-19).** With the lab RTX 5090 the planned encoders are the large models:
+`deberta-v3-large` first, then `roberta-large` as the second encoder (the first model cut under
+schedule pressure). The base configs stay for quick development runs on the 5060. The large
+configs use learning rate 1e-5 and 10% warmup, the usual settings for these models, because large
+DeBERTa can collapse to a single class at 2e-5. A collapsed smoke run is a recipe failure: report
+it before the grid, so any change is made once, on dev, before recipes are pinned.
 
 **Machine settings.** `batch_size = 32` is the effective batch and stays fixed. On a smaller GPU,
 lower only `--micro-batch-size`; gradient accumulation keeps the optimization the same, and the
 resolved value is logged.
-- RTX 5060 (8 GB): `--micro-batch-size 8`. Use 4 plus `--gradient-checkpointing` if you run out of memory.
-- RTX 4090: the default 16, or 32.
+- RTX 5060 (8 GB): base models only, `--micro-batch-size 8`. Use 4 plus `--gradient-checkpointing` if you run out of memory.
+- RTX 4090 (24 GB): base models at the default 16, or 32; large models at 8.
+- RTX 5090 (32 GB): base models at 32; large models at the config default (8 for DeBERTa, 16 for
+  RoBERTa). Raise it only if the smoke run's `peak_memory_gib` leaves room. Long `full` inputs
+  set the peak.
 
 With the grid script, set `MICRO_BATCH=8`, `GRAD_CKPT=1`, `SEEDS="13"` or `CONDITIONS="full"`.
+The default is five seeds (`13 42 2026 314 2718`).
 
 **Runtime.** Each encoder run processes 101,460 × 2 epochs of training examples, plus 5 × 11,340
 dev predictions. The smoke test logs examples per second; use it to estimate a full run before
@@ -183,7 +204,8 @@ uv run --group gpu python -m src.stage1.length_check --config configs/stage1/enc
 ```
 
 It exits 1 if any input would be truncated; then the budget is lowered for every model under a new
-renderer version. Encoder runs also record `eval_inputs_at_max_length` per condition.
+renderer version. Each large model uses the same tokenizer as its base model, so these two checks
+also cover `deberta-v3-large` and `roberta-large`. Encoder runs also record `eval_inputs_at_max_length` per condition.
 
 ## Slices (option A)
 

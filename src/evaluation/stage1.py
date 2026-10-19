@@ -13,6 +13,10 @@ rule level of each example's own paraphrase and by the ``cat-v1`` primary catego
 of its turn. Both are mechanical and reported as evaluation slices only; gold
 labels always come from the weak-supervision policy.
 
+On test (spec 006 FR15) scoring requires the committed split audit, current against
+``items.jsonl``, ``dialogues.jsonl`` and the registry's ``pre_freeze`` rows. Only primary examples
+are scored, and every contrast gains one ``primary_minus_dup`` sensitivity line. Dev is unchanged.
+
 Re-score a predictions file from the repository root::
 
     python -m src.evaluation.stage1 --predictions outputs/stage1/<run>/predictions.jsonl \\
@@ -35,6 +39,7 @@ from src.data.contexts import MISMATCH_CONDITIONS, RENDERER_VERSION, cue_flags, 
 from src.data.direct_dataset import CONDITIONS, Item, Turn, load_dialogues, load_items
 from src.data.intent_categories import MAPPING_VERSION, primary_category
 from src.evaluation.metrics import bootstrap_accuracy_ci, classification_metrics, paired_bootstrap_difference
+from src.evaluation.test_audit import audit_summary_path, require_test_audit
 from src.stage1.data import POLICIES, STAGE1_LABELS, Stage1Example, build_examples
 
 CONTRASTS = (("one", "none"), ("full", "none"), ("full", "one"),
@@ -133,14 +138,16 @@ def build_report(
     examples: Sequence[Stage1Example], predictions: Sequence[dict[str, Any]],
     slices: Slices | None = None, sets: ScoringSets | None = None,
     bootstrap_samples: int = 1000, seed: int = 20261006,
-    *, rules_version: str = RULES_VERSION,
+    *, rules_version: str = RULES_VERSION, dup_ids: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     """Metrics per condition plus paired context contrasts; rejects partial prediction sets.
 
     ``examples`` is the genuine set. ``sets`` (from ``scoring_sets``) says which of them the
     mismatch conditions score; ``None`` means all of them, with no cue donors. ``slices``
     (from ``rule_slices``) add a ``by_<name>`` breakdown to every condition and contrast;
-    examples missing from a slice are left out of that breakdown only.
+    examples missing from a slice are left out of that breakdown only. ``dup_ids`` (test only,
+    from the spec 006 audit) adds a ``primary_minus_dup`` line to every contrast, never crossed
+    with ``without_cue_donors``.
     """
     if not examples or bootstrap_samples < 1:
         raise ValueError("examples and a positive bootstrap sample count are required")
@@ -209,6 +216,10 @@ def build_report(
             kept = [e for e in scored if e.example_id not in flagged]
             contrast["without_cue_donors"] = (paired(kept) if kept
                                               else {"n": 0, "difference": None, "ci95": None})
+        if dup_ids is not None:
+            kept = [e for e in scored if e.example_id not in dup_ids]
+            contrast["primary_minus_dup"] = (paired(kept) if kept
+                                             else {"n": 0, "difference": None, "ci95": None})
         report["contrasts"][f"{a}-{b}"] = contrast
     return report
 
@@ -226,16 +237,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--bootstrap-samples", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=20261006)
     parser.add_argument("--rules-version", choices=("auto-v1", "auto-v2"), default=RULES_VERSION)
+    parser.add_argument("--registry", type=Path, default=Path("data/annotations/inspected_test_dialogues.csv"),
+                        help="test only: the spec 006 registry the audit is checked against")
+    parser.add_argument("--audit", type=Path, default=Path("data/manifests/split_audit_test.csv"),
+                        help="test only: the spec 006 audit (its _summary.json sits beside it)")
     args = parser.parse_args(argv)
     try:
         items = load_items(args.items)
         examples, excluded = build_examples(items, args.split, args.policy, require_context=True)
         with args.predictions.open(encoding="utf-8") as handle:
             predictions = [json.loads(line) for line in handle if line.strip()]
+        audit = None
+        if args.split == "test":  # spec 006 FR15: primary examples only, from a current audit
+            audit = require_test_audit(args.items, args.dialogues, registry_path=args.registry,
+                                       audit_path=args.audit, summary_path=audit_summary_path(args.audit))
+            examples, predictions = audit.primary_examples(examples), audit.drop_excluded(predictions)
         report = build_report(examples, predictions, rule_slices(examples, items, version=args.rules_version),
                               scoring_sets(examples, items, load_dialogues(args.dialogues)),
-                              args.bootstrap_samples, args.seed, rules_version=args.rules_version)
+                              args.bootstrap_samples, args.seed, rules_version=args.rules_version,
+                              dup_ids=audit.dup_ids if audit else None)
         report.update(split=args.split, policy=args.policy, excluded=excluded)
+        if audit:
+            report["test_audit"] = audit.report(len(examples))
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(f"Scored {len(examples)} examples across {len(report['conditions'])} conditions -> {args.out}")

@@ -22,6 +22,7 @@ from typing import Any
 from src.data.contexts import MISMATCH_CONDITIONS, in_mismatch_set
 from src.data.direct_dataset import load_dialogues, load_items
 from src.evaluation.stage1 import ScoringSets, Slices, build_report, rule_slices, scoring_sets
+from src.evaluation.test_audit import SplitAudit, require_test_audit
 from src.stage1 import provenance
 from src.stage1.config import RunConfig, load_config
 from src.stage1.data import STAGE1_LABELS, Stage1Example, build_examples, contexts_defined, model_inputs
@@ -40,6 +41,7 @@ class Prepared:
     slices: Slices = field(default_factory=dict)
     sets: ScoringSets | None = None
     counts: dict[str, Any] = field(default_factory=dict)
+    test_audit: SplitAudit | None = None  # set when eval_split is test (spec 006)
 
 
 def add_common_args(parser: argparse.ArgumentParser) -> None:
@@ -74,6 +76,10 @@ def prepare(config: RunConfig, smoke: bool = False) -> Prepared:
     train_excluded["no_mismatch_donor"] = len(train) - len(kept)
     train = kept
     evaluation, eval_excluded = build_examples(items, data.eval_split, data.policy, require_context=True)
+    audit = None
+    if data.eval_split == "test":  # checked before training, so a stale audit costs no GPU time
+        audit = require_test_audit(Path(data.items), Path(data.dialogues))
+        evaluation = audit.primary_examples(evaluation)
     if smoke:  # strided, so every class and many dialogues survive
         train = train[:: max(1, len(train) // 1000)][:1000]
         evaluation = evaluation[:: max(1, len(evaluation) // 300)][:300]
@@ -94,6 +100,7 @@ def prepare(config: RunConfig, smoke: bool = False) -> Prepared:
         sets=scoring_sets(evaluation, items, dialogues),
         counts={"train_excluded": train_excluded, "eval_excluded": eval_excluded,
                 "mismatch_excluded": {"no_donor": len(evaluation) - len(mismatch)}},
+        test_audit=audit,
     )
     if not prepared.train or not prepared.eval:
         raise ValueError("no training or evaluation examples after applying the policy")
@@ -125,8 +132,11 @@ def finish(args: argparse.Namespace, config: RunConfig, prepared: Prepared,
            predictions: list[dict[str, Any]], model_info: dict[str, Any], started: float) -> Path:
     """Score, write outputs (IDs and labels only), and append to the results log."""
     data = config.data
+    audit = prepared.test_audit
     report = build_report(prepared.eval, predictions, prepared.slices, prepared.sets,
-                          config.bootstrap_samples, config.bootstrap_seed)
+                          config.bootstrap_samples, config.bootstrap_seed, dup_ids=audit.dup_ids if audit else None)
+    if audit:
+        report["test_audit"] = audit.report(len(prepared.eval))
     run = {
         "run": config.name, "kind": config.kind, "seed": args.seed, "machine": args.machine,
         "smoke": args.smoke, "policy": data.policy, "train_split": data.train_split,
@@ -150,8 +160,9 @@ def finish(args: argparse.Namespace, config: RunConfig, prepared: Prepared,
             "renderer_version": report["renderer_version"], "sets": report["sets"], "slices": report["slices"],
             "conditions": {condition: {key: metrics[key] for key in ("set", "n", "accuracy", "macro_f1", "accuracy_ci95")}
                            for condition, metrics in report["conditions"].items()},
+            **({"test_audit": report["test_audit"]} if audit else {}),
             "contrasts": {name: {"set": c["set"], "n": c["n"], "difference": c["difference"], "ci95": c["ci95"],
-                                 **({"without_cue_donors": c["without_cue_donors"]} if "without_cue_donors" in c else {}),
+                                 **{line: c[line] for line in ("without_cue_donors", "primary_minus_dup") if line in c},
                                  **{key: {v: {"difference": s["difference"], "ci95": s["ci95"]}
                                           for v, s in breakdown.items()}
                                     for key, breakdown in c.items() if key.startswith("by_")}}
