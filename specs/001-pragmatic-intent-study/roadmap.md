@@ -157,5 +157,10 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 - [x] C: Transcript rescan 2026-10-19: no new test dialogues. Rerun just before the freeze only if a
   session works with test data in the meantime.
 - [ ] C: `/spec-retro 006`.
+- [x] TF-IDF dev baselines rerun under the current code (2026-10-19), run from a clean WSL worktree
+  at `b13ac75` and logged in `results/stage1.jsonl`.
+  - `tfidf-utterance`: 0.877 dev accuracy.
+  - `tfidf-context`: full-trained 0.877 under `full` vs 0.866 under `none`.
+  - The old pre-spec-004 lines stay local only.
 - [ ] S: Supply dev model outputs using [the Stage 2 contract](../../docs/stage2_scoring.md).
   The tooling runs no models and does not yet evaluate free-paraphrase adequacy.
