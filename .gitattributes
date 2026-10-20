@@ -1,2 +1,5 @@
 # Spec 004 manifests are hashed byte for byte; never convert their line endings.
 data/manifests/*.csv -text
+# Spec 006: `split_audit audit --verify` also compares the summary bytes; the registry is LF too.
+data/manifests/*.json -text
+data/annotations/inspected_test_dialogues.csv -text

@@ -2,15 +2,17 @@
 # Run the Stage 1 context ablation for one encoder config: every training condition x seed.
 # Each run is scored under all five eval conditions and appended to results/stage1.jsonl.
 #
-#   scripts/stage1_grid.sh configs/stage1/encoder_deberta_v3_base.toml lab-4090
+#   scripts/stage1_grid.sh configs/stage1/encoder_deberta_v3_large.toml lab-5090
 #   MICRO_BATCH=8 SEEDS="13" scripts/stage1_grid.sh configs/stage1/encoder_roberta_base.toml rtx5060-wsl
 #
-# Runs that already have metrics.json are skipped, so an interrupted grid can be restarted.
+# Five seeds by default, so seed variation can be reported (spec 001 §13); the first three
+# match the original three-seed grid. Runs that already have metrics.json are skipped, so an
+# interrupted grid can be restarted.
 set -euo pipefail
 
 config=$(realpath "${1:?usage: stage1_grid.sh CONFIG MACHINE}")
 machine=${2:?usage: stage1_grid.sh CONFIG MACHINE}
-seeds=${SEEDS:-"13 42 2026"}
+seeds=${SEEDS:-"13 42 2026 314 2718"}
 conditions=${CONDITIONS:-"none one full mismatched"}
 extra=()
 [[ -n "${MICRO_BATCH:-}" ]] && extra+=(--micro-batch-size "$MICRO_BATCH")

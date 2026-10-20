@@ -112,3 +112,21 @@ encoder checks, model/prompt selection and WP-08 freeze. Train/validation transf
 checks only; the adapter provides no training integration. No test model outputs were generated
 or scored during implementation. LLM-judge/paraphrase calibration still needs model outputs and
 Sandy's planned ratings.
+
+**Main-benchmark test precondition (spec 006, 2026-10-19).** On `--split test`, `src.evaluation.stage2`
+`inputs` and `score` first load the committed split audit (`data/manifests/split_audit_test.csv`
+and its summary). They stop if it is missing, malformed or edited, or if its recorded hashes of
+`items.jsonl`, `dialogues.jsonl` or the registry's `pre_freeze` rows differ from the current
+files. Rebuild it with `python -m src.data.split_audit audit`.
+- With a valid audit, only primary examples are exported and scored, and predictions for excluded
+  examples are ignored.
+- Every condition and contrast denominator counts primary examples only.
+- Each contrast adds one `primary_minus_dup` line (primary minus `dup_exact` examples), never
+  crossed with `without_cue_donors`.
+- The report carries a `test_audit` block: its content hash and exclusion counts.
+- Dev scoring and the IndirectRequests transfer scorer are unchanged.
+
+**LLM-judge sample (spec 006 FR17).** The ~50 Stage 2 outputs rated to calibrate the LLM judge are
+drawn from **dev**. Drawing them from test needs Sandy's explicit decision before the freeze, and
+their dialogues are then registered `pre_freeze`
+(`python -m src.data.split_audit register --add <ID> --reason llm_judge_sample ...`).

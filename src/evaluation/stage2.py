@@ -1,6 +1,7 @@
 """Export leakage-safe inputs and score separate routed/oracle weak interpretations.
 
 No model calls. Reports measure cat-v1/act recovery, not free-paraphrase adequacy.
+On test, both commands require the current spec 006 split audit and use primary examples only.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from src.data.intent_categories import CATEGORIES, MAPPING_VERSION
 from src.evaluation import interpretation as ip
 from src.evaluation.metrics import bootstrap_accuracy_ci, paired_bootstrap_difference
 from src.evaluation.stage1 import CONTRASTS, ScoringSets, rule_slices, scoring_sets, set_name
+from src.evaluation.test_audit import audit_summary_path, require_test_audit
 from src.stage1.data import Stage1Example, build_examples
 
 SCORER_VERSION = "stage2-v1"
@@ -64,8 +66,13 @@ def _interpretation_summary(examples: Sequence[Stage1Example], gold: dict[str, i
 def build_report(examples: Sequence[Stage1Example], gold: dict[str, ip.Reference], predictions: Sequence[dict],
                  oracle_predictions: Sequence[dict], *, conditions: Sequence[str], sets: ScoringSets | None = None,
                  slices: dict[str, dict[str, str]] | None = None, rules_version: str = RULES_VERSION,
-                 bootstrap_samples: int = 1000, seed: int = 20261018) -> dict[str, Any]:
-    """Complete, separate oracle/routed denominators; paired contrasts resample dialogues."""
+                 bootstrap_samples: int = 1000, seed: int = 20261018,
+                 dup_ids: frozenset[str] | None = None) -> dict[str, Any]:
+    """Complete, separate oracle/routed denominators; paired contrasts resample dialogues.
+
+    ``dup_ids`` (test only, from the spec 006 audit) adds one ``primary_minus_dup`` line per
+    contrast, never crossed with ``without_cue_donors``.
+    """
     if not examples or bootstrap_samples < 1 or not conditions or len(set(conditions)) != len(conditions) or set(conditions) - set(CONDITIONS):
         raise ValueError("examples, positive bootstrap count and unique known conditions are required")
     ids = {e.example_id for e in examples}
@@ -143,6 +150,8 @@ def build_report(examples: Sequence[Stage1Example], gold: dict[str, ip.Reference
         if set_name(a, b) == "mismatch":
             flagged = frozenset().union(*(sets.cue_donor_ids.get(c, frozenset()) for c in (a, b)))
             contrast["without_cue_donors"] = paired([e for e in common if e.example_id not in flagged])
+        if dup_ids is not None:
+            contrast["primary_minus_dup"] = paired([e for e in common if e.example_id not in dup_ids])
         for name, values in (slices or {}).items():
             contrast[f"by_{name}"] = {value: paired([e for e in common if values.get(e.example_id) == value])
                                       for value in sorted({values[e.example_id] for e in common if e.example_id in values})}
@@ -169,6 +178,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--oracle-predictions", type=Path)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--bootstrap-samples", type=int, default=1000)
+    parser.add_argument("--registry", type=Path, default=Path("data/annotations/inspected_test_dialogues.csv"),
+                        help="test only: the spec 006 registry the audit is checked against")
+    parser.add_argument("--audit", type=Path, default=Path("data/manifests/split_audit_test.csv"),
+                        help="test only: the spec 006 audit (its _summary.json sits beside it)")
     args = parser.parse_args(argv)
     try:
         if args.split == "test" and not args.allow_test:
@@ -178,6 +191,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ValueError("output must not overwrite a source or predictions file")
         items, dialogues = load_items(args.items), load_dialogues(args.dialogues)
         examples, excluded = build_examples(items, args.split, require_context=True)
+        audit = None
+        if args.split == "test":  # spec 006 FR15: primary examples only, from a current audit
+            audit = require_test_audit(args.items, args.dialogues, registry_path=args.registry,
+                                       audit_path=args.audit, summary_path=audit_summary_path(args.audit))
+            examples = audit.primary_examples(examples)
         if args.command == "inputs":
             ip.require_local_text_output(args.out)
             selected = examples
@@ -192,9 +210,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             by_id = {item["item_id"]: item for item in items}
             gold = {e.example_id: ip.reference(by_id[e.item_id]) for e in examples}
             slices = rule_slices(examples, items, version=args.rules_version)
-            report = build_report(examples, gold, _jsonl(args.predictions), _jsonl(args.oracle_predictions),
+            predictions, oracle_predictions = _jsonl(args.predictions), _jsonl(args.oracle_predictions)
+            if audit:
+                predictions, oracle_predictions = audit.drop_excluded(predictions), audit.drop_excluded(oracle_predictions)
+            report = build_report(examples, gold, predictions, oracle_predictions,
                                   conditions=args.conditions, sets=scoring_sets(examples, items, dialogues),
-                                  slices=slices, rules_version=args.rules_version, bootstrap_samples=args.bootstrap_samples)
+                                  slices=slices, rules_version=args.rules_version, bootstrap_samples=args.bootstrap_samples,
+                                  dup_ids=audit.dup_ids if audit else None)
+            if audit:
+                report["test_audit"] = audit.report(len(examples))
             report.update(split=args.split, excluded=excluded,
                           inputs={"items_sha256": hashlib.sha256(args.items.read_bytes()).hexdigest(),
                                   "dialogues_sha256": hashlib.sha256(args.dialogues.read_bytes()).hexdigest(),

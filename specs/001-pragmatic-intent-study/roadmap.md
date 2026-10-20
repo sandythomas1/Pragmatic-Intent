@@ -30,7 +30,7 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 | Oct 12–18 | Round 2 and original L3 check done. Renderer/manifest verified on Windows; spec 005 scoring tooling and provisional v2 rules implemented. Related-work reading can proceed. | Verified tooling; v2 frozen before held-out check. |
 | Oct 19–25 | Fresh v2 L3 precision check; WSL encoder length checks; weak baselines and Stage 2 outputs on dev (S). | Rule audit, input-length evidence and dev predictions. |
 | Oct 26–Nov 1 | Audit official test groups and prior inspection. **Freeze** references, splits, contexts and the analysis plan. | Freeze record (WP-08 data side). |
-| Nov 2–8 | Models on dev (S, WSL 5060 / lab 4090). LLM prompt chosen on dev. Pin recipes. Draft related work and methods sections. | Pinned recipes and dev predictions. |
+| Nov 2–8 | Models on dev (S, WSL 5060 / lab 5090). LLM prompt chosen on dev. Pin recipes. Draft related work and methods sections. | Pinned recipes and dev predictions. |
 | Nov 9–13 | Run the frozen test grid, hybrid and IndirectRequests transfer (S). | Validated predictions and provenance. |
 | Nov 14–19 | Paired contrasts, intervals, error audit. | Tables, figures, limits. |
 | Nov 20–26 | Write the paper; send the draft to the course professor (Thanksgiving is Nov 26). | Full draft. |
@@ -44,7 +44,7 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 | D-02 second rater | Not required for option A's mechanical labels | Any later human/LLM-judge agreement still needs its own raters and limitations. |
 | D-03 intents/slots | `cat-v1` / MultiWOZ acts under option A | Spec 005 scores observed Inform values and Request names; no contextual-taxonomy approval gate. |
 | D-04 test size/power | Official DIRECT test split; inferential status open | Audit prior inspection and coverage before the study freeze; sparse/noisy rule levels can remain exploratory. |
-| D-05 models/budget | Open | Before model development. Sandy owns the model code. |
+| D-05 models/budget | Open; compute settled (2026-10-19) | Lab RTX 5090s are available. Configs for `deberta-v3-large` (planned primary encoder) and `roberta-large` were added, and the grid now runs 5 seeds. Panel, LLM and spending cap are still open. Sandy owns the model code. |
 | D-06 context windows | **Decided** (Sandy, 2026-10-14) | 350-word budget on `full`/`mismatched`, train and eval, `render-v1`. Truncates 0.9% of test examples. Encoder length check pending (S, WSL). |
 | D-07 statistics | Open | On dev, before the analysis freeze. |
 | D-08 WDSI | **Withdrawn** (2026-10-12) | The course professor: research goes through the class, December only. |
@@ -57,13 +57,13 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 | WP-02 Register sources, screen dev pilot | Code + human | C tooling, S screening | **002** literary sources and screening | Tooling done. 9 dev families and 22 candidates proposed (2026-10-10). Screening is **optional** since 2026-10-12. |
 | WP-02b Dialogue pilot draw (40 dev dialogues × 1 turn) | Code (small) + human | C, S | Folded into **003** | Done 2026-10-11: `pilot1` drawn (seed 20261011) by spec 003 T5. |
 | WP-03 Contextual annotation supplement and pilot labels | Historical tooling | C | **003** | Tooling retained; form/context/reveal passes and taxonomy approval dropped under option A on 2026-10-13. No form-A1 work remains. |
-| WP-04 Audit official groups, prior inspection and splits | Code + human | C audit, S review | Own spec (split audit), needed before freeze | Pending; option A uses the official test split rather than a new sample. |
+| WP-04 Audit official groups, prior inspection and splits | Code + human | C audit, S review | **006** split audit | Closed 2026-10-19 ([retro](../006-split-audit/retro.md)). Registry: 51 inspected test dialogues (13 label-round, 10 obsolete sheet, 24 fact-drift, 4 session logs), plus 5 cross-split duplicates excluded. Primary set: 10,585 genuine / 10,513 mismatch examples. WSL `audit --verify` passed. |
 | WP-05 Context renderer and invariants | Code | C | **004** context conditions | Tooling done 2026-10-14 (T1–T16). `check` passes on dev and test; test manifest committed. |
 | WP-06 Act references, Stage 2/routing scorers, IndirectRequests transfer (FR-15) | Code | C | **005** scoring | Tooling implemented 2026-10-18; dev inputs prepared. Model outputs and later adequacy/LLM-judge calibration pending. |
 | WP-07 Models on dev | Code | **S**, C reviews | none (Sandy's code) | Existing weak Stage 1 trainers only. |
 | WP-08 Feasibility and freeze record | Human + code | S, C manifest | 004/005 freeze tooling | Not started. |
 | WP-09 Held-out grid and hybrid | Code run | S | none | Blocked on WP-08. |
-| WP-10 Analysis and error audit | Code + human | C analysis tooling, S audit | **006** analysis | Not started. |
+| WP-10 Analysis and error audit | Code + human | C analysis tooling, S audit | **007** analysis (renumbered from 006 on 2026-10-19) | Not started. |
 | WP-11 Paper and demo | Human | S, P guides the CS-paper form | none | Related work (FR-11) can start now. |
 | WP-12 Publication extension | none | none | none | **Withdrawn** 2026-10-12. |
 
@@ -139,5 +139,30 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   `data/interim/auto_levels/auto-v2/spotcheck_L3/sheet.csv` (40 rows, seed 20261018;
   63 historical/original-check turns excluded), then `python -m src.data.auto_levels_v2 spotcheck-report`.
   This does not resume the dropped three-pass annotation pipeline. V2 L3 remains provisional.
+- [x] C: Spec 006 split / prior-inspection audit drafted (2026-10-19). Sandy decided: exclude
+  inspected dialogues as targets only (donors kept, count disclosed); near-duplicates are flagged
+  with a sensitivity line, not excluded; no other inspections known. Open: confirm the
+  conservative fact-drift exclusion (24 dialogues, about 170 items).
+- [x] C/S: `/spec-review 006` (2026-10-19): R1–R9 applied; READY. Fact-drift exclusion confirmed;
+  the session-log scan found 2 more test dialogues (Codex logs: none). About 49 test dialogues
+  are excluded.
+- [x] C: `/spec-decompose 006` (2026-10-19): 9 tasks in [tasks.md](../006-split-audit/tasks.md).
+- [x] C: Implement spec 006 T1–T9 (2026-10-19).
+  - Registry, scans, `check` and `audit` are built, and the committed freeze object is
+    `data/manifests/split_audit_test{.csv,_summary.json}` (content hash `432e402c841b…`).
+  - Stage 1 and Stage 2 test scoring now require it.
+  - The registry has 51 dialogues, not 49; why is in [verification](../006-split-audit/verification.md).
+  - `dup_exact` is 15.0% of primary examples, mostly NR thanks/bye lines; `needs_decision` is false.
+- [x] WSL `audit --verify` passed 2026-10-19: same input hashes as Windows, byte-identical audit.
+- [x] C: Transcript rescan 2026-10-19: no new test dialogues. Rerun just before the freeze only if a
+  session works with test data in the meantime.
+- [x] C: `/spec-retro 006` (2026-10-19): spec closed; [retro](../006-split-audit/retro.md). Before
+  the 5090 grid: `git_dirty` counts the tracked results log, so later runs in one checkout log
+  dirty (retro "What To Improve").
+- [x] TF-IDF dev baselines rerun under the current code (2026-10-19), run from a clean WSL worktree
+  at `b13ac75` and logged in `results/stage1.jsonl`.
+  - `tfidf-utterance`: 0.877 dev accuracy.
+  - `tfidf-context`: full-trained 0.877 under `full` vs 0.866 under `none`.
+  - The old pre-spec-004 lines stay local only.
 - [ ] S: Supply dev model outputs using [the Stage 2 contract](../../docs/stage2_scoring.md).
   The tooling runs no models and does not yet evaluate free-paraphrase adequacy.

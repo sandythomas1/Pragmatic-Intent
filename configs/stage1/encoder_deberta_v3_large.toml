@@ -1,0 +1,29 @@
+# Cross-encoder fine-tuning (microsoft/deberta-v3-large, 435M). Override the training context with
+# --train-condition {none,one,full,mismatched,mismatched_one}; every run is scored
+# under all five eval conditions. batch_size is the effective batch and must stay
+# fixed across machines; change only --micro-batch-size. Sized for the lab RTX 5090
+# (32 GB): micro-batch 8, raise to 16 if the smoke run's peak_memory_gib is under ~14.
+# Not for the 8 GB RTX 5060. Large DeBERTa is known to collapse to one class at higher
+# learning rates, hence 1e-5 with a longer warmup than the base configs; check the smoke
+# run's loss falls before starting the grid.
+[run]
+name = "deberta-v3-large"
+kind = "encoder"
+
+[data]
+train_condition = "full"
+
+[encoder]
+pretrained = "microsoft/deberta-v3-large"
+revision = "main"
+max_length = 512
+batch_size = 32
+micro_batch_size = 8
+eval_batch_size = 64
+learning_rate = 1e-5
+epochs = 2
+warmup_ratio = 0.1
+weight_decay = 0.01
+max_grad_norm = 1.0
+bf16 = true
+gradient_checkpointing = false

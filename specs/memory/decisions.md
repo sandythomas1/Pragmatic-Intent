@@ -5,6 +5,99 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-10-19: Test audit is fully deterministic, fails closed, and registers 51 dialogues (Spec 006 / T5–T9)
+Decision:
+- **No timestamp in the audit summary.** `audit --verify` byte-compares both files.
+- **Content hash.** The summary's `content_sha256` covers everything except the `post_scoring`
+  disclosure.
+- **Test scoring needs a current audit.** Stage 1 (scorer and trainer) and Stage 2 (inputs and
+  score) refuse to run on test without it. "Current" means `items.jsonl`, `dialogues.jsonl` and
+  the `pre_freeze` registry rows all match. Predictions for excluded examples are ignored.
+- **Exclusion precedence.** Inspection outranks cross-split duplication.
+- **Scan reading.** The sheet scan reads every CSV cell, and accepts spec 003's
+  `<sheet>_sheet_info.json` as a blind sheet's key.
+- **Registry size.** It holds 51 `pre_freeze` dialogues, not the spec's 49. The boundary-safe
+  pattern found 2 session-log dialogues mentioned only inside item IDs. All are registered under
+  the conservative session-log policy.
+
+Why:
+- A timestamp would make `--verify` compare only the CSV. A tampered or stale summary would then
+  pass.
+- Keeping post-scoring disclosure out of the hash is what lets the error audit be recorded
+  without moving the frozen set (FR14).
+- The trainer checks the audit before training, so a stale audit costs no GPU time.
+- Rejecting a ragged row, or a spec 003 sheet with an existing key, added no safety: both are
+  fully readable for IDs. A truly malformed CSV still fails.
+
+Alternatives considered:
+- An injectable timestamp, as in spec 004's summary. It weakens `--verify` for no benefit.
+- Hashing the summary bytes. Then post-scoring rows would move the hash.
+- Re-pairing excluded donors. Sandy rejected that on 2026-10-19.
+- Unregistering the item-ID-only mentions. That contradicts the approved conservative policy and
+  would need someone to reopen the logs to judge them.
+
+## 2026-10-19: Lab RTX 5090s; large encoders and five seeds (Spec 001 / D-05, NFR-04)
+Decision:
+- Reported GPU runs move to the lab RTX 5090 (32 GB). The 4090 is the fallback.
+- New configs `encoder_deberta_v3_large.toml` (micro-batch 8) and `encoder_roberta_large.toml`
+  (16) keep the effective batch of 32, max_length 512 and 2 epochs. They use learning rate 1e-5
+  with 10% warmup, where the base configs use 2e-5 with 6%.
+- `stage1_grid.sh` defaults to five seeds. The first three are the original grid.
+- Training data is unchanged.
+Why:
+- Sandy reported the new hardware and asked to ramp up the settings and data. No run has been
+  logged yet, so the recipe can still change without any reported number moving.
+- Large encoders are the clearest quality gain the extra memory buys.
+- Five seeds give a usable estimate of seed variation (§13).
+- Large DeBERTa is known to diverge or collapse at 2e-5. 1e-5 with a longer warmup is the
+  standard published setting, chosen in advance rather than tuned on dev.
+- Training already uses all 101,460 DIRECT train examples. More data would mean training on dev
+  (removing the selection split), on test (leakage) or on IndirectRequests (forbidden by AC-15).
+Alternatives considered:
+- Raise the effective batch: it changes the optimization and buys no accuracy, only speed.
+- Raise max_length or the context budget: D-06 and the committed test manifest fix the budget,
+  and RoBERTa's limit is 512.
+- A long-context encoder: it would reopen D-06 and spec 004 a week before the freeze.
+- More epochs: there is no evidence 2 underfits at 101k examples, and checking would mean
+  selecting on dev.
+
+## 2026-10-19: Inspection sources are pinned and dated in code; scans match IDs by pattern, not column (Spec 006 / T2–T4)
+Decision:
+- `DERIVED_SOURCES` fixes each inspection's file, date and inspector. It pins the git-ignored
+  obsolete round-3 sheet and `fact_drift.jsonl` by the SHA-256 they had when inspected.
+- `register` never changes or drops a committed row. A changed pinned file is refused.
+- After a freeze date (from `data/manifests/freeze.json`, or `--freeze-date` until it exists), a
+  new `pre_freeze` row is an error, and rows dated on the freeze day are `post_scoring`.
+- Sheet and transcript scans find dialogue IDs with one pattern: no letter or digit before, no
+  digit after. It runs over every CSV cell or the raw text, not over named columns.
+Why:
+- Pinning stops a rerun of the fact-drift audit, or a regenerated sheet, from silently moving the
+  test set.
+- Erroring on a late `pre_freeze` row makes a missed inspection visible instead of letting it be
+  backfilled after scores exist.
+- IDs appear inside compound values (`<stem>_tNN` item IDs, `d:<stem>:tNN`, `<stem>.json#N`), so
+  column-based resolution would have missed `context_items.csv` and every `key.csv`.
+Alternatives considered: deriving dates from file timestamps (they change on copy, so the hash
+changes too); per-column item_id resolution through `items.jsonl` (misses compound values);
+reading transcripts line by line (some log lines are megabytes); treating rows dated on the freeze
+day as `pre_freeze` (then an error audit started on the freeze day would be refused).
+
+## 2026-10-19: Inspected-dialogue registry rejects formula-leading values rather than escaping them (Spec 006 / T1)
+Decision: the T1 criterion "a formula-leading cell is escaped on write" is met by construction.
+Every registry field is a validated dialogue ID, enum, pseudonymous inspector ID, ISO date or
+version constant, none of which can start with `=`, `+`, `-` or `@`, so such a value is rejected
+before anything is written. A dialogue may have one row per source. The exclusion reason uses the
+precedence `levels_round1` > `levels_round3` > `obsolete_round3_sheet` > `fact_drift_review` >
+`claude_session` > `manual`, over `pre_freeze` rows only. Canonical dialogue IDs are the
+`items.jsonl` form (`PMUL1762.json`), with digits ASCII-only, and padding is not stripped.
+Why: this is the convention `context_items.py` already uses for committed registries. Escaping
+would write a `'` prefix into a committed file that the scorers then must un-escape, and a
+formula-like ID is a data error to reject, not a value to preserve. Strict, unstripped IDs make a
+hand-edited typo fail loudly instead of matching silently.
+Alternatives considered: escape on write and un-escape on read (adds a second encoding to a freeze
+input); stripping whitespace and lower-casing IDs (hides edit errors); one row per dialogue with a
+list of sources (hard to diff, and the per-source dates get lost).
+
 ## 2026-10-18: Explicit provisional auto-v2 and separate oracle/transfer scoring (Spec 005)
 Decision: Sandy requested both the rule revision and Stage 2/IndirectRequests scoring. V1 stays
 the default and retains every corpus prediction; v2 is an explicit selection, source-frozen

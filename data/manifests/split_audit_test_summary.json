@@ -1,0 +1,118 @@
+{
+  "audit_file": "split_audit_test.csv",
+  "audit_sha256": "b7da8688b76c63ff58e8318cedfed4b1d7d040f437bfadfc3973df610cd00f99",
+  "content_sha256": "432e402c841b1ccaf168ce26a77920ea68ba59773dd85f4ee4908ad525a24208",
+  "cross_split_duplicates": {
+    "decision_rate": 0.01,
+    "dev_train_dialogues": 2,
+    "min_user_turns": 2,
+    "test_dialogues": 5,
+    "test_rate": 0.005
+  },
+  "disclosure": {
+    "post_scoring_dialogues": 0
+  },
+  "donor_inspected": {
+    "primary_mismatch_examples": 495
+  },
+  "dup_exact": {
+    "by_rule_level": {
+      "INF": {
+        "flagged": 0,
+        "n": 182,
+        "rate": 0.0
+      },
+      "L0": {
+        "flagged": 356,
+        "n": 3895,
+        "rate": 0.0914
+      },
+      "L1": {
+        "flagged": 89,
+        "n": 1782,
+        "rate": 0.0499
+      },
+      "L2": {
+        "flagged": 46,
+        "n": 2162,
+        "rate": 0.0213
+      },
+      "L3": {
+        "flagged": 15,
+        "n": 324,
+        "rate": 0.0463
+      },
+      "NR": {
+        "flagged": 1079,
+        "n": 2240,
+        "rate": 0.4817
+      }
+    },
+    "by_variant": {
+      "direct": {
+        "flagged": 894,
+        "n": 5424,
+        "rate": 0.1648
+      },
+      "indirect": {
+        "flagged": 691,
+        "n": 5161,
+        "rate": 0.1339
+      }
+    },
+    "overall": {
+      "flagged": 1585,
+      "n": 10585,
+      "rate": 0.1497
+    },
+    "scope": "primary_genuine"
+  },
+  "dup_version": "dup-v1",
+  "excluded": {
+    "dialogues": {
+      "cross_split_duplicate_dialogue": 5,
+      "inspected:calibration_labels": 13,
+      "inspected:fact_drift_review_unrecorded": 24,
+      "inspected:sealed_labels": 10,
+      "inspected:session_output_unverified": 4
+    },
+    "examples": {
+      "cross_split_duplicate_dialogue": 33,
+      "inspected:calibration_labels": 169,
+      "inspected:fact_drift_review_unrecorded": 258,
+      "inspected:sealed_labels": 115,
+      "inspected:session_output_unverified": 35
+    },
+    "items": {
+      "cross_split_duplicate_dialogue": 25,
+      "inspected:calibration_labels": 105,
+      "inspected:fact_drift_review_unrecorded": 170,
+      "inspected:sealed_labels": 71,
+      "inspected:session_output_unverified": 22
+    }
+  },
+  "inputs": {
+    "context_manifest_sha256": "3dd59868379a94c83d298e6f7f3d3a765b3bb7f96d1d7b7ab5592d899413a977",
+    "dialogues_sha256": "574ae000db5562521e3a767f4ee55e4e64abdf89e60d9038c47f4f7d25059949",
+    "items_sha256": "c7f56b41bde43598f04b867ad6a52189d632c53578cf49734d44b6034550fe83",
+    "registry_pre_freeze_sha256": "0eaf3dc78b14004c293d860447901c871ed8833292736a5e8b1b926a5c54ba71",
+    "test_list_sha256": "56fff5bf8c7b0a64fba8672241a7bdd947c3a58986bf06f46d37f33288f73ce0",
+    "val_list_sha256": "8e19240b90576c3ed83a0d44ef5e7ca8916e47356662ed4621e6b39d8c327d80"
+  },
+  "needs_decision": false,
+  "policy": "direct_variants_v1",
+  "primary": {
+    "genuine": 10585,
+    "mismatch": 10513
+  },
+  "registry_version": "inspected-v1",
+  "rules_version": "auto-v1",
+  "schema_version": "split-audit-v1",
+  "split": "test",
+  "test": {
+    "dialogues": 1000,
+    "genuine_examples": 11195,
+    "items": 7372,
+    "mismatch_examples": 11123
+  }
+}

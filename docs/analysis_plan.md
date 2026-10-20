@@ -85,12 +85,43 @@ fine-tuning and manually reviewed model outputs cannot use untouched test groups
 sources never become prompt examples. Audit shortcuts using utterance-only baselines, formatting
 checks and source-separated results. Do not claim naturally occurring wording was randomized.
 
+**Test audit (spec 006, 2026-10-19).** The policies below are implemented by
+`python -m src.data.split_audit` and pinned in `data/manifests/split_audit_test{.csv,_summary.json}`.
+- **Inspected dialogues are excluded as targets, whole.** The registry
+  (`data/annotations/inspected_test_dialogues.csv`) lists 51 test dialogues:
+  - 13 from calibration rounds 1/3;
+  - 10 from the obsolete test-drawn round-3 sheet;
+  - 24 more with fact-drift flags, whose reviewed sample was not recorded;
+  - 4 named in assistant session logs.
+
+  Every example of such a dialogue leaves the primary set, under every condition. Inspected
+  dialogues stay in the mismatch donor pool; the count of primary examples with an inspected donor
+  is disclosed (495).
+- **Cross-split duplicate dialogues** are excluded as well. A duplicate is a test dialogue with at
+  least 2 user turns whose `dup-v1`-normalized user turns equal a train or dev dialogue's. There
+  are 5 (0.50%), below the 1% that would need a decision before the freeze.
+- **Near-duplicate utterances are flagged, not excluded.** `dup_exact` marks a test paraphrase that
+  equals a train utterance under `dup-v1` (NFKC, casefold, non-alphanumeric runs to one space). It
+  covers 15.0% of primary examples. Each contrast reports one `primary_minus_dup` sensitivity line
+  beside spec 004's `without_cue_donors` line, and the two are never crossed.
+- **Primary set:** 10,585 genuine and 10,513 mismatch test examples (610 genuine examples excluded).
+- **Phases.** Only `pre_freeze` registry rows define the primary set and the audit's content hash.
+  After the WP-08 freeze date, new rows (for example the error audit) are `post_scoring`: they are
+  disclosed and never move the frozen set.
+- **LLM-judge calibration sample (FR17).** The ~50 Stage 2 outputs rated to validate the LLM judge
+  come from **dev**. Drawing them from test needs Sandy's explicit decision before the freeze, and
+  those dialogues are then registered `pre_freeze`.
+- **Scoring gate.** Stage 1 and Stage 2 test scoring refuse to run without a valid audit that is
+  current against `items.jsonl`, `dialogues.jsonl` and the `pre_freeze` registry rows.
+
 ## Freeze checklist before reported test runs
 
 - [ ] Exact class due date, minimum deliverable and model budget recorded.
 - [ ] Taxonomy, form/function supplement, required slots and gold policy settled.
 - [ ] Pilot agreement, coverage and sample/power decision recorded; single-rater limits explicit.
-- [ ] IDs, source/group splits, exclusions, context/donor mappings and hashes frozen.
+- [ ] IDs, source/group splits, exclusions, context/donor mappings and hashes frozen. (Spec 006
+      audit built 2026-10-19, content hash `432e402c841b…`; verified byte-identical on Windows
+      and WSL. Rerun the transcript scan before the freeze if test data is touched again.)
 - [ ] Model revisions, training-label policies, prompts, token budgets, seeds and retry rules pinned.
 - [ ] Contextual adapter, Stage 2 scorer and routing tested on dev.
 - [ ] Endpoint/test, bootstrap settings, secondary comparison family, statistical implementation
