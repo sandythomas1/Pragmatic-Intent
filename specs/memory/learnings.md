@@ -5,6 +5,26 @@ running curriculum, so review it periodically.
 
 <!-- New entries go at the top, most recent first -->
 
+## Measure spec baselines with the shipped matcher (from Spec 006)
+A spec's expected count is only as good as the code that produced it. Spec 006 said "exactly 49"
+inspected dialogues from an ad-hoc word-boundary regex. The tool's boundary-safe pattern found 51,
+so a correct result read as a deviation. When a spec quotes a measured number that the
+implementation will reproduce, either measure it with the function that will ship, or write the
+criterion as "re-measured by the tool; any difference explained".
+
+## Put validity gates at the first expensive step (from Spec 006)
+A fail-closed check guards the output only if it runs before the cost. Spec 006's plan gated the
+test *scorers*, but the expensive, irreversible step is training (GPU hours) and the Stage 2 export.
+The audit check moved into the trainer's `prepare` and into `inputs`. When planning a gate, list
+every entry point that consumes the guarded input, and place the check before the first one that
+costs time or exposes data.
+
+## Provenance flags must ignore the tool's own outputs (from Spec 006 retro)
+A `git_dirty` check built on bare `git status --porcelain` counts the results log it is about to
+append to. With the log tracked, every run after the first in a checkout reports dirty code, and
+the flag stops meaning anything. Exclude the tool's own output paths from provenance checks, or
+write outputs outside the worktree.
+
 ## 2026-10-19: An AI assistant's session logs are an inspection record (006)
 - **Pattern choice changes the count.** A word-boundary regex (`\bMUL1234\b`) silently misses IDs
   embedded in compound keys (`MUL1234_t02`), because `_` is a word character. The session-log

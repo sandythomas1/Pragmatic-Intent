@@ -1,6 +1,6 @@
 # Spec 006: Split and prior-inspection audit
 
-> **Phase:** Implemented · **Status:** T1–T9 done 2026-10-19 ([verification](verification.md)); WSL `audit --verify` passed · **Owner:** Sandy (decisions), Claude (tooling) · **Date:** 2026-10-19
+> **Phase:** Closed · **Status:** Closed 2026-10-19 ([retro](retro.md)); T1–T9 done ([verification](verification.md)); WSL `audit --verify` passed · **Owner:** Sandy (decisions), Claude (tooling) · **Date:** 2026-10-19
 > The *what* and *why*. No implementation detail; that belongs in `plan.md`.
 
 Parent: [spec 001](../001-pragmatic-intent-study/spec.md) WP-04, FR-06, AC-04; WP-08 (freeze).
@@ -197,53 +197,54 @@ reported test score.
 
 ## Acceptance Criteria
 
-- [ ] AC-006-1: A fixture test dialogue with one registered `pre_freeze` turn has *all* of its
+- [x] AC-006-1: A fixture test dialogue with one registered `pre_freeze` turn has *all* of its
   examples non-primary, in every condition and both common sets (AC-04).
-- [ ] AC-006-2: A registry row with a dev ID, an unknown ID, a bad enum or a malformed ID is
+- [x] AC-006-2: A registry row with a dev ID, an unknown ID, a bad enum or a malformed ID is
   rejected with a named error. A formula-leading cell is escaped on write.
-- [ ] AC-006-3: `scan` fails, naming file and ID, when a fixture sheet holds an unregistered test
+- [x] AC-006-3: `scan` fails, naming file and ID, when a fixture sheet holds an unregistered test
   dialogue. It passes when the dialogue is registered or the sheet holds only dev IDs. It fails on
   an unparseable CSV and on an `.xlsx` without a sibling items CSV.
-- [ ] AC-006-4: `check` fails with a named rule for: a dialogue in two splits, a DIRECT test
+- [x] AC-006-4: `check` fails with a named rule for: a dialogue in two splits, a DIRECT test
   dialogue absent from `testListFile`, a train dialogue present in `valListFile`, and a donor from
   another split.
-- [ ] AC-006-5: A fixture test dialogue whose user turns duplicate a train dialogue's is
+- [x] AC-006-5: A fixture test dialogue whose user turns duplicate a train dialogue's is
   non-primary with `cross_split_duplicate_dialogue`, both below and above the 1% threshold. Above
   it, the summary has `needs_decision: true`. A single-user-turn collision is not flagged. A
   dev↔train duplicate is reported but changes nothing.
-- [ ] AC-006-6: `dup_exact` is set for a test utterance that differs from a train utterance only in
+- [x] AC-006-6: `dup_exact` is set for a test utterance that differs from a train utterance only in
   case, punctuation and whitespace, and not for one that differs in a word. It never changes
   `primary`.
-- [ ] AC-006-7: An example whose donor is a registered dialogue stays primary and is counted in
+- [x] AC-006-7: An example whose donor is a registered dialogue stays primary and is counted in
   `donor_inspected`.
-- [ ] AC-006-8: Running `register` and `audit` twice gives byte-identical files on different days.
+- [x] AC-006-8: Running `register` and `audit` twice gives byte-identical files on different days.
   Changing one `pre_freeze` registry row or one byte of `items.jsonl` changes the content hash,
   and `--verify` fails.
-- [ ] AC-006-9: Stage 1 and Stage 2 test scoring fail without the audit file, or when the audit is
+- [x] AC-006-9: Stage 1 and Stage 2 test scoring fail without the audit file, or when the audit is
   stale against `items.jsonl`, `dialogues.jsonl` or the `pre_freeze` registry rows. With a valid
   audit, reported denominators exclude non-primary examples. Each contrast has one
   primary-minus-`dup_exact` line, and mismatch contrasts also keep their uncrossed minus-cue-donor line.
-- [ ] AC-006-10: The committed registry, audit file and summary, and the captured logs, contain no
+- [x] AC-006-10: The committed registry, audit file and summary, and the captured logs, contain no
   fixture utterance text (asserted by a test).
-- [ ] AC-006-11: Smoke check (reported separately): on the real data, `check` and `scan` pass. The
+- [x] AC-006-11: Smoke check (reported separately): on the real data, `check` and `scan` pass. The
   registry holds exactly 49 distinct `pre_freeze` test dialogues: 23 label-round, 24 more from
   fact-drift and 2 more from session transcripts (re-measured at the time the scan runs). The
   summary reports example-level exclusion, `dup_exact`, `donor_inspected` and `needs_decision`.
   The committed test audit regenerates byte-identically on Windows, and Sandy runs
   `audit --verify` once in WSL before the freeze. If the hashes differ, the build is fixed; the
-  check is never loosened.
-- [ ] AC-006-12: The full suite passes on native Windows Python 3.12. `docs/analysis_plan.md`, the
+  check is never loosened. *(Met with 51, not 49: two session-log dialogues appear only inside
+  item IDs; see [verification](verification.md).)*
+- [x] AC-006-12: The full suite passes on native Windows Python 3.12. `docs/analysis_plan.md`, the
   roadmap and `specs/memory/decisions.md` record the exclusion, near-duplicate, phase and
   LLM-judge-sample (FR17) policies.
-- [ ] AC-006-13: Given a fixture transcript holding a test ID, a dev ID and a secret-looking
+- [x] AC-006-13: Given a fixture transcript holding a test ID, a dev ID and a secret-looking
   string, `scan --transcripts` reports only the test ID, in canonical form. Neither the secret nor
   any log text appears in its output, logs or written files.
-- [ ] AC-006-14: Once a freeze date is set, a new `pre_freeze` row is refused, and a new
+- [x] AC-006-14: Once a freeze date is set, a new `pre_freeze` row is refused, and a new
   `post_scoring` row is accepted, appears in the summary count and leaves `primary` and the
   audit's content hash unchanged.
-- [ ] AC-006-15: `PMUL1762` and `PMUL1762.json` resolve to the same registered dialogue in every
+- [x] AC-006-15: `PMUL1762` and `PMUL1762.json` resolve to the same registered dialogue in every
   command.
-- [ ] AC-006-16: `register` refuses a local source file whose SHA-256 differs from the source
+- [x] AC-006-16: `register` refuses a local source file whose SHA-256 differs from the source
   table, and keeps committed rows with a warning when the file is missing.
 
 ## Open Questions
