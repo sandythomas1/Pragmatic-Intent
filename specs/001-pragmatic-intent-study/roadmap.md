@@ -46,7 +46,7 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 | D-04 test size/power | Official DIRECT test split; inferential status open | Audit prior inspection and coverage before the study freeze; sparse/noisy rule levels can remain exploratory. |
 | D-05 models/budget | Open; compute settled (2026-10-19) | Lab RTX 5090s are available. Configs for `deberta-v3-large` (planned primary encoder) and `roberta-large` were added, and the grid now runs 5 seeds. Panel, LLM and spending cap are still open. Sandy owns the model code. |
 | D-06 context windows | **Decided** (Sandy, 2026-10-14) | 350-word budget on `full`/`mismatched`, train and eval, `render-v1`. Truncates 0.9% of test examples. Encoder length check pending (S, WSL). |
-| D-07 statistics | Open | On dev, before the analysis freeze. |
+| D-07 statistics | **Method decided** (Sandy, 2026-10-20; spec 001 v1.3 note) | Bootstrap DiD on seed-averaged outcomes; confirmatory L0–L2 linear contrast for one prespecified system on `request_interpretation`; L3/INF exploratory; Holm secondary family with the panel fixed in the config; matched training primary; H3 tested on test-time lines. The `analysis-v1.toml` values are frozen at WP-08 after the dev precision report ([spec 007](../007-analysis-error-audit/spec.md)). |
 | D-08 WDSI | **Withdrawn** (2026-10-12) | The course professor: research goes through the class, December only. |
 
 ## Work packages
@@ -61,9 +61,9 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 | WP-05 Context renderer and invariants | Code | C | **004** context conditions | Tooling done 2026-10-14 (T1–T16). `check` passes on dev and test; test manifest committed. |
 | WP-06 Act references, Stage 2/routing scorers, IndirectRequests transfer (FR-15) | Code | C | **005** scoring | Tooling implemented 2026-10-18; dev inputs prepared. Model outputs and later adequacy/LLM-judge calibration pending. |
 | WP-07 Models on dev | Code | **S**, C reviews | none (Sandy's code) | Existing weak Stage 1 trainers only. |
-| WP-08 Feasibility and freeze record | Human + code | S, C manifest | 004/005 freeze tooling | Not started. |
+| WP-08 Feasibility and freeze record | Human + code | S, C manifest | 004/005 freeze tooling; proposed **008** freeze record writer | Not started. Critical path: spec 007's test gate and error audit need `freeze.json` with `freeze_date` and `analysis_config_sha256` before the Nov 9 grid. |
 | WP-09 Held-out grid and hybrid | Code run | S | none | Blocked on WP-08. |
-| WP-10 Analysis and error audit | Code + human | C analysis tooling, S audit | **007** analysis (renumbered from 006 on 2026-10-19) | Not started. |
+| WP-10 Analysis and error audit | Code + human | C analysis tooling, S audit | **007** [analysis and error audit](../007-analysis-error-audit/spec.md) (renumbered from 006 on 2026-10-19) | Drafted, reviewed (R1–R11 applied) and decomposed into 14 tasks on 2026-10-20 ([tasks](../007-analysis-error-audit/tasks.md)). T1 (config `configs/analysis/analysis-v1.toml`, draft) done 2026-10-20; T2 (shared bootstrap engine, Holm) done 2026-10-21; T3–T13 done 2026-10-21: the full `python -m src.analysis run` and `error-audit` tooling, 731 tests. T14 needs Sandy's dev run on WSL (`analysis run --split dev`) for the D-07 precision evidence; the runtime was checked on the real dev set with a synthetic grid. Sandy runs `uv lock` for the new `figures` group. |
 | WP-11 Paper and demo | Human | S, P guides the CS-paper form | none | Related work (FR-11) can start now. |
 | WP-12 Publication extension | none | none | none | **Withdrawn** 2026-10-12. |
 
@@ -164,5 +164,9 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   - `tfidf-utterance`: 0.877 dev accuracy.
   - `tfidf-context`: full-trained 0.877 under `full` vs 0.866 under `none`.
   - The old pre-spec-004 lines stay local only.
+- [x] C: Retro follow-up (2026-10-20): `git_state(ignore=...)` in `src/stage1/provenance.py`
+  excludes the run's own results log and output directory from `git_dirty`. Ignore paths outside
+  the worktree are dropped, so an external log path still works. `src/evaluation/run.py` now uses
+  the same helper. 8 new tests (hermetic temp repos); 600 pass on Windows. Unblocks the 5090 grid.
 - [ ] S: Supply dev model outputs using [the Stage 2 contract](../../docs/stage2_scoring.md).
   The tooling runs no models and does not yet evaluate free-paraphrase adequacy.

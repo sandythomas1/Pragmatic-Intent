@@ -5,6 +5,231 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-10-21: Estimands, run command, tables, figure and error audit (Spec 007 / T6–T13)
+Decision:
+- **Only prespecified tests carry a p-value**: the primary test and the Holm members. Every
+  other statistic gets an interval only.
+- **Statistics.** Base statistics are seed-averaged rates and paired differences. Every contrast
+  of contrasts is flattened to a linear combination of bases, so all share the one bootstrap.
+- **Holm member status.**
+  - `not_run`: its system did not run.
+  - `untestable`: the system ran but the statistic is empty, sparse or unstable.
+  - Both keep p = 1.
+- **H4's population** is the spec 005 oracle population (gold indirect). Its L0 cell is
+  therefore the rule-L0 indirect rewrites; an empty cell is reported `empty`, never imputed.
+- **Dev precision report** covers every run system (the primary design on its main endpoint,
+  with a `stage1_correct` fallback). D-07 thus gets dev evidence before the LLM or hybrid exists.
+- **Committed tables** are refused if a dialogue-ID pattern appears. Number lists are never
+  formula-escaped.
+- **Figure.** It uses the reference palette's categorical slots 1–3 with distinct marker shapes,
+  and hollow markers for untested cells. The validator was not run (no Node); the slots are the
+  palette's validated ones and shape gives secondary encoding. matplotlib 3.10.9 is in a new
+  `figures` uv group.
+- **Error-audit inspector** must be `A<n>`: `claude` is refused, because Claude never inspects
+  test output.
+- **Error-audit writes.**
+  - A second sample is refused while a sheet exists.
+  - A failure after the registry write restores its original bytes.
+  - No `register_rows` refactor was needed: spec 006's `merge_rows` → `validate_registry` →
+    `write_registry` already form the validated append path.
+
+Why:
+- **p-values.** A p-value on every slice invites unplanned testing; intervals suffice for
+  exploration.
+- **Precision report.** Precision evidence is needed before the freeze, and no Stage 2 system
+  exists yet.
+- **Error-audit writes.** Re-sampling would make the audit selectable. A registry row without its
+  sheet is harmless, but the spec asks for all-or-nothing.
+
+Alternatives considered:
+- **p for every statistic.** Rejected.
+- **Imputing or skipping an empty H4 cell.** Rejected: silent.
+- **A new `register_rows` in split_audit.** Unnecessary.
+- **Allowing `claude` as the error-audit inspector.** Rejected.
+
+## 2026-10-21: Inputs, outcome table and endpoint populations (Spec 007 / T3–T5)
+Decision:
+- **Inputs file.** Each system's entry declares its runs per stream (`stage1`, `stage2`,
+  `transfer`), each with `train_condition` and `seed`.
+  - **What a design accepts.** A design accepts only the training conditions it uses: `matched`
+    needs `none`/`one`/`full`, `test_time` needs `full`, and `llm` needs `untrained`. Any other
+    run (for example a mismatched-trained encoder run) is rejected as unused, not ignored.
+  - **What each Stage 1 run must agree with.** It must match what it recorded: the
+    `config.resolved.json` name equal to the panel name, the train condition, `eval_split`, the
+    `metrics.json` seed, and `smoke = false`.
+- **Hash once, verify on read.** Every file is hashed when the inputs are loaded and re-read only
+  through `read_verified`, so the parsed bytes are the hashed bytes. Bounded reads are chunked.
+  The earlier `read(limit + 1)` pre-allocated 512 MiB per file and made loading 25× slower.
+- **Outcome storage.**
+  - Predictions are kept as tuples aligned to the evaluation set's member lists. Endpoints are
+    computed on demand by module-level functions, so a corrupted formula fails the component
+    check.
+  - A system's detection endpoints come from its Stage 1 runs when it has them, otherwise from
+    its routed file.
+- **Populations (spec FR3 clarified).**
+  - `type_exact` keeps spec 005's `end_to_end` population, non-requests included, so its totals
+    equal the scorer's.
+  - `request_interpretation` is restricted to gold requests.
+- **Scorer errors that name an example** (`stage1.check_predictions`) are replaced with an ID-free
+  `invalid_predictions`.
+
+Why:
+- **Inputs.** The inputs file is written after test runs, so it must not be able to choose
+  which runs count.
+- **Run checks.** Recorded-vs-declared checks catch a mislabelled folder: a full-trained run
+  passed off as `none`, a dev run in a test list, or a smoke run.
+- **Populations.** Over non-requests, "detected AND exact" would reward predicting a request with
+  no slots on a non-request.
+
+Alternatives considered:
+- **Ignoring unused runs.** Rejected: an ambiguous role.
+- **Per-example dicts.** Rejected: about 10× the memory for a 5-seed grid.
+- **One population for both Stage 2 endpoints, as FR3's old wording implied.** Rejected: either
+  the `type_exact` equality check or the primary endpoint's meaning breaks.
+
+## 2026-10-21: Bootstrap engine internals (Spec 007 / T2)
+Decision:
+- **Undefined replicates are stored as NaN** in one `array('d')` per statistic. Derived statistics
+  are computed as linear combinations after the pass. NaN propagates through `map(operator.mul)`
+  and `map(operator.add)`, so a derived value exists exactly where all its inputs do.
+- **Zero-coefficient terms are dropped first.** An undefined L1 doesn't void the (−1, 0, +1)
+  contrast.
+- **Each statistic is compiled to its support** (the dialogues with a non-zero denominator).
+  - Weights are picked with `operator.itemgetter`.
+  - Statistics with the same support share one pick per replicate.
+  - Statistics with the same denominator (same examples, other systems or conditions) share one
+    denominator sum.
+- **Percentile tails** are `round((1 − confidence) / 2, 12)`. At 0.95 that gives exactly 0.025 and
+  0.975, so the order statistics equal `metrics._percentile_interval`'s (tested for 8 lengths).
+- **Draws** use `rng.choices(range(n), k=n)`, which consumes the same random numbers as
+  `metrics.py`'s `rng.choices(groups, k=n)`. The intervals therefore match the per-run scorer
+  exactly (AC-007-6).
+- **An unstable statistic** keeps its interval but gets p = None. A statistic never drawn gets
+  neither.
+
+Why:
+- **Dense multiply-adds** would run over all 944 dialogues even for an L3 or INF slice that
+  touches about 120–200 of them. The compiled form projects to about 4 minutes for 1,440 statistics at B = 10,000 (synthetic
+  timing), inside the 15-minute bound.
+- **NaN propagation** makes "only replicates where every input is defined" automatic. It needs no
+  per-derived bookkeeping.
+
+Alternatives considered:
+- **Python lists of floats for replicates.** Rejected: about 4× the memory of `array('d')`, roughly
+  115 MB at 1,440 × 10,000.
+- **Computing derived statistics inside the replicate loop.** Rejected: same arithmetic, and the
+  loop gets more complex.
+- **Allowing derived statistics to reference other derived statistics.** Rejected for now: T6 can
+  flatten every contrast (benefits, trends, level − L0) into base terms, because they are all
+  linear.
+
+## 2026-10-20: Analysis config shape and hash (Spec 007 / T1)
+Decision:
+- **Hash.** SHA-256 of the parsed TOML as sorted-key, compact JSON. It is computed only after
+  validation, so it covers validated values only. Comments, key order and number spelling
+  (`0.95` vs `9.5e-1`) don't move it. Array order does, including `streams`.
+- **Every key is required.** There are no defaults, so the frozen file is the whole plan.
+- **Holm members are typed by `kind`:** `h1_trend`, `h2_trend`, `h3_difference`, `h4_contrast`,
+  `mismatch_control`. Each kind has its own required keys. `h3_difference` must reference the
+  primary system.
+- **Endpoint → streams.**
+  - The Stage 2 endpoints need `routed` + `oracle`, because the component check runs
+    `stage2.build_report`, which takes both.
+  - `stage1_correct` accepts `stage1` or `routed` + `oracle`.
+  - An `llm` system must be `test_time`.
+- **Cross-field checks.**
+  - `alpha` must equal 1 − `confidence`, since the interval decides the primary test and alpha
+    feeds Holm.
+  - Level lists must follow L0 < L1 < L2 < L3 < INF. A reordered list would silently flip a
+    trend's sign.
+- **Default panel designs.**
+  - `tfidf-utterance` and `tfidf-context` are `test_time`. The first is context-blind; the second
+    cannot train on `none`.
+  - Encoders and `hybrid` are `matched`.
+- **H1 family member** is scored under `none` (the utterance-only replication setting). *To
+  confirm at the freeze.*
+- **`git_state` without git.** It returns `None` for both fields when no git binary is on PATH,
+  instead of raising.
+
+Why:
+- **The hash** can be recomputed with `tomllib` + `json` alone, by spec 008 or a reader.
+- **Required keys** stop a missing key from silently taking a code default that could change
+  between versions.
+- **Typed members** make "primary test inside the family" and "member outside the panel"
+  mechanical checks.
+- **`git_state` without git.** Native Windows has git only inside GitHub Desktop. Without this,
+  `src.evaluation.run` failed and a Stage 1 run crashed at `finish()`. That latent bug was hidden
+  whenever git was on PATH.
+
+Alternatives considered:
+- **Hashing the dataclass form.** Rejected: renaming a field in code would move the hash of an
+  unchanged file.
+- **Normalizing `streams` order before hashing.** Rejected: keeping the raw parsed form is
+  simpler to reproduce.
+- **Free-form member names with an implied test.** Rejected: names can't be validated.
+- **Allowing `alpha` ≠ 1 − `confidence`.** Rejected: the CI rule and the Holm level would then
+  disagree.
+
+## 2026-10-20: Spec 007 review: primary endpoint, frozen panel, H3 design, error-audit gate (Spec 007 / R1–R8)
+Decision:
+- **Primary endpoint.** `request_interpretation` (predicted ≠ `no_request` AND an exact
+  interpretation), following spec 001 §5. Spec 005's type-exact `end_to_end` becomes the
+  secondary `type_exact` line. *(R1)*
+- **Panel.** The frozen analysis config enumerates the model panel. The inputs file only maps it
+  to files. A missing system is `not_run` with p = 1 and keeps its place in the Holm family. *(R2)*
+- **H3 design.** The Holm-tested H3 differences use test-time lines for every system. The
+  primary-line comparison is descriptive (Sandy, option a). *(R6)*
+- **Bootstrap.** One joint draw of all dialogues per replicate, example-weighted ratios.
+  Zero-denominator replicates are dropped per statistic, and a statistic losing more than 1% of
+  replicates is `unstable` and untested. *(R3)*
+- **Error audit gate.** The freeze date comes only from `freeze.json`. The sampler requires `--on`
+  on or after it, `--inspector`, and the frozen test report. The codes file is committed under
+  `results/error_audit/`, which is added to spec 006's post-scoring scan directories.
+  Over-inference is reported by the false-positive rate, not audited. *(R4, R5, R8)*
+- **Spec 001 v1.3 note** records the D-07 amendment. *(R7)*
+
+Why:
+- The type-exact score penalizes reading rule-L0 "indirect" rewrites as direct, inside the
+  L2 − L0 contrast.
+- An inputs-derived panel would let the Holm family and the H3 tables depend on test results.
+- Primary lines mix matched and test-time designs across families.
+- A CLI freeze date would let test be inspected before the freeze while being recorded as
+  post-scoring.
+
+Alternatives considered:
+- Keeping `end_to_end` as primary.
+- H3 on primary lines (R6b) or on same-design pairs only (R6c).
+- Slice-only resampling.
+- An NR stratum in the error audit (about 15 more items of labeling).
+
+## 2026-10-20: D-07 statistics, H2 status, context contrast and error-audit size (Spec 007 draft)
+Decision (Sandy, 2026-10-20):
+- **D-07 method.** A dialogue-grouped bootstrap difference-in-differences on seed-averaged
+  outcomes, with one shared bootstrap for every statistic. No mixed model, in any role.
+- **H2 status.** One confirmatory test: the L0–L2 linear trend of the full − none benefit, for one
+  prespecified system, on the `end_to_end` endpoint. L3 and INF are exploratory. The secondary
+  family is Holm-corrected.
+- **Context contrast for trained models.** Matched training (train c, evaluate c) is primary. A
+  full-trained model scored at test time is a secondary line. Mismatch controls stay test-time.
+- **Error audit.** 60 errors (15 per level, L0–L3), seeded and stratified. Dialogues are
+  registered `post_scoring` before the sheet is written.
+
+Why:
+- The bootstrap is stdlib-only and deterministic, and it extends the verified scorers. A GLMM
+  adds a dependency and convergence risk on sparse cells, too close to Dec 3.
+- `auto-v1` L3 precision is 12/40, so L3 can't carry a confirmatory claim.
+- Test-time ablation of a trained model confounds context with train/test shift.
+- About 1 hour of labeling keeps pace with the deadline.
+
+Alternatives considered:
+- A GLMM as a sensitivity line or as the primary analysis.
+- Letting L3 enter by a precision threshold, or estimation-only H2.
+- Test-time ablation as primary, or both lines with no primary.
+- 120 errors, or deciding the size at the freeze.
+
+Open: the primary system (D-05), the endpoint fallback if no end-to-end system is ready, the rules
+version at the freeze, and the `freeze.json` writer (WP-08).
+
 ## 2026-10-19: Test audit is fully deterministic, fails closed, and registers 51 dialogues (Spec 006 / T5–T9)
 Decision:
 - **No timestamp in the audit summary.** `audit --verify` byte-compares both files.

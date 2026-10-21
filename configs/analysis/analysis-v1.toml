@@ -1,0 +1,174 @@
+# Analysis plan (D-07; spec 007). Decisions of 2026-10-20: dialogue-cluster bootstrap
+# difference-in-differences on seed-averaged outcomes, no mixed model. WP-08's freeze.json pins
+# this file's hash (src.analysis.config.load_config(path).sha256, over the parsed content, so
+# comments and formatting do not move it); a test analysis refuses any other hash. Every key is required and unknown keys are errors.
+# Any change after the freeze is a new config version plus a dated amendment.
+
+version = "analysis-v1"
+rules_version = "auto-v1"   # switch to "auto-v2" only if its L3 check lands before the freeze
+draft = true                # stays true until the freeze names the primary system (D-05)
+alpha = 0.05                # must equal 1 - confidence: the interval decides the primary test
+
+[bootstrap]
+samples = 10000             # kept unless the dev Monte Carlo check (FR16) fails
+seed = 20261020
+confidence = 0.95
+
+[cells]
+min_dialogues = 30          # below this a level x condition cell is sparse: no p-value
+max_excluded_share = 0.01   # more zero-denominator replicates than this: unstable, no test
+
+# Confirmatory H2 test: linear (-1, 0, +1) contrast of the full - none benefit over L0-L2, i.e.
+# the L2 - L0 benefit difference. The quadratic contrast is reported descriptively.
+[primary]
+system = "hybrid"           # placeholder until D-05; needs routed + oracle streams
+endpoint = "request_interpretation"
+contrast = "full_minus_none"
+trend = "linear"
+levels = ["L0", "L1", "L2"]
+
+# Shown in every table, labeled exploratory, never tested. L3 rule precision was 12/40 (auto-v1).
+[exploratory]
+levels = ["L3", "INF"]
+
+# Post-scoring error audit of the primary system (spec 001 section 13): 15 errors per level.
+[error_audit]
+levels = ["L0", "L1", "L2", "L3"]
+per_level = 15
+seed = 20261020
+
+# The model panel, fixed before test. Matched systems are scored per condition by the model
+# trained on that condition (primary line); every system also has a test-time line from its
+# full-trained model, which is the only design every family shares.
+[[panel]]
+name = "tfidf-utterance"    # context-blind artifact probe; its context benefit is 0 by construction
+family = "tfidf"
+design = "test_time"
+streams = ["stage1"]
+
+[[panel]]
+name = "tfidf-context"      # cannot train without context, so it has no matched none run
+family = "tfidf"
+design = "test_time"
+streams = ["stage1"]
+
+[[panel]]
+name = "deberta-v3-base"
+family = "encoder"
+design = "matched"
+streams = ["stage1"]
+
+[[panel]]
+name = "deberta-v3-large"
+family = "encoder"
+design = "matched"
+streams = ["stage1"]
+
+[[panel]]
+name = "roberta-base"
+family = "encoder"
+design = "matched"
+streams = ["stage1"]
+
+[[panel]]
+name = "roberta-large"
+family = "encoder"
+design = "matched"
+streams = ["stage1"]
+
+[[panel]]
+name = "llm"                # placeholder until D-05; untrained, so test_time only
+family = "llm"
+design = "test_time"
+streams = ["routed", "oracle", "transfer"]
+
+[[panel]]
+name = "hybrid"             # placeholder until D-05; router declared trained per condition
+family = "hybrid"
+design = "matched"
+streams = ["routed", "oracle", "transfer"]
+
+# Secondary family, Holm-corrected together. Its size is fixed here, never by the inputs: a
+# member whose system is not run keeps its place with p = 1.
+[[family]]
+name = "h1-trend"           # performance falls with indirectness, utterance-only (replication)
+kind = "h1_trend"
+system = "hybrid"
+endpoint = "request_interpretation"
+condition = "none"
+
+[[family]]
+name = "h2-detection-trend"
+kind = "h2_trend"
+system = "hybrid"
+endpoint = "stage1_correct"
+contrast = "full_minus_none"
+
+[[family]]
+name = "h4-detection-vs-oracle"   # drop(detection) - drop(oracle) under full; predicted negative
+kind = "h4_contrast"
+system = "hybrid"
+
+[[family]]
+name = "full-minus-mismatched"    # corruption control, test-time line
+kind = "mismatch_control"
+system = "hybrid"
+endpoint = "request_interpretation"
+contrast = "full_minus_mismatched"
+
+# H3: each other panel system's test-time full - none benefit minus the primary system's.
+[[family]]
+name = "h3-tfidf-utterance"
+kind = "h3_difference"
+system = "tfidf-utterance"
+reference = "hybrid"
+endpoint = "stage1_correct"
+contrast = "full_minus_none"
+
+[[family]]
+name = "h3-tfidf-context"
+kind = "h3_difference"
+system = "tfidf-context"
+reference = "hybrid"
+endpoint = "stage1_correct"
+contrast = "full_minus_none"
+
+[[family]]
+name = "h3-deberta-v3-base"
+kind = "h3_difference"
+system = "deberta-v3-base"
+reference = "hybrid"
+endpoint = "stage1_correct"
+contrast = "full_minus_none"
+
+[[family]]
+name = "h3-deberta-v3-large"
+kind = "h3_difference"
+system = "deberta-v3-large"
+reference = "hybrid"
+endpoint = "stage1_correct"
+contrast = "full_minus_none"
+
+[[family]]
+name = "h3-roberta-base"
+kind = "h3_difference"
+system = "roberta-base"
+reference = "hybrid"
+endpoint = "stage1_correct"
+contrast = "full_minus_none"
+
+[[family]]
+name = "h3-roberta-large"
+kind = "h3_difference"
+system = "roberta-large"
+reference = "hybrid"
+endpoint = "stage1_correct"
+contrast = "full_minus_none"
+
+[[family]]
+name = "h3-llm"
+kind = "h3_difference"
+system = "llm"
+reference = "hybrid"
+endpoint = "request_interpretation"
+contrast = "full_minus_none"

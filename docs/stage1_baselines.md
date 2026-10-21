@@ -171,12 +171,32 @@ Copy that hash into the config's `revision` so later runs cannot pick up a chang
 | `…/config.resolved.json` | the exact config after overrides | no |
 | `results/stage1.jsonl` | one line per completed run: headline metrics and contrasts, config/data hashes, git commit and dirty flag, GPU, package versions, machine label | **yes**: commit it after runs |
 
+`git_dirty` ignores the run's own outputs (the `--results` log and the run's output directory), so a
+seed grid can append to the tracked log in one checkout and each run still records `false` when
+the code is clean. Any other change, tracked or untracked, still marks the run dirty.
+
 To re-score a predictions file, for example after a new rule version (`--dialogues` defaults to
 `data/interim/direct/dialogues.jsonl` and is needed for the donor cue flags):
 
 ```bash
 python -m src.evaluation.stage1 --predictions outputs/stage1/<run>/train-full/seed13/predictions.jsonl \
   --out /tmp/rescored.json
+```
+
+**Cross-run analysis (spec 007).** A run's `metrics.json` has bootstrapped each contrast on its
+own. The paper's numbers come from `python -m src.analysis run` instead (see
+[analysis plan](analysis_plan.md), D-07):
+- it re-validates every run's predictions against its saved `metrics.json`;
+- it averages seeds;
+- it puts every statistic on one shared dialogue bootstrap.
+
+List the run directories in `configs/analysis/inputs-<split>.toml` (format in
+`src/analysis/inputs.py`). Each run must match what it recorded: name, train condition,
+`eval_split`, seed, and not a smoke run. A `test_time` system needs a `full`-trained run, so train
+`tfidf-utterance` with `--train-condition full` as well.
+
+```bash
+python -m src.analysis run --split dev --inputs configs/analysis/inputs-dev.toml   # dev diagnostics only
 ```
 
 ## Context checks and the manifest (spec 004)

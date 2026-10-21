@@ -55,22 +55,68 @@ Average seeds within model/item/condition first and report across-seed variabili
 Seeds are not additional independent test items. Literary work/collection sensitivity analysis
 needs enough independent works; a handful cannot support population-level literary claims.
 
-Proposed binary correctness model for assistant dialogue:
+> **Replaced (D-07, 2026-10-20; spec 001 v1.3, spec 007).** The mixed model below was the 2026-10-09
+> proposal. It is **not** used, in any role. The decided method follows it ("D-07: decided
+> method").
 
 ~~~text
-correct ~ context * form_level * model + intent + (1 | dialogue_group) + (1 | item_id)
+correct ~ context * form_level * model + intent + (1 | dialogue_group) + (1 | item_id)   # replaced
 ~~~
 
-Repeated conditions need item dependence as well as dialogue dependence. Consider context random
-slopes only with sufficient groups. Select package, contrast coding, estimation, seed handling
-and convergence/separation fallback on dev; freeze before test. The primary endpoint differs from
-the legacy six-way form scorer. If the pilot cannot support this model, prespecify paired descriptive
-contrasts and label H2 exploratory instead of fitting an unstable model.
+### D-07: decided method (2026-10-20; implemented by spec 007)
 
-Propose one primary context-by-level test, 95% intervals and alpha 0.05 for confirmatory testing;
-Holm correction for the frozen secondary comparison family. Report effect sizes and contradictory
-or null findings. Use pilot-based simulation before claiming power. These settings remain proposed
-until the freeze checklist is complete.
+Implemented by `python -m src.analysis run` and fixed by the hashed config
+`configs/analysis/analysis-v1.toml`. The WP-08 freeze record pins that hash, and a test run
+refuses any other.
+
+- **Dependence model: dialogue-cluster bootstrap difference-in-differences.**
+  - Seeds are averaged within (system, line, condition, example) before resampling.
+  - One shared bootstrap per run resamples whole dialogues (B = 10,000). Every statistic is an
+    example-weighted ratio on the same draw, so differences between levels, systems and
+    endpoints have joint intervals.
+  - Dialogue resampling carries the item and dialogue dependence the random intercepts were for.
+  - Intent is handled by an intent-standardized sensitivity line, not a covariate.
+- **Primary endpoint: `request_interpretation`** (spec 001 §5): a request is detected (the
+  prediction is not `no_request`) AND its interpretation is exact. It is scored on gold requests
+  with a mapped category. Spec 005's type-exact `end_to_end` is a secondary `type_exact` line.
+- **Confirmatory test (H2).** One test: the linear contrast (−1, 0, +1) of the full − none benefit
+  over rule levels L0, L1, L2 (the L2 − L0 benefit difference).
+  - It uses one prespecified primary system on its primary line.
+  - It is two-sided at α 0.05, decided by whether the 95% percentile interval excludes 0.
+  - The quadratic contrast is descriptive.
+  - L3 (rule precision 12/40) and INF are exploratory.
+  - A main effect without an interaction is labelled "main effect, no interaction".
+- **Context design.** Trained models use **matched** training as the primary line: condition c is
+  scored by the model trained on c. The test-time line (the full-trained model under every
+  condition) is secondary. Mismatch controls always use the full-trained model.
+- **Secondary family (Holm), fixed in the config, never by the inputs:**
+  - the H1 trend;
+  - the detection-only H2 trend;
+  - H4: drop(detection) − drop(oracle) under full;
+  - full − mismatched;
+  - H3: each other panel system's benefit minus the primary system's, on **test-time** lines.
+
+  A system that did not run keeps its place with p = 1. H5 and the primary-line H3 comparison
+  are exploratory.
+- **Cells.**
+  - Fewer than 30 dialogues makes a cell `sparse`.
+  - More than 1% excluded replicates makes a statistic `unstable`.
+  - Neither is tested.
+  - The primary test touching either fails the run.
+- **Precision instead of a power simulation (FR-10 amended).** The dev run reports the primary
+  interval's half-width, every cell's size, and the interval under a second bootstrap seed (must
+  agree to ±0.002, or B is raised before the freeze).
+- **Error audit.** 15 `request_interpretation` errors per level L0–L3 from the primary system
+  under full:
+  - drawn after the frozen test analysis;
+  - seeded and stratified;
+  - registered `post_scoring` before the sheet exists;
+  - coded with the closed spec 001 §13 code set.
+
+  Over-inference is reported as the non-request false-positive rate.
+
+Report effect sizes and contradictory or null findings. Dev numbers are diagnostics
+(`dev_diagnostic_not_a_finding`); only a `frozen_test` run is a finding.
 
 ## Exclusions and leakage
 
@@ -125,7 +171,10 @@ checks and source-separated results. Do not claim naturally occurring wording wa
 - [ ] Model revisions, training-label policies, prompts, token budgets, seeds and retry rules pinned.
 - [ ] Contextual adapter, Stage 2 scorer and routing tested on dev.
 - [ ] Endpoint/test, bootstrap settings, secondary comparison family, statistical implementation
-      and fallback fixed; underpowered analyses labeled exploratory in advance.
+      and fallback fixed; underpowered analyses labeled exploratory in advance. (Method decided and
+      implemented 2026-10-20/21, spec 007. Still open: the primary system (D-05), the endpoint
+      fallback if no Stage 2 system is ready, the rules version, the dev precision evidence, and
+      `draft = false`.)
 - [ ] Human baseline assignment and output audit sample/agreement procedures fixed.
 - [ ] Freeze date and Git commit recorded; later amendments dated with rationale.
 

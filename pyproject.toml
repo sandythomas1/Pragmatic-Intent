@@ -22,6 +22,10 @@ gpu = [
     "sentencepiece==0.2.2",  # DeBERTa-v3 tokenizer
     "protobuf==5.29.6",      # slow-to-fast tokenizer conversion
 ]
+# Only the spec 007 figure script (src/analysis/figures.py); the analysis itself is stdlib-only.
+figures = [
+    "matplotlib==3.10.9",
+]
 
 [tool.uv]
 package = false

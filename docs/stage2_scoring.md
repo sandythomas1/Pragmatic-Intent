@@ -75,6 +75,16 @@ succeeds. Context contrasts use common sets, resample whole dialogues and disclo
 sensitivity. Rule/category slices are mechanical and versioned. They are descriptive, not a
 confirmatory context-by-indirectness interaction test.
 
+**This report's `end_to_end` is not the primary endpoint.** Spec 007 (D-07) computes the primary
+endpoint as spec 001 §5 defines it, from the same validated rows: `request_interpretation`, a
+request detected (any route other than `no_request`) AND an exact interpretation. A rule-L0
+"indirect" rewrite that is read as direct and interpreted exactly therefore counts as a success.
+
+`end_to_end` stays as the secondary `type_exact` line, and the analysis checks that its totals
+equal this report's. The confirmatory interaction test is the one in
+`python -m src.analysis run` (see [analysis plan](analysis_plan.md)). Give the routed and oracle
+files of each system and seed in `configs/analysis/inputs-<split>.toml`.
+
 ## IndirectRequests: separate generated transfer data
 
 ```bash

@@ -104,9 +104,14 @@ def set_name(*conditions: str) -> str:
     return "mismatch" if any(condition in MISMATCH_CONDITIONS for condition in conditions) else "genuine"
 
 
-def _check_predictions(
+def check_predictions(
     members: dict[str, list[Stage1Example]], predictions: Sequence[dict[str, Any]]
 ) -> dict[str, dict[str, str]]:
+    """Exactly one valid prediction per member example under each predicted condition.
+
+    ``members`` maps ``genuine`` and ``mismatch`` to their examples. Public for the spec 007
+    analysis, which re-validates saved predictions with the scorer's own rules.
+    """
     expected = {name: {e.example_id for e in examples} for name, examples in members.items()}
     by_condition: dict[str, dict[str, str]] = {}
     for row in predictions:
@@ -123,6 +128,9 @@ def _check_predictions(
         if len(scored) != len(expected[set_name(condition)]):
             raise ValueError(f"missing predictions under {condition}")
     return by_condition
+
+
+_check_predictions = check_predictions  # the historical private name
 
 
 def _slices(examples: Sequence[Stage1Example], predicted: dict[str, str], key) -> dict[str, Any]:
@@ -158,7 +166,7 @@ def build_report(
     if not sets.mismatch_ids <= ids or set(sets.cue_donor_ids) - set(MISMATCH_CONDITIONS):
         raise ValueError("scoring sets name unknown examples or conditions")
     members = {"genuine": list(examples), "mismatch": [e for e in examples if e.example_id in sets.mismatch_ids]}
-    by_condition = _check_predictions(members, predictions)
+    by_condition = check_predictions(members, predictions)
     slices = slices or {}
     if set(slices) - set(SLICE_VERSIONS):
         raise ValueError(f"unknown slices: {sorted(set(slices) - set(SLICE_VERSIONS))}")
