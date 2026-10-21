@@ -137,6 +137,7 @@ def finish(args: argparse.Namespace, config: RunConfig, prepared: Prepared,
                           config.bootstrap_samples, config.bootstrap_seed, dup_ids=audit.dup_ids if audit else None)
     if audit:
         report["test_audit"] = audit.report(len(prepared.eval))
+    out = output_dir(args, config)
     run = {
         "run": config.name, "kind": config.kind, "seed": args.seed, "machine": args.machine,
         "smoke": args.smoke, "policy": data.policy, "train_split": data.train_split,
@@ -144,9 +145,9 @@ def finish(args: argparse.Namespace, config: RunConfig, prepared: Prepared,
         "n_train": len(prepared.train), "n_eval": len(prepared.eval),
         "config_sha256": config.sha256(), "items_sha256": provenance.sha256(Path(data.items)),
         "duration_s": round(time.time() - started, 1), "model": model_info,
-        "gpu": provenance.gpu_info(), "environment": provenance.environment(), **provenance.git_state(),
+        "gpu": provenance.gpu_info(), "environment": provenance.environment(),
+        **provenance.git_state(ignore=(args.results, out)),
     }
-    out = output_dir(args, config)
     out.mkdir(parents=True, exist_ok=True)
     (out / "config.resolved.json").write_text(json.dumps(config.to_dict(), indent=2) + "\n", encoding="utf-8")
     (out / "predictions.jsonl").write_text(

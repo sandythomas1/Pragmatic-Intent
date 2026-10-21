@@ -12,7 +12,6 @@ import collections
 import csv
 import hashlib
 import json
-import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,6 +20,7 @@ from typing import Any, Sequence
 from src.annotation.levels import normalize_label
 from src.data.direct_dataset import CONDITIONS
 from src.evaluation.metrics import bootstrap_accuracy_ci, classification_metrics
+from src.stage1.provenance import git_state
 
 LEVELS = ("L0", "L1", "L2", "L3", "INF", "NR")
 
@@ -188,14 +188,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             predictions = majority_predictions(examples)
         report = build_report(examples, predictions, args.bootstrap_samples, args.seed)
-        git = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=False)
-        dirty = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, check=False)
         report.update(status="development_pilot" if not args.predictions else "scored_predictions",
                       validation="leave_one_dialogue_out" if not args.predictions else "external_predictions",
                       model="majority_class" if not args.predictions else "external",
                       split=args.split, annotator=args.annotator, excluded=excluded,
-                      git_commit=git.stdout.strip() if git.returncode == 0 else None,
-                      git_dirty=bool(dirty.stdout.strip()) if dirty.returncode == 0 else None,
+                      **git_state(ignore=(args.out_dir,)),
                       python_version=sys.version.split()[0],
                       source_sha256=_sha256(Path(__file__)),
                       annotations_sha256=_sha256(args.annotations), items_sha256=_sha256(args.items))

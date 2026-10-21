@@ -14,6 +14,7 @@ import platform
 import socket
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -28,10 +29,32 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def git_state() -> dict[str, Any]:
-    commit = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=False)
-    status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, check=False)
-    return {"git_commit": commit.stdout.strip() if commit.returncode == 0 else None,
+def _git(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["git", *args], capture_output=True, text=True, check=False)
+
+
+def git_state(ignore: Sequence[Path] = ()) -> dict[str, Any]:
+    """Commit and dirty flag for the working tree.
+
+    ``ignore`` lists the run's own outputs (the results log it appends to, its output
+    directory). They never mark the tree dirty; otherwise every run after the first in a
+    checkout would report dirty code. Paths outside the worktree need no exclusion and
+    are dropped, since git rejects an out-of-repository pathspec. Without a git binary on
+    PATH both fields are unknown, as they are outside a repository.
+    """
+    unknown = {"git_commit": None, "git_dirty": None}
+    try:
+        commit = _git("rev-parse", "HEAD")
+        top = _git("rev-parse", "--show-toplevel")
+        if commit.returncode != 0 or top.returncode != 0:
+            return unknown
+        root = Path(top.stdout.strip()).resolve()
+        excluded = [f":(exclude){path.as_posix()}" for path in (p.resolve() for p in ignore)
+                    if path.is_relative_to(root)]
+        status = _git("status", "--porcelain", "--", ":/", *excluded)
+    except OSError:
+        return unknown
+    return {"git_commit": commit.stdout.strip(),
             "git_dirty": bool(status.stdout.strip()) if status.returncode == 0 else None}
 
 
