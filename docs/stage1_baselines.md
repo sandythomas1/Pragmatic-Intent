@@ -154,6 +154,18 @@ resolved value is logged.
 With the grid script, set `MICRO_BATCH=8`, `GRAD_CKPT=1`, `SEEDS="13"` or `CONDITIONS="full"`.
 The default is five seeds (`13 42 2026 314 2718`).
 
+**Checkpoints.** `--checkpoint-every N` saves the full training state every N optimizer steps,
+and once more when training ends, to `<run dir>/checkpoint.pt`. The state covers the weights,
+optimizer, scheduler, data order and RNG states. Rerunning the same command resumes from it,
+with the same batches and dropout stream as an uninterrupted run. The checkpoint is deleted
+after the run's outputs are written. A crash or sleep therefore costs at most N steps, not the
+whole run. A checkpoint from a different recipe, seed, condition, data file or batch layout is
+refused; delete it to restart that run.
+- The grid script checkpoints every 250 steps by default (`CHECKPOINT_EVERY=0` turns this off).
+- A checkpoint is about 3× the model's fp32 size: roughly 2 GB for base models and 5 GB for large.
+- After a resume, `model.resumed_at_steps` lists the steps each resume started from.
+  `peak_memory_gib` then covers only the last process.
+
 **Runtime.** Each encoder run processes 101,460 × 2 epochs of training examples, plus 5 × 11,340
 dev predictions. The smoke test logs examples per second; use it to estimate a full run before
 starting a grid. Following the research plan's compute rule, report each model's numbers from a

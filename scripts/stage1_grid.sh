@@ -6,17 +6,20 @@
 #   MICRO_BATCH=8 SEEDS="13" scripts/stage1_grid.sh configs/stage1/encoder_roberta_base.toml rtx5060-wsl
 #
 # Five seeds by default, so seed variation can be reported (spec 001 §13); the first three
-# match the original three-seed grid. Runs that already have metrics.json are skipped, so an
-# interrupted grid can be restarted.
+# match the original three-seed grid. Runs that already have metrics.json are skipped, and an
+# interrupted run resumes from its last checkpoint (every CHECKPOINT_EVERY optimizer steps,
+# default 250; 0 turns checkpoints off), so an interrupted grid can be restarted.
 set -euo pipefail
 
 config=$(realpath "${1:?usage: stage1_grid.sh CONFIG MACHINE}")
 machine=${2:?usage: stage1_grid.sh CONFIG MACHINE}
 seeds=${SEEDS:-"13 42 2026 314 2718"}
 conditions=${CONDITIONS:-"none one full mismatched"}
+checkpoint_every=${CHECKPOINT_EVERY:-250}
 extra=()
 [[ -n "${MICRO_BATCH:-}" ]] && extra+=(--micro-batch-size "$MICRO_BATCH")
 [[ -n "${GRAD_CKPT:-}" ]] && extra+=(--gradient-checkpointing)
+[[ "$checkpoint_every" != 0 ]] && extra+=(--checkpoint-every "$checkpoint_every")
 
 cd "$(dirname "$0")/.."
 name=$(python3 -c "import sys, tomllib; print(tomllib.load(open(sys.argv[1], 'rb'))['run']['name'])" "$config")
