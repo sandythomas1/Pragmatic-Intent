@@ -101,7 +101,8 @@ DEFAULT_ITEMS = Path("data/interim/direct/items.jsonl")
 FREEZE_FILE = Path("data/manifests/freeze.json")  # WP-08 writes {"freeze_date": "YYYY-MM-DD"}
 PRE_FREEZE_SCAN_DIRS = (Path("data/interim/labeling"), Path("data/interim/auto_levels"), Path("data/interim/context"),
                         Path("data/interim/literary"), Path("data/annotations"))
-POST_SCORING_SCAN_DIRS = (Path("data/interim/error_audit"),)
+# results/error_audit holds the committed spec 007 codes file (test example IDs, no text).
+POST_SCORING_SCAN_DIRS = (Path("data/interim/error_audit"), Path("results/error_audit"))
 TEXT_SUFFIXES = (".json", ".jsonl", ".txt")
 
 _DIALOGUE_ID_RE = re.compile(r"(?P<stem>(?:PMUL|MUL|SNG|SSNG|WOZ)[0-9]{4,5})(?:\.json)?")

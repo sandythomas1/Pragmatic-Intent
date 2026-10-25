@@ -12,7 +12,6 @@ import collections
 import csv
 import hashlib
 import json
-import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,6 +20,7 @@ from typing import Any, Sequence
 from src.annotation.levels import normalize_label
 from src.data.direct_dataset import CONDITIONS
 from src.evaluation.metrics import bootstrap_accuracy_ci, classification_metrics
+from src.stage1.provenance import git_state
 
 LEVELS = ("L0", "L1", "L2", "L3", "INF", "NR")
 
@@ -181,6 +181,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.predictions is None and args.split != "dev":
             raise ValueError("majority development pilot is restricted to dev; use separate training data for final experiments")
+        if args.split == "test":  # spec 008 FR16: no test score without a verifying freeze
+            from src.data.freeze import require_freeze  # lazy, as in src.evaluation.stage1 (import cycle)
+
+            require_freeze(Path("."))
         examples, excluded = load_examples(args.annotations, args.items, args.annotator, args.split)
         if args.predictions:
             with args.predictions.open(encoding="utf-8") as handle:
@@ -188,14 +192,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             predictions = majority_predictions(examples)
         report = build_report(examples, predictions, args.bootstrap_samples, args.seed)
-        git = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=False)
-        dirty = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, check=False)
         report.update(status="development_pilot" if not args.predictions else "scored_predictions",
                       validation="leave_one_dialogue_out" if not args.predictions else "external_predictions",
                       model="majority_class" if not args.predictions else "external",
                       split=args.split, annotator=args.annotator, excluded=excluded,
-                      git_commit=git.stdout.strip() if git.returncode == 0 else None,
-                      git_dirty=bool(dirty.stdout.strip()) if dirty.returncode == 0 else None,
+                      **git_state(ignore=(args.out_dir,)),
                       python_version=sys.version.split()[0],
                       source_sha256=_sha256(Path(__file__)),
                       annotations_sha256=_sha256(args.annotations), items_sha256=_sha256(args.items))

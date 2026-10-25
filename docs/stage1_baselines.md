@@ -81,8 +81,10 @@ DIRECT's two rewrites is this". That approximates indirectness, but it is not th
 - **Artifact probe.** `tfidf-utterance` sees no context. If it already separates the variants well,
   most of the signal is surface wording (research plan, Phase 3).
 - **Fixed recipe.** There is no early stopping or selection on dev: epochs and the learning rate are
-  in the config. `--allow-test` is required before anything is scored on test. Keep test for the
-  frozen run, after the draft `docs/analysis_plan.md` is frozen.
+  in the config. Test runs use the same recipe file with `--eval-split test --allow-test`, and need
+  a verifying WP-08 freeze record ([docs/freeze.md](freeze.md)). The run must be in the frozen
+  grid: pinned recipe, frozen seed, and a training condition its design uses. `--smoke` is refused
+  on test.
 - **Test audit (spec 006).** With `eval_split = "test"`, the trainer checks the committed split audit
   in `prepare`, before any training: a missing or stale audit stops the run. Only primary examples
   are predicted and scored. Every contrast gains a `primary_minus_dup` line, and `metrics.json`
@@ -154,6 +156,18 @@ resolved value is logged.
 With the grid script, set `MICRO_BATCH=8`, `GRAD_CKPT=1`, `SEEDS="13"` or `CONDITIONS="full"`.
 The default is five seeds (`13 42 2026 314 2718`).
 
+**Checkpoints.** `--checkpoint-every N` saves the full training state every N optimizer steps,
+and once more when training ends, to `<run dir>/checkpoint.pt`. The state covers the weights,
+optimizer, scheduler, data order and RNG states. Rerunning the same command resumes from it,
+with the same batches and dropout stream as an uninterrupted run. The checkpoint is deleted
+after the run's outputs are written. A crash or sleep therefore costs at most N steps, not the
+whole run. A checkpoint from a different recipe, seed, condition, data file or batch layout is
+refused; delete it to restart that run.
+- The grid script checkpoints every 250 steps by default (`CHECKPOINT_EVERY=0` turns this off).
+- A checkpoint is about 3× the model's fp32 size: roughly 2 GB for base models and 5 GB for large.
+- After a resume, `model.resumed_at_steps` lists the steps each resume started from.
+  `peak_memory_gib` then covers only the last process.
+
 **Runtime.** Each encoder run processes 101,460 × 2 epochs of training examples, plus 5 × 11,340
 dev predictions. The smoke test logs examples per second; use it to estimate a full run before
 starting a grid. Following the research plan's compute rule, report each model's numbers from a
@@ -171,12 +185,32 @@ Copy that hash into the config's `revision` so later runs cannot pick up a chang
 | `…/config.resolved.json` | the exact config after overrides | no |
 | `results/stage1.jsonl` | one line per completed run: headline metrics and contrasts, config/data hashes, git commit and dirty flag, GPU, package versions, machine label | **yes**: commit it after runs |
 
+`git_dirty` ignores the run's own outputs (the `--results` log and the run's output directory), so a
+seed grid can append to the tracked log in one checkout and each run still records `false` when
+the code is clean. Any other change, tracked or untracked, still marks the run dirty.
+
 To re-score a predictions file, for example after a new rule version (`--dialogues` defaults to
 `data/interim/direct/dialogues.jsonl` and is needed for the donor cue flags):
 
 ```bash
 python -m src.evaluation.stage1 --predictions outputs/stage1/<run>/train-full/seed13/predictions.jsonl \
   --out /tmp/rescored.json
+```
+
+**Cross-run analysis (spec 007).** A run's `metrics.json` has bootstrapped each contrast on its
+own. The paper's numbers come from `python -m src.analysis run` instead (see
+[analysis plan](analysis_plan.md), D-07):
+- it re-validates every run's predictions against its saved `metrics.json`;
+- it averages seeds;
+- it puts every statistic on one shared dialogue bootstrap.
+
+List the run directories in `configs/analysis/inputs-<split>.toml` (format in
+`src/analysis/inputs.py`). Each run must match what it recorded: name, train condition,
+`eval_split`, seed, and not a smoke run. A `test_time` system needs a `full`-trained run, so train
+`tfidf-utterance` with `--train-condition full` as well.
+
+```bash
+python -m src.analysis run --split dev --inputs configs/analysis/inputs-dev.toml   # dev diagnostics only
 ```
 
 ## Context checks and the manifest (spec 004)

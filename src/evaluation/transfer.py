@@ -10,9 +10,11 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from src.data import indirect_requests as ir
+from src.data.freeze import require_freeze
 from src.evaluation.interpretation import checked_text, require_local_text_output
 
 SCORER_VERSION = "transfer-v1"
+FREEZE_ROOT = Path(".")  # the scorers run from the repository root, like their default paths
 
 
 def build_report(items: Sequence[ir.TransferItem], predictions: Sequence[dict], *, model_family: str) -> dict:
@@ -81,6 +83,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.split == "test" and not args.allow_test:
             raise ValueError("test use requires --allow-test after the study freeze")
+        frozen = require_freeze(FREEZE_ROOT) if args.split == "test" else None  # spec 008 FR16
         sources = (args.source_dir / f"{args.split}.jsonl", args.manifest, args.predictions)
         if any(path is not None and path.resolve() == args.out.resolve() for path in sources):
             raise ValueError("output must not overwrite a source, manifest or predictions file")
@@ -95,6 +98,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             report = build_report(items, predictions, model_family=args.model_family)
             report["source_sha256"] = hashlib.sha256((args.source_dir / f"{args.split}.jsonl").read_bytes()).hexdigest()
             report["predictions_sha256"] = hashlib.sha256(args.predictions.read_bytes()).hexdigest()
+            if frozen:
+                report["freeze_content_sha256"] = frozen.content_sha256
             text = json.dumps(report, indent=2, sort_keys=True) + "\n"
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(text, encoding="utf-8", newline="\n")

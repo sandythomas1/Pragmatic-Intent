@@ -18,6 +18,7 @@ from typing import Any
 from src.data.auto_levels import LEVELS, RULES_VERSION
 from src.data.contexts import MISMATCH_CONDITIONS, RENDERER_VERSION, input_sha256, render
 from src.data.direct_dataset import CONDITIONS, Item, Turn, load_dialogues, load_items
+from src.data.freeze import require_freeze
 from src.data.intent_categories import CATEGORIES, MAPPING_VERSION
 from src.evaluation import interpretation as ip
 from src.evaluation.metrics import bootstrap_accuracy_ci, paired_bootstrap_difference
@@ -26,6 +27,7 @@ from src.evaluation.test_audit import audit_summary_path, require_test_audit
 from src.stage1.data import Stage1Example, build_examples
 
 SCORER_VERSION = "stage2-v1"
+FREEZE_ROOT = Path(".")  # the scorers run from the repository root, like their default paths
 
 
 def input_records(examples: Sequence[Stage1Example], items: Sequence[Item], dialogues: dict[str, list[Turn]],
@@ -186,6 +188,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.split == "test" and not args.allow_test:
             raise ValueError("test use requires --allow-test after the study freeze")
+        # Spec 008 FR16: test inputs and scores need a verifying freeze. Stage 2 files carry no run
+        # identity, so the grid itself is not checked here (declared provenance; spec 008 Non-Goals).
+        frozen = require_freeze(FREEZE_ROOT) if args.split == "test" else None
         sources = (args.items, args.dialogues, args.predictions, args.oracle_predictions)
         if any(path is not None and path.resolve() == args.out.resolve() for path in sources):
             raise ValueError("output must not overwrite a source or predictions file")
@@ -219,6 +224,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                                   dup_ids=audit.dup_ids if audit else None)
             if audit:
                 report["test_audit"] = audit.report(len(examples))
+            if frozen:
+                report["freeze_content_sha256"] = frozen.content_sha256
             report.update(split=args.split, excluded=excluded,
                           inputs={"items_sha256": hashlib.sha256(args.items.read_bytes()).hexdigest(),
                                   "dialogues_sha256": hashlib.sha256(args.dialogues.read_bytes()).hexdigest(),

@@ -13,9 +13,10 @@ rule level of each example's own paraphrase and by the ``cat-v1`` primary catego
 of its turn. Both are mechanical and reported as evaluation slices only; gold
 labels always come from the weak-supervision policy.
 
-On test (spec 006 FR15) scoring requires the committed split audit, current against
-``items.jsonl``, ``dialogues.jsonl`` and the registry's ``pre_freeze`` rows. Only primary examples
-are scored, and every contrast gains one ``primary_minus_dup`` sensitivity line. Dev is unchanged.
+On test, scoring first requires a verifying spec 008 freeze record, then the committed split audit
+(spec 006 FR15), current against ``items.jsonl``, ``dialogues.jsonl`` and the registry's
+``pre_freeze`` rows. Only primary examples are scored, and every contrast gains one
+``primary_minus_dup`` sensitivity line. Dev is unchanged.
 
 Re-score a predictions file from the repository root::
 
@@ -45,6 +46,7 @@ from src.stage1.data import POLICIES, STAGE1_LABELS, Stage1Example, build_exampl
 CONTRASTS = (("one", "none"), ("full", "none"), ("full", "one"),
              ("full", "mismatched"), ("one", "mismatched_one"))
 SLICE_VERSIONS = {"rule_level": RULES_VERSION, "category": MAPPING_VERSION}
+FREEZE_ROOT = Path(".")  # the scorers run from the repository root, like their default paths
 Slices = dict[str, dict[str, str]]  # slice name -> example_id -> value
 
 
@@ -104,9 +106,14 @@ def set_name(*conditions: str) -> str:
     return "mismatch" if any(condition in MISMATCH_CONDITIONS for condition in conditions) else "genuine"
 
 
-def _check_predictions(
+def check_predictions(
     members: dict[str, list[Stage1Example]], predictions: Sequence[dict[str, Any]]
 ) -> dict[str, dict[str, str]]:
+    """Exactly one valid prediction per member example under each predicted condition.
+
+    ``members`` maps ``genuine`` and ``mismatch`` to their examples. Public for the spec 007
+    analysis, which re-validates saved predictions with the scorer's own rules.
+    """
     expected = {name: {e.example_id for e in examples} for name, examples in members.items()}
     by_condition: dict[str, dict[str, str]] = {}
     for row in predictions:
@@ -123,6 +130,9 @@ def _check_predictions(
         if len(scored) != len(expected[set_name(condition)]):
             raise ValueError(f"missing predictions under {condition}")
     return by_condition
+
+
+_check_predictions = check_predictions  # the historical private name
 
 
 def _slices(examples: Sequence[Stage1Example], predicted: dict[str, str], key) -> dict[str, Any]:
@@ -158,7 +168,7 @@ def build_report(
     if not sets.mismatch_ids <= ids or set(sets.cue_donor_ids) - set(MISMATCH_CONDITIONS):
         raise ValueError("scoring sets name unknown examples or conditions")
     members = {"genuine": list(examples), "mismatch": [e for e in examples if e.example_id in sets.mismatch_ids]}
-    by_condition = _check_predictions(members, predictions)
+    by_condition = check_predictions(members, predictions)
     slices = slices or {}
     if set(slices) - set(SLICE_VERSIONS):
         raise ValueError(f"unknown slices: {sorted(set(slices) - set(SLICE_VERSIONS))}")
@@ -243,6 +253,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                         help="test only: the spec 006 audit (its _summary.json sits beside it)")
     args = parser.parse_args(argv)
     try:
+        # Imported here: src.data.freeze imports the analysis config, which imports this module.
+        from src.data.freeze import require_freeze
+
+        frozen = require_freeze(FREEZE_ROOT) if args.split == "test" else None  # spec 008 FR16
         items = load_items(args.items)
         examples, excluded = build_examples(items, args.split, args.policy, require_context=True)
         with args.predictions.open(encoding="utf-8") as handle:
@@ -259,6 +273,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         report.update(split=args.split, policy=args.policy, excluded=excluded)
         if audit:
             report["test_audit"] = audit.report(len(examples))
+        if frozen:
+            report["freeze_content_sha256"] = frozen.content_sha256
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(f"Scored {len(examples)} examples across {len(report['conditions'])} conditions -> {args.out}")

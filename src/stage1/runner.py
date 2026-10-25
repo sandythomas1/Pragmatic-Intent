@@ -21,6 +21,7 @@ from typing import Any
 
 from src.data.contexts import MISMATCH_CONDITIONS, in_mismatch_set
 from src.data.direct_dataset import load_dialogues, load_items
+from src.data.freeze import RunIdentity, recipe_sha256, require_freeze
 from src.evaluation.stage1 import ScoringSets, Slices, build_report, rule_slices, scoring_sets
 from src.evaluation.test_audit import SplitAudit, require_test_audit
 from src.stage1 import provenance
@@ -29,6 +30,7 @@ from src.stage1.data import STAGE1_LABELS, Stage1Example, build_examples, contex
 
 logger = logging.getLogger(__name__)
 Pair = tuple[str, str]  # (context text, utterance); empty context means none
+FREEZE_ROOT = Path(".")  # runs start from the repository root, like every other default path here
 
 
 @dataclass
@@ -52,6 +54,8 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
                         help="label recorded with results, e.g. rtx5060-wsl or lab-4090")
     parser.add_argument("--out-root", type=Path, default=Path("outputs/stage1"))
     parser.add_argument("--results", type=Path, default=Path("results/stage1.jsonl"))
+    parser.add_argument("--eval-split", choices=("dev", "test"),
+                        help="override [data] eval_split, so one recipe file serves dev and test")
     parser.add_argument("--allow-test", action="store_true", help="permit eval_split = test")
     parser.add_argument("--smoke", action="store_true",
                         help="tiny pipeline check: 1,000 train / 300 eval examples, not logged to results")
@@ -62,8 +66,21 @@ def configure_logging() -> None:
 
 
 def load(args: argparse.Namespace, overrides: dict[str, dict[str, Any]]) -> RunConfig:
-    overrides.setdefault("data", {})["train_condition"] = args.train_condition
-    return load_config(args.config, overrides, allow_test=args.allow_test)
+    data = overrides.setdefault("data", {})
+    data["train_condition"] = args.train_condition
+    data["eval_split"] = getattr(args, "eval_split", None)  # programmatic callers may omit it
+    config = load_config(args.config, overrides, allow_test=args.allow_test)
+    if config.data.eval_split == "test":
+        args.freeze_content_sha256 = require_test_freeze(args, config)
+    return config
+
+
+def require_test_freeze(args: argparse.Namespace, config: RunConfig) -> str:
+    """Spec 008 FR16–FR17: a test run must verify the freeze and sit in its grid, before any data or GPU time."""
+    if getattr(args, "smoke", False):
+        raise ValueError("--smoke on test is refused; smoke-test on dev, then run python -m src.data.freeze verify")
+    run = RunIdentity(config.name, recipe_sha256(config.to_dict()), args.seed, config.data.train_condition)
+    return require_freeze(FREEZE_ROOT, run=run).content_sha256
 
 
 def prepare(config: RunConfig, smoke: bool = False) -> Prepared:
@@ -137,6 +154,7 @@ def finish(args: argparse.Namespace, config: RunConfig, prepared: Prepared,
                           config.bootstrap_samples, config.bootstrap_seed, dup_ids=audit.dup_ids if audit else None)
     if audit:
         report["test_audit"] = audit.report(len(prepared.eval))
+    out = output_dir(args, config)
     run = {
         "run": config.name, "kind": config.kind, "seed": args.seed, "machine": args.machine,
         "smoke": args.smoke, "policy": data.policy, "train_split": data.train_split,
@@ -144,9 +162,10 @@ def finish(args: argparse.Namespace, config: RunConfig, prepared: Prepared,
         "n_train": len(prepared.train), "n_eval": len(prepared.eval),
         "config_sha256": config.sha256(), "items_sha256": provenance.sha256(Path(data.items)),
         "duration_s": round(time.time() - started, 1), "model": model_info,
-        "gpu": provenance.gpu_info(), "environment": provenance.environment(), **provenance.git_state(),
+        **({"freeze_content_sha256": args.freeze_content_sha256} if getattr(args, "freeze_content_sha256", None) else {}),
+        "gpu": provenance.gpu_info(), "environment": provenance.environment(),
+        **provenance.git_state(ignore=(args.results, out)),
     }
-    out = output_dir(args, config)
     out.mkdir(parents=True, exist_ok=True)
     (out / "config.resolved.json").write_text(json.dumps(config.to_dict(), indent=2) + "\n", encoding="utf-8")
     (out / "predictions.jsonl").write_text(

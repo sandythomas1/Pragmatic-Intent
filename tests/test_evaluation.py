@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -87,7 +88,8 @@ class EvaluationTest(unittest.TestCase):
             self.assertEqual(report["status"], "development_pilot")
             self.assertEqual(report["validation"], "leave_one_dialogue_out")
             self.assertEqual(report["excluded"], excluded)
-            self.assertIsInstance(report["git_dirty"], bool)
+            # Unknown (None) when no git binary is on PATH, as on a bare native-Windows shell.
+            self.assertIsInstance(report["git_dirty"], bool if shutil.which("git") else type(None))
             self.assertNotIn("utterance", report_path.read_text())
             self.assertEqual(main(argv), 0)
             self.assertEqual(first, report_path.read_bytes())

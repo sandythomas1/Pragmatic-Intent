@@ -2,7 +2,7 @@
 
 **ID:** 001-pragmatic-intent-study
 
-**Version:** 1.2 draft, 2026-10-13 (1.1: 2026-10-12; 1.0: 2026-10-09)
+**Version:** 1.3 draft, 2026-10-20 (1.2: 2026-10-13; 1.1: 2026-10-12; 1.0: 2026-10-09)
 
 **Owner:** Sandy Thomas
 
@@ -54,6 +54,23 @@ block wins; the affected sections are rewritten only once the professor has seen
   and rate about 50 Stage 2 outputs pass/fail to validate an LLM judge.
 - **Claims:** the study becomes a weak-label, rule-levelled analysis. The context × level
   interaction is reported with the rule agreement as an explicit limitation.
+
+**Version 1.3 note (2026-10-20): D-07 statistics (via [spec 007](../007-analysis-error-audit/spec.md)).**
+Sandy decided the D-07 choices that §13 and FR-10 leave open. Where this block conflicts with §13,
+FR-10 or D-07's default, this block wins.
+
+- **Dependence model.** A dialogue-cluster bootstrap difference-in-differences on seed-averaged
+  outcomes replaces the proposed mixed-effects model. Items, variants and conditions are nested in
+  dialogues, so dialogue resampling carries the item and dialogue dependence the GLMM's random
+  effects were for. The intent covariate becomes an intent-standardized sensitivity line. No GLMM
+  is fitted.
+- **Confirmatory scope.** H2 is confirmatory for one prespecified system and one statistic: the
+  L0–L2 linear contrast of the full − none benefit on the §5 endpoint (request detection AND
+  interpretation). L3 and INF are exploratory, because rule-L3 precision was 12/40. A dev
+  precision report replaces the pilot power simulation.
+- **Context design and multiplicity.** For trained models, matched training (train c, evaluate c)
+  is the primary context contrast. H3 tests compare test-time lines across families. The Holm
+  family and the model panel are fixed in the frozen analysis config.
 
 ## 1. Purpose and source of truth
 
