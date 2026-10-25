@@ -163,13 +163,18 @@ class TestGateTest(CliTestCase):
     def test_frozen_test_run_stamps_and_carries_the_duplicate_line(self) -> None:
         self.write_config(draft=False)
         self.freeze()
-        with mock.patch.object(cli, "require_test_audit", return_value=self.audit):
+        # The full spec 008 verification and grid check have their own tests (test_freeze_gates).
+        with mock.patch.object(cli, "require_test_audit", return_value=self.audit), \
+                mock.patch.object(cli, "require_freeze", return_value=mock.Mock(content_sha256="e" * 64)), \
+                mock.patch.object(cli, "check_frozen_runs") as grid:
             code, out, err = self.invoke("--allow-test")
         self.assertEqual((code, err), (0, ""), err)
+        grid.assert_called_once()
         report = self.report()
         self.assertEqual(report["stamp"], "frozen_test")
         self.assertEqual(report["provenance"]["test_audit"]["content_sha256"], "c" * 64)
         self.assertIsNotNone(report["provenance"]["freeze_record_sha256"])
+        self.assertEqual(report["provenance"]["freeze_content_sha256"], "e" * 64)
         self.assertTrue(report["provenance"]["command"].endswith("--allow-test"))
         self.assertNotIn("precision", report)
         headline = {(r["system"], r["contrast"]) for r in report["sensitivity"] if r["sensitivity"] == "primary_minus_dup"}

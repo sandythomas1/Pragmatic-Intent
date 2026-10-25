@@ -181,6 +181,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.predictions is None and args.split != "dev":
             raise ValueError("majority development pilot is restricted to dev; use separate training data for final experiments")
+        if args.split == "test":  # spec 008 FR16: no test score without a verifying freeze
+            from src.data.freeze import require_freeze  # lazy, as in src.evaluation.stage1 (import cycle)
+
+            require_freeze(Path("."))
         examples, excluded = load_examples(args.annotations, args.items, args.annotator, args.split)
         if args.predictions:
             with args.predictions.open(encoding="utf-8") as handle:

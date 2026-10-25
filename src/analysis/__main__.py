@@ -13,7 +13,9 @@ Run from the repository root (Python 3.12, standard library only)::
 1. ``--allow-test``;
 2. a config with ``draft = false``;
 3. a current spec 006 audit;
-4. ``data/manifests/freeze.json`` recording this config's hash.
+4. ``data/manifests/freeze.json`` recording this config's hash;
+5. that record verifying in full (spec 008 FR16), and, once the inputs are resolved, every Stage 1
+   run directory belonging to its frozen grid (FR17).
 
 Claude runs dev only; Sandy runs test. The console shows counts, system names and paths, never
 an example ID or any text.
@@ -49,6 +51,7 @@ from src.analysis.report import (
 from src.data import split_audit as sa
 from src.data.contexts import RENDERER_VERSION
 from src.data.direct_dataset import load_dialogues, load_items
+from src.data.freeze import FreezeRecord, RunIdentity, check_run, recipe_sha256, require_freeze
 from src.data.intent_categories import MAPPING_VERSION
 from src.evaluation import interpretation as ip
 from src.evaluation import stage2, transfer
@@ -64,7 +67,7 @@ def _shown(root: Path, path: Path) -> str:
     return path.relative_to(root).as_posix() if path.is_relative_to(root) else path.as_posix()
 
 
-def gate_test(args: argparse.Namespace, root: Path, config: AnalysisConfig) -> SplitAudit:
+def gate_test(args: argparse.Namespace, root: Path, config: AnalysisConfig) -> tuple[SplitAudit, FreezeRecord]:
     """FR21, in order; nothing here opens a prediction file."""
     if not args.allow_test:
         raise AnalysisError("test_not_allowed", "a test analysis needs --allow-test, after the WP-08 freeze")
@@ -74,15 +77,27 @@ def gate_test(args: argparse.Namespace, root: Path, config: AnalysisConfig) -> S
     audit = require_test_audit(_at(root, args.items), _at(root, args.dialogues), registry_path=_at(root, args.registry),
                                audit_path=audit_path, summary_path=audit_summary_path(audit_path))
     require_frozen_config(_at(root, args.freeze), config.sha256)
-    return audit
+    return audit, require_freeze(root, path=_at(root, args.freeze))
+
+
+def check_frozen_runs(frozen: FreezeRecord, inputs: AnalysisInputs) -> None:
+    """Spec 008 FR17: every Stage 1 run directory was trained from a frozen recipe, seed and condition."""
+    for name, system in inputs.systems.items():
+        for stage1_run in system.stage1:
+            resolved = parse_json(read_verified(stage1_run.config), f"{name} config.resolved.json")
+            if not isinstance(resolved, dict):
+                raise AnalysisError("malformed_run", f"{name}: config.resolved.json is not an object")
+            check_run(frozen, RunIdentity(name, recipe_sha256(resolved), stage1_run.seed, stage1_run.train_condition))
 
 
 def run(args: argparse.Namespace) -> int:
     root = args.root.resolve()
     config_path = _at(root, args.config)
     config = load_config(config_path)
-    audit = gate_test(args, root, config) if args.split == "test" else None
+    audit, frozen = gate_test(args, root, config) if args.split == "test" else (None, None)
     inputs = load_inputs(_at(root, args.inputs), config, args.split, base=root)
+    if frozen is not None:
+        check_frozen_runs(frozen, inputs)
     report_dir, tables_dir = output_locations(root, args.split)
     report_path = report_dir / REPORT_NAME
     check_outputs([report_path], _input_paths(args, root, config_path, inputs))
@@ -96,6 +111,7 @@ def run(args: argparse.Namespace) -> int:
         "items_sha256": sha256(items), "dialogues_sha256": sha256(dialogues),
         "test_audit": audit.report(len(evaluation.examples)) if audit else None,
         "freeze_record_sha256": sha256(_at(root, args.freeze)) if audit else None,
+        "freeze_content_sha256": frozen.content_sha256 if frozen else None,
         "versions": {"analysis_config": config.version, "inputs": INPUTS_VERSION, "rules": config.rules_version,
                      "category": MAPPING_VERSION, "renderer": RENDERER_VERSION, "stage2_scorer": stage2.SCORER_VERSION,
                      "transfer_scorer": transfer.SCORER_VERSION, "reference": ip.REFERENCE_VERSION,

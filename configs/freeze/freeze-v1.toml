@@ -1,0 +1,62 @@
+# What the WP-08 freeze record pins (spec 008 FR1). Paths are repository-relative POSIX paths;
+# globs that match nothing are errors. Every panel system in configs/analysis/analysis-v1.toml
+# needs a table here, and only those. Training conditions are not listed: they follow from each
+# system's design in the analysis config (matched: none/one/full; test_time: full; llm: untrained).
+# DRAFT until the freeze: the llm and hybrid entries are placeholders (D-05), and three encoder
+# configs still use revision = "main"; `python -m src.data.freeze check` lists what is missing.
+
+version = "freeze-inputs-v1"
+analysis_config = "configs/analysis/analysis-v1.toml"
+
+# Source that renders inputs, assigns levels and categories, audits the split, trains, scores and
+# analyzes. Any change to these after the freeze is a dated amendment.
+code = [
+  "src/data/contexts.py",
+  "src/data/direct_dataset.py",
+  "src/data/split_audit.py",
+  "src/data/auto_levels.py",
+  "src/data/auto_levels_v2.py",
+  "src/data/intent_categories.py",
+  "src/data/indirect_requests.py",
+  "src/data/freeze.py",
+  "src/stage1/*.py",
+  "src/evaluation/*.py",
+  "src/analysis/*.py",
+]
+
+# TF-IDF + logistic regression is deterministic given its data, so one seed suffices.
+[systems.tfidf-utterance]
+stage1 = "configs/stage1/tfidf_utterance.toml"
+seeds = [13]
+
+[systems.tfidf-context]
+stage1 = "configs/stage1/tfidf_context.toml"
+seeds = [13]
+
+# Encoders: the five-seed grid of docs/stage1_baselines.md.
+[systems.deberta-v3-base]
+stage1 = "configs/stage1/encoder_deberta_v3_base.toml"
+seeds = [13, 42, 2026, 314, 2718]
+
+[systems.deberta-v3-large]
+stage1 = "configs/stage1/encoder_deberta_v3_large.toml"
+seeds = [13, 42, 2026, 314, 2718]
+
+[systems.roberta-base]
+stage1 = "configs/stage1/encoder_roberta_base.toml"
+seeds = [13, 42, 2026, 314, 2718]
+
+[systems.roberta-large]
+stage1 = "configs/stage1/encoder_roberta_large.toml"
+seeds = [13, 42, 2026, 314, 2718]
+
+# Placeholders until D-05: Sandy's prompt/config files go in `files`, and llm_model names a
+# dated snapshot, never a floating alias.
+[systems.llm]
+files = []
+seeds = [0]
+llm_model = ""
+
+[systems.hybrid]
+files = []
+seeds = [13]

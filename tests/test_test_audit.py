@@ -165,7 +165,9 @@ class Stage1TestScoringTest(unittest.TestCase):
         self.out = self.corpus.root / "metrics.json"
 
     def score(self, *extra: str, split: str = "test") -> int:
-        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+        # The spec 008 freeze gate has its own tests (test_freeze_gates); here it simply passes.
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), \
+                mock.patch("src.data.freeze.require_freeze", return_value=mock.Mock(content_sha256="f" * 64)):
             return stage1.main(["--predictions", str(self.predictions), "--out", str(self.out), "--split", split,
                                 "--bootstrap-samples", "20", *self.corpus.scoring_args(), *extra])
 
@@ -242,8 +244,10 @@ class Stage2TestScoringTest(unittest.TestCase):
 
     def run_stage2(self, *argv: str) -> int:
         # The export guard keeps real text under the repo's ignored folders; this fixture is a temp dir.
+        # The spec 008 freeze gate has its own tests (test_freeze_gates); here it simply passes.
         with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), \
-                mock.patch.object(stage2.ip, "require_local_text_output"):
+                mock.patch.object(stage2.ip, "require_local_text_output"), \
+                mock.patch.object(stage2, "require_freeze", return_value=mock.Mock(content_sha256="f" * 64)):
             return stage2.main([*argv, "--split", "test", "--allow-test", "--conditions", "none", "full",
                                 *self.corpus.scoring_args()])
 

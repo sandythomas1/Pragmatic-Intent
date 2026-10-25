@@ -29,12 +29,12 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _git(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(["git", *args], capture_output=True, text=True, check=False)
+def _git(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["git", *args], capture_output=True, text=True, check=False, cwd=cwd)
 
 
-def git_state(ignore: Sequence[Path] = ()) -> dict[str, Any]:
-    """Commit and dirty flag for the working tree.
+def git_state(ignore: Sequence[Path] = (), cwd: Path | None = None) -> dict[str, Any]:
+    """Commit and dirty flag for the working tree containing ``cwd`` (default: the process's).
 
     ``ignore`` lists the run's own outputs (the results log it appends to, its output
     directory). They never mark the tree dirty; otherwise every run after the first in a
@@ -44,14 +44,14 @@ def git_state(ignore: Sequence[Path] = ()) -> dict[str, Any]:
     """
     unknown = {"git_commit": None, "git_dirty": None}
     try:
-        commit = _git("rev-parse", "HEAD")
-        top = _git("rev-parse", "--show-toplevel")
+        commit = _git("rev-parse", "HEAD", cwd=cwd)
+        top = _git("rev-parse", "--show-toplevel", cwd=cwd)
         if commit.returncode != 0 or top.returncode != 0:
             return unknown
         root = Path(top.stdout.strip()).resolve()
         excluded = [f":(exclude){path.as_posix()}" for path in (p.resolve() for p in ignore)
                     if path.is_relative_to(root)]
-        status = _git("status", "--porcelain", "--", ":/", *excluded)
+        status = _git("status", "--porcelain", "--", ":/", *excluded, cwd=cwd)
     except OSError:
         return unknown
     return {"git_commit": commit.stdout.strip(),

@@ -81,8 +81,10 @@ DIRECT's two rewrites is this". That approximates indirectness, but it is not th
 - **Artifact probe.** `tfidf-utterance` sees no context. If it already separates the variants well,
   most of the signal is surface wording (research plan, Phase 3).
 - **Fixed recipe.** There is no early stopping or selection on dev: epochs and the learning rate are
-  in the config. `--allow-test` is required before anything is scored on test. Keep test for the
-  frozen run, after the draft `docs/analysis_plan.md` is frozen.
+  in the config. Test runs use the same recipe file with `--eval-split test --allow-test`, and need
+  a verifying WP-08 freeze record ([docs/freeze.md](freeze.md)). The run must be in the frozen
+  grid: pinned recipe, frozen seed, and a training condition its design uses. `--smoke` is refused
+  on test.
 - **Test audit (spec 006).** With `eval_split = "test"`, the trainer checks the committed split audit
   in `prepare`, before any training: a missing or stale audit stops the run. Only primary examples
   are predicted and scored. Every contrast gains a `primary_minus_dup` line, and `metrics.json`

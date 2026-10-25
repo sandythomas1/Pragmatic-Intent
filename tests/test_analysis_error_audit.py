@@ -51,7 +51,9 @@ class ErrorAuditTestCase(CliTestCase):
         sa.write_registry(self.ws.root / REGISTRY, [registry_row("PMUL9112.json", "manual", reason="viewed_text")],
                           index.dialogue_split)
         self.registry_before = (self.ws.root / REGISTRY).read_bytes()
-        with mock.patch.object(cli, "require_test_audit", return_value=self.audit):
+        with mock.patch.object(cli, "require_test_audit", return_value=self.audit), \
+                mock.patch.object(cli, "require_freeze", return_value=mock.Mock(content_sha256="e" * 64)), \
+                mock.patch.object(cli, "check_frozen_runs"):  # spec 008 gates: tested in test_freeze_gates
             self.assertEqual(self.invoke("--allow-test")[0], 0)
 
     def sample(self, *, on: str = "2026-11-15", inspector: str = "A1", **paths: str) -> tuple[int, str, str]:

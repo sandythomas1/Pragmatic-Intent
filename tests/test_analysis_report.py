@@ -96,7 +96,9 @@ class CommittedTablesTest(CliTestCase):
         from src.analysis.config import load_config
         sha = load_config(self.ws.root / "configs/analysis/analysis-v1.toml").sha256
         self.ws.write("data/manifests/freeze.json", json.dumps({"freeze_date": "2026-11-01", "analysis_config_sha256": sha}))
-        with mock.patch.object(cli, "require_test_audit", return_value=self.audit):
+        with mock.patch.object(cli, "require_test_audit", return_value=self.audit), \
+                mock.patch.object(cli, "require_freeze", return_value=mock.Mock(content_sha256="e" * 64)), \
+                mock.patch.object(cli, "check_frozen_runs"):  # spec 008 gates: tested in test_freeze_gates
             self.assertEqual(self.invoke("--allow-test")[0], 0)
             directory = self.ws.root / "results/analysis/test"
             first = {p.name: p.read_bytes() for p in sorted(directory.iterdir())}
