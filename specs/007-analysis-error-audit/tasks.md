@@ -491,12 +491,17 @@ and encoder grids before the figures and the error audit exist.
     the freeze-time primary system and `draft` flag.
   - The full suite passes on native Windows Python 3.12. `docs/analysis_plan.md` and spec 001's
     v1.3 note agree (AC-007-17).
-- Status: blocked: needs Sandy's dev predictions. They are in WSL, not in this checkout.
+- Status: done 2026-10-25, pending Sandy's review. The DeBERTa-v3-base dev grid (15 runs)
+  and the analysis passed. The precision numbers are recorded with D-07 and in verification.md.
+  The TF-IDF half was done 2026-10-21 in WSL.
   - **Done 2026-10-21:**
     - docs (`analysis_plan.md`, `stage1_baselines.md`, `stage2_scoring.md`, roadmap);
     - `verification.md`;
     - full suite, 731 OK;
     - runtime on the real dev set with a synthetic 47-run grid: 314 s at B = 10,000, two-seed
       agreement ≤ 0.0008.
-  - **Remaining:** Sandy writes `inputs-dev.toml`, runs `analysis run --split dev` in WSL, and
-    records the precision report with D-07.
+  - **Done 2026-10-25:**
+    - the encoder grid and analysis in WSL: 17 runs, 91 s, component check passed, Monte Carlo
+      0.00016, byte-identical rerun;
+    - `inputs-dev.toml` updated;
+    - the D-07 entry, `verification.md`, the roadmap and the run record.

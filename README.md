@@ -26,6 +26,8 @@ Machine & Deep Learning course (re-scoped 2026-10-12).
 
 See the [collection protocol](docs/source_collection_plan.md), [draft analysis plan](docs/analysis_plan.md)
 and [revision report and next steps](docs/research_revision_2026-10-09.md).
+The [related-work evidence map and draft](docs/related_work.md) records the 2026-10-23 literature
+search, closest comparisons and limits on novelty claims.
 Read the consolidated [master specification](specs/001-pragmatic-intent-study/spec.md) or open the
 [interactive research guide](specs/001-pragmatic-intent-study/spec-guide.html). The guide works offline
 and embeds the version 1.0 draft (it predates the 2026-10-12 re-scope); its controls do not launch

@@ -1,0 +1,34 @@
+# Dev inputs for the spec 007 analysis (format: src/analysis/inputs.py). The TF-IDF runs are from
+# 2026-10-21 and the DeBERTa-v3-base grid from 2026-10-25 (WSL); the other panel systems are
+# not_run until their grids land.
+version = "analysis-inputs-v1"
+split = "dev"
+
+[systems.tfidf-utterance]
+stage1 = [
+  { train_condition = "full", seed = 13, run_dir = "outputs/stage1/tfidf-utterance/train-full/seed13" },
+]
+
+[systems.tfidf-context]
+stage1 = [
+  { train_condition = "full", seed = 13, run_dir = "outputs/stage1/tfidf-context/train-full/seed13" },
+]
+
+[systems.deberta-v3-base]
+stage1 = [
+  { train_condition = "none", seed = 13, run_dir = "outputs/stage1/deberta-v3-base/train-none/seed13" },
+  { train_condition = "none", seed = 42, run_dir = "outputs/stage1/deberta-v3-base/train-none/seed42" },
+  { train_condition = "none", seed = 2026, run_dir = "outputs/stage1/deberta-v3-base/train-none/seed2026" },
+  { train_condition = "none", seed = 314, run_dir = "outputs/stage1/deberta-v3-base/train-none/seed314" },
+  { train_condition = "none", seed = 2718, run_dir = "outputs/stage1/deberta-v3-base/train-none/seed2718" },
+  { train_condition = "one", seed = 13, run_dir = "outputs/stage1/deberta-v3-base/train-one/seed13" },
+  { train_condition = "one", seed = 42, run_dir = "outputs/stage1/deberta-v3-base/train-one/seed42" },
+  { train_condition = "one", seed = 2026, run_dir = "outputs/stage1/deberta-v3-base/train-one/seed2026" },
+  { train_condition = "one", seed = 314, run_dir = "outputs/stage1/deberta-v3-base/train-one/seed314" },
+  { train_condition = "one", seed = 2718, run_dir = "outputs/stage1/deberta-v3-base/train-one/seed2718" },
+  { train_condition = "full", seed = 13, run_dir = "outputs/stage1/deberta-v3-base/train-full/seed13" },
+  { train_condition = "full", seed = 42, run_dir = "outputs/stage1/deberta-v3-base/train-full/seed42" },
+  { train_condition = "full", seed = 2026, run_dir = "outputs/stage1/deberta-v3-base/train-full/seed2026" },
+  { train_condition = "full", seed = 314, run_dir = "outputs/stage1/deberta-v3-base/train-full/seed314" },
+  { train_condition = "full", seed = 2718, run_dir = "outputs/stage1/deberta-v3-base/train-full/seed2718" },
+]

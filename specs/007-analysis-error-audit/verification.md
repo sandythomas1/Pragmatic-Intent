@@ -32,7 +32,7 @@ They use invented `PMUL9xxx` data only. Figure rendering runs for real here, bec
 | AC-007-13 determinism, no IDs | `test_analysis_cli`, `test_analysis_report`: byte-identical reruns; console and committed tables free of IDs and text | pass |
 | AC-007-14 error-audit sample | `test_analysis_error_audit`: every gate failure registers nothing; draws 15/level, short strata taken whole; `post_scoring` rows only; injected failures leave the registry byte-identical | pass |
 | AC-007-15 export, scan | `ExportTest`: each rejection; text-free codes file; `split_audit scan` passes with rows registered and fails without them | pass |
-| AC-007-16 dev smoke on Sandy's predictions | Runtime checked (below). **The run on Sandy's dev predictions is pending: it happens in WSL.** | open |
+| AC-007-16 dev smoke on Sandy's predictions | Synthetic full-scale runtime, the real TF-IDF dev run and the DeBERTa-v3-base dev grid (all below): within the bound, component check passed, Monte Carlo 0.00016 ≤ 0.002 | pass (pending Sandy's review) |
 | AC-007-17 suite, docs | 731 tests pass; `docs/analysis_plan.md` (D-07 section, GLMM marked replaced) agrees with spec 001's v1.3 note | pass |
 
 ## Runtime on the real dev set (AC-007-16, partial)
@@ -55,20 +55,60 @@ is not committed; it prints counts only.
     **0.0008** across the 5 systems (tolerance ±0.002), so B = 10,000 suffices at this size;
   - the smallest L0–L2 cell had 731 dialogues.
 
+## Real dev run: TF-IDF (AC-007-16, partial)
+
+_2026-10-21. Run in WSL in a fresh clone of `ab3e49d` (`~/pi-007-dev`), using the existing
+`~/Pragmatic-Intent/.venv` with scikit-learn 1.9.1. Dev split only._
+
+- **Training runs:** `tfidf-utterance` and `tfidf-context`, `--train-condition full --seed 13
+  --machine rtx5060-wsl`, from a clean tree (`git_dirty` false). Each took 41–46 s on CPU.
+  `tfidf-context` reproduces the committed `b13ac75` dev accuracies on all five conditions.
+- **Analysis:** `python -m src.analysis run --split dev --inputs configs/analysis/inputs-dev.toml`
+  - 2 systems were run; 6 are `not_run`, which includes the placeholder primary `hybrid`, so the
+    primary test is `not_run`;
+  - the component check passed for 2 runs;
+  - 292 statistics, none sparse or unstable;
+  - **64 s**;
+  - a second run gave a byte-identical `report.json`.
+- **Precision:** the numbers are in the D-07 entry of `specs/memory/decisions.md`.
+  `tfidf-context` has a half-width of 0.0095 and a Monte Carlo difference of 0.00006 against a
+  tolerance of 0.002.
+- **Provenance note:** the report records `git_dirty: true`. The two runs had appended to
+  `results/stage1.jsonl`, and the analysis does not exclude that file. Commit the run lines first
+  (as `0add107` did) and the analysis records a clean tree.
+
+## Real dev run: DeBERTa-v3-base grid (AC-007-16)
+
+_2026-10-25. Run in WSL in the snapshot `~/pi-wsl-20261023` (`ab3e49d` plus a working-tree overlay,
+`git_dirty: true`), with the existing `~/Pragmatic-Intent/.venv` (torch 2.11.0+cu128). Dev split
+only. The run record is [docs/wsl_development_2026-10-23.md](../../docs/wsl_development_2026-10-23.md)._
+
+- **Training runs:** `deberta-v3-base`, `none`/`one`/`full` × seeds 13, 42, 314, 2026, 2718, on
+  `rtx5060-wsl`. All 15 runs completed, with no failed run and no fallback to
+  `CUDA_LAUNCH_BLOCKING`. Each took 1 h 39 m – 1 h 46 m.
+- **Inputs:** the supervisor wrote `outputs/verification/inputs-dev-with-encoder.toml`
+  (SHA-256 `d05da87a4761…`): those 15 runs plus the two TF-IDF runs.
+  `configs/analysis/inputs-dev.toml` now lists the same runs. Its bytes differ (header comment),
+  so its hash differs.
+- **Analysis:** `python -m src.analysis run --split dev --inputs outputs/verification/inputs-dev-with-encoder.toml`
+  - 3 systems were run; 5 are `not_run`, including the placeholder primary `hybrid`, so the
+    primary test and the Holm family are `not_run`;
+  - the component check passed for 17 runs;
+  - 480 statistics, none sparse or unstable;
+  - **91 s**, against the 15-minute bound;
+  - a rerun gave a byte-identical `report.json` (SHA-256 `3457b1dd…`).
+- **Precision:** the matched `deberta-v3-base` L2 − L0 benefit difference has a half-width of
+  0.0069, and the second bootstrap seed differs by at most 0.00016 (tolerance 0.002). The
+  numbers are in the 2026-10-25 D-07 entry of `specs/memory/decisions.md`.
+- **Suite:** the full native-Windows suite passes 898 tests (8 skipped, with git on PATH).
+- **Evidence copies:** the report, its 21 tables (CSV and Markdown), the inputs, the analysis log, and the grid state
+  and supervisor log are under `outputs/verification/wsl-20261023/` on Windows (git-ignored). The
+  tables hold aggregates only.
+
 ## Still to do before the freeze (Sandy)
 
-1. **Dev runs.** In WSL, write `configs/analysis/inputs-dev.toml` listing the real dev run
-   directories (format in `src/analysis/inputs.py`). Then run:
-
-   ```bash
-   uv run python -m src.analysis run --split dev --inputs configs/analysis/inputs-dev.toml
-   ```
-
-   Record the precision rows (half-width, cells, two-seed agreement) with D-07 in
-   `specs/memory/decisions.md`. `tfidf-utterance` needs a `--train-condition full` run, because
-   it is `test_time`.
-2. **Lock file.** `uv lock` for the new `figures` group.
-3. **Freeze-time choices** (spec Open Questions):
+1. **Lock file.** `uv lock` for the new `figures` group.
+2. **Freeze-time choices** (spec Open Questions):
    - the primary system;
    - the endpoint fallback;
    - `auto-v1` vs `auto-v2`;

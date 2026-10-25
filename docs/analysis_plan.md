@@ -172,9 +172,10 @@ checks and source-separated results. Do not claim naturally occurring wording wa
 - [ ] Contextual adapter, Stage 2 scorer and routing tested on dev.
 - [ ] Endpoint/test, bootstrap settings, secondary comparison family, statistical implementation
       and fallback fixed; underpowered analyses labeled exploratory in advance. (Method decided and
-      implemented 2026-10-20/21, spec 007. Still open: the primary system (D-05), the endpoint
-      fallback if no Stage 2 system is ready, the rules version, the dev precision evidence, and
-      `draft = false`.)
+      implemented 2026-10-20/21, spec 007. Dev precision evidence recorded 2026-10-25: B = 10,000
+      kept, matched DeBERTa-v3-base L0–L2 half-width 0.0069; see the D-07 entry in
+      `specs/memory/decisions.md`. Still open: the primary system (D-05), the endpoint fallback if
+      no Stage 2 system is ready, the rules version, and `draft = false`.)
 - [ ] Human baseline assignment and output audit sample/agreement procedures fixed.
 - [ ] Freeze date and Git commit recorded; later amendments dated with rationale.
 

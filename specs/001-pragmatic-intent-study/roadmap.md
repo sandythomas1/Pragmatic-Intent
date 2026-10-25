@@ -46,7 +46,7 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 | D-04 test size/power | Official DIRECT test split; inferential status open | Audit prior inspection and coverage before the study freeze; sparse/noisy rule levels can remain exploratory. |
 | D-05 models/budget | Open; compute settled (2026-10-19) | Lab RTX 5090s are available. Configs for `deberta-v3-large` (planned primary encoder) and `roberta-large` were added, and the grid now runs 5 seeds. Panel, LLM and spending cap are still open. Sandy owns the model code. |
 | D-06 context windows | **Decided** (Sandy, 2026-10-14) | 350-word budget on `full`/`mismatched`, train and eval, `render-v1`. Truncates 0.9% of test examples. Encoder length check pending (S, WSL). |
-| D-07 statistics | **Method decided** (Sandy, 2026-10-20; spec 001 v1.3 note) | Bootstrap DiD on seed-averaged outcomes; confirmatory L0–L2 linear contrast for one prespecified system on `request_interpretation`; L3/INF exploratory; Holm secondary family with the panel fixed in the config; matched training primary; H3 tested on test-time lines. The `analysis-v1.toml` values are frozen at WP-08 after the dev precision report ([spec 007](../007-analysis-error-audit/spec.md)). |
+| D-07 statistics | **Method decided** (Sandy, 2026-10-20; spec 001 v1.3 note) | Bootstrap DiD on seed-averaged outcomes; confirmatory L0–L2 linear contrast for one prespecified system on `request_interpretation`; L3/INF exploratory; Holm secondary family with the panel fixed in the config; matched training primary; H3 tested on test-time lines. The `analysis-v1.toml` values are frozen at WP-08 after the dev precision report ([spec 007](../007-analysis-error-audit/spec.md)). Dev precision report done 2026-10-25 (TF-IDF and DeBERTa-v3-base): B = 10,000 kept; L0–L2 half-width 0.0069. |
 | D-08 WDSI | **Withdrawn** (2026-10-12) | The course professor: research goes through the class, December only. |
 
 ## Work packages
@@ -60,10 +60,10 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 | WP-04 Audit official groups, prior inspection and splits | Code + human | C audit, S review | **006** split audit | Closed 2026-10-19 ([retro](../006-split-audit/retro.md)). Registry: 51 inspected test dialogues (13 label-round, 10 obsolete sheet, 24 fact-drift, 4 session logs), plus 5 cross-split duplicates excluded. Primary set: 10,585 genuine / 10,513 mismatch examples. WSL `audit --verify` passed. |
 | WP-05 Context renderer and invariants | Code | C | **004** context conditions | Tooling done 2026-10-14 (T1–T16). `check` passes on dev and test; test manifest committed. |
 | WP-06 Act references, Stage 2/routing scorers, IndirectRequests transfer (FR-15) | Code | C | **005** scoring | Tooling implemented 2026-10-18; dev inputs prepared. Model outputs and later adequacy/LLM-judge calibration pending. |
-| WP-07 Models on dev | Code | **S**, C reviews | none (Sandy's code) | Existing weak Stage 1 trainers only. |
-| WP-08 Feasibility and freeze record | Human + code | S, C manifest | 004/005 freeze tooling; proposed **008** freeze record writer | Not started. Critical path: spec 007's test gate and error audit need `freeze.json` with `freeze_date` and `analysis_config_sha256` before the Nov 9 grid. |
+| WP-07 Models on dev | Code | **S**, C reviews | none (Sandy's code) | DeBERTa-v3-base dev grid done 2026-10-25 in WSL (`none`/`one`/`full` × five seeds, 15 runs) and analyzed. Matched dev accuracy: none 0.906, one 0.907, full 0.908 (dev diagnostics, not findings). [Run record](../../docs/wsl_development_2026-10-23.md). The large encoders, LLM and hybrid are not yet run. |
+| WP-08 Feasibility and freeze record | Human + code | S, C manifest | 004/005 freeze tooling; **008** [freeze record](../008-freeze-record/spec.md) | Tooling done 2026-10-22 (spec 008 T1–T9; [procedure](../../docs/freeze.md)). `python -m src.data.freeze check` lists what Sandy must settle before `write`: the draft config, 3 unpinned encoder revisions, the LLM/hybrid recipes. There is one freeze, just before the Nov 9 grid. Every test entry point is gated on `verify`. |
 | WP-09 Held-out grid and hybrid | Code run | S | none | Blocked on WP-08. |
-| WP-10 Analysis and error audit | Code + human | C analysis tooling, S audit | **007** [analysis and error audit](../007-analysis-error-audit/spec.md) (renumbered from 006 on 2026-10-19) | Drafted, reviewed (R1–R11 applied) and decomposed into 14 tasks on 2026-10-20 ([tasks](../007-analysis-error-audit/tasks.md)). T1 (config `configs/analysis/analysis-v1.toml`, draft) done 2026-10-20; T2 (shared bootstrap engine, Holm) done 2026-10-21; T3–T13 done 2026-10-21: the full `python -m src.analysis run` and `error-audit` tooling, 731 tests. T14 needs Sandy's dev run on WSL (`analysis run --split dev`) for the D-07 precision evidence; the runtime was checked on the real dev set with a synthetic grid. Sandy runs `uv lock` for the new `figures` group. |
+| WP-10 Analysis and error audit | Code + human | C analysis tooling, S audit | **007** [analysis and error audit](../007-analysis-error-audit/spec.md) (renumbered from 006 on 2026-10-19) | Drafted, reviewed (R1–R11 applied) and decomposed into 14 tasks on 2026-10-20 ([tasks](../007-analysis-error-audit/tasks.md)). T1 (config `configs/analysis/analysis-v1.toml`, draft) done 2026-10-20; T2 (shared bootstrap engine, Holm) done 2026-10-21; T3–T13 done 2026-10-21: the full `python -m src.analysis run` and `error-audit` tooling, 731 tests. T14 done 2026-10-25, pending Sandy's review: the real dev analysis of the TF-IDF runs and the DeBERTa-v3-base grid passed (91 s, component check, Monte Carlo 0.00016); the precision numbers are in the D-07 entry of `specs/memory/decisions.md`. Next: `/spec-retro 007`. Sandy runs `uv lock` for the new `figures` group. |
 | WP-11 Paper and demo | Human | S, P guides the CS-paper form | none | Related work (FR-11) can start now. |
 | WP-12 Publication extension | none | none | none | **Withdrawn** 2026-10-12. |
 
@@ -117,6 +117,10 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   (D-02), and the expected paper format/length.
 - [ ] S: Start the FR-11 related-work reading from the proposal's five references; log any
   extra search strings and dates.
+  - 2026-10-23: C prepared a [primary-source evidence map and related-work draft](../../docs/related_work.md),
+    covering all five starting references and eight related works, with a dated search log and
+    explicit reading depth. DIRECT, DRInQ, READI, INDIR-IT and ISA schemas are the closest
+    comparisons. Sandy's reading/review and the final manuscript section remain open.
 - [x] C: IndirectRequests transfer adapter and slot-value scorer (FR-15), inside [spec 005](../005-scoring/spec.md), 2026-10-18.
 - [x] C: Spec 004, context conditions (2026-10-14): shared renderer `render-v1` with the D-06 budget,
   genuine and mismatch sets in Stage 1 scoring, donor cue flags with a sensitivity line, `check`
@@ -126,6 +130,8 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 - [ ] S (before the freeze): run `uv run --group gpu python -m src.stage1.length_check --config
   configs/stage1/<encoder>.toml` in WSL for each chosen encoder. Exit 1 means some input exceeds
   512 subwords; tell Claude, and the budget drops for all models under `render-v2`.
+  - 2026-10-23: DeBERTa-v3-base passed in WSL on all five train/dev conditions: maximum 482/472
+    tokens, zero over 512. Other chosen tokenizers and the later test preflight remain open.
 - [x] C: Native-Windows verification (2026-10-18): 452 tests before spec 005; all seven context
   checks pass on dev/test; the 11,195-row test manifest reproduces byte-for-byte. WSL was not rerun.
 - [x] C: Spec 005 deterministic Stage 2/oracle/routed scorer, slot normalization and separate
@@ -168,5 +174,33 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   excludes the run's own results log and output directory from `git_dirty`. Ignore paths outside
   the worktree are dropped, so an external log path still works. `src/evaluation/run.py` now uses
   the same helper. 8 new tests (hermetic temp repos); 600 pass on Windows. Unblocks the 5090 grid.
+- [x] C: Spec 008 freeze record (2026-10-22): drafted, reviewed (R1–R14), decomposed (T1–T9)
+  and implemented. Sandy chose one freeze before Nov 9, dated amendments, and gates on the runner,
+  scorers and analysis. See [docs/freeze.md](../../docs/freeze.md) and
+  [verification](../008-freeze-record/verification.md).
+- [ ] S: Before the freeze, clear `python -m src.data.freeze check`:
+  - pin the `deberta-v3-large`, `roberta-base` and `roberta-large` revisions;
+  - name the primary system and set `draft = false`;
+  - give the LLM/hybrid recipes and `llm_model`, or drop them from the panel;
+  - decide `auto-v1` vs `auto-v2`.
+
+  Then follow the [procedure](../../docs/freeze.md#procedure-sandy-before-the-nov-9-grid). Claude
+  reruns the transcript scan at least one day before.
 - [ ] S: Supply dev model outputs using [the Stage 2 contract](../../docs/stage2_scoring.md).
   The tooling runs no models and does not yet evaluate free-paraphrase adequacy.
+
+- [x] 2026-10-23 to 10-25, at Sandy's request: WSL DeBERTa-base dev grid in
+  `~/pi-wsl-20261023` (`none`/`one`/`full` × five seeds), followed by the real dev analysis.
+  Micro-batch 4, gradient checkpointing, effective batch 32; successful smoke peak 3.48 GiB.
+  [Run record](../../docs/wsl_development_2026-10-23.md).
+  - 2026-10-25: all 15 runs and the analysis completed (05:55Z). This closes spec 007 T14,
+    pending Sandy's review ([verification](../007-analysis-error-audit/verification.md)).
+  - The first attempt was interrupted at step 5,000/6,342 of `none`/seed 13 when the host
+    went to sleep (12:06 PDT; not a GPU fault). It was resumed 2026-10-24T01:49Z with the same
+    code digest, and that run restarted from step 0.
+  - 2026-10-24, at Sandy's request: C added encoder checkpoint/resume (`--checkpoint-every`;
+    10 tests, bitwise-identical resume; GPU kill/resume smoke passed). The grid was restarted
+    fresh at 03:42Z with checkpoints every 250 steps. No run had completed.
+  - 2026-10-24 05:41Z, at Sandy's request: `CUDA_LAUNCH_BLOCKING` was turned off, with a
+    retry-once fallback to on. The run resumed at step 4,750 with losses identical to the first
+    attempt, and throughput went from 21 to about 37 ex/s.

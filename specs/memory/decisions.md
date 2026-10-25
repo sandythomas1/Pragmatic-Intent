@@ -5,6 +5,139 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-10-25: D-07 dev precision, DeBERTa-v3-base grid (Spec 007 / T14, closes AC-007-16)
+Decision: keep B = 10,000 and the D-07 method as written. The encoder evidence agrees with the
+TF-IDF entry below; nothing in the plan changes. Pending Sandy's review.
+- **Runs.** `deberta-v3-base`, `none`/`one`/`full` × seeds 13, 42, 314, 2026, 2718: 15 runs on
+  `rtx5060-wsl`, plus the two TF-IDF runs from 2026-10-21.
+  - Micro-batch 4, gradient checkpointing, effective batch 32, bf16, checkpoints every 250 steps.
+  - Snapshot `~/pi-wsl-20261023`: `ab3e49d` plus a working-tree overlay, so every run and the
+    report record `git_dirty: true`. Code-inputs digest `3a7e23bf…`.
+  - The record is `docs/wsl_development_2026-10-23.md`.
+- **Matched line**, `stage1_correct`, L2 − L0 benefit difference (full − none, linear):
+  - point +0.0054, 95% CI [−0.0016, +0.0123], half-width **0.0069**;
+  - a second bootstrap seed moves the interval endpoints by at most **0.00016**, against a
+    tolerance of ±0.002;
+  - the per-seed point estimates range from −0.0003 to +0.0084 (SD 0.0035).
+- **Cells (dialogues):** L0 969, L1 732, L2 904; exploratory L3 266, INF 191. Of 480
+  statistics, none is sparse or unstable.
+- **Runtime:** 91 s for 17 runs. The component check passed for all 17 runs. A rerun's
+  `report.json` was byte-identical (90 s; SHA-256 `3457b1dd…`).
+- **Context (descriptive, dev, not a finding):**
+  - matched accuracy: none 0.906, one 0.907, full 0.908, each the mean of 5 seeds, seed SD at
+    most 0.0016;
+  - matched full − none overall: +0.002 [−0.000, +0.005];
+  - test-time line, full-trained model: full − none overall +0.021 [0.017, 0.024]; L2 − L0
+    +0.023 [0.011, 0.034];
+  - full − mismatched (test-time): +0.017 [0.014, 0.020].
+
+Why:
+- **B.** The Monte Carlo error is about 13 times below tolerance.
+- **Precision.** Five seeds narrowed the half-width from 0.0095 (TF-IDF, one seed) to 0.0069,
+  as expected: the interval is mostly item-sampling error. The resolvable L0–L2 difference on dev
+  is therefore still about 1 point.
+- **Matched vs test-time.** The matched design shows almost no context benefit, while the
+  test-time line shows about 2 points. That is the train/test-shift confound the 2026-10-20
+  entry gave as the reason for making matched training primary, and the test-time result is
+  not evidence against it.
+
+Alternatives considered: raising B (not needed), and adding seeds to tighten the interval
+(seed variation is not the main source of width).
+
+Open (freeze-time, Sandy): the primary system is still the placeholder `hybrid`, so the primary
+test and Holm family are `not_run`. If the hybrid's matched benefit is as small as this
+encoder's, the confirmatory H2 test will most likely be null; the paper reports that
+(spec 001 §7).
+
+## 2026-10-22: `freeze check` output and test-ID masking (Spec 008 / T4)
+Decision:
+- `check` prints one line per finding (problem first), then a one-line count of ready pins by
+  family. `--verbose` lists every ready pin key; values are never printed.
+- Every printed line also passes through `mask_ids`, which replaces anything shaped like a
+  DIRECT/MultiWOZ dialogue ID with `<id>`. This is on top of the count-only scan report.
+- Git is probed through an injectable `GitProbe`. The default is
+  `provenance.git_state(cwd=root, ignore=results/, outputs/)`.
+
+Why:
+- FR10 asked for one line per pin. On the real repo, 74 ready lines buried the 8 findings that
+  matter.
+- Masking is cheap defense in depth, in case a future message forgets FR15.
+- Injection lets the tests cover git missing, dirty and clean without depending on git on PATH.
+
+Alternatives considered:
+- Printing every pin by default. Rejected: the findings get lost.
+- Relaying `split_audit scan` messages. Rejected: they name test dialogues.
+
+## 2026-10-22: Freeze inputs schema (Spec 008 / T1)
+Decision:
+- Each `[systems.<name>]` table holds:
+  - an optional single `stage1` TOML, hashed as a recipe;
+  - an optional `files` list (prompts, LLM config; text-hashed);
+  - required `seeds`;
+  - an optional `llm_model`.
+- Placeholder systems may have no recipe files and an empty `llm_model`. The loader accepts them,
+  so `check` can report them as missing; `write` refuses them.
+- `FreezeError` subclasses `AnalysisError`, so the analysis CLI's existing error handling covers
+  the freeze gate.
+- Paths are raw-segment checked. Empty, `.` and `..` segments, backslashes, colons (drives, NTFS
+  streams) and symlinks are refused.
+
+Why:
+- A Stage 1 recipe is hashed differently from a prompt file (FR8), so the schema keeps them
+  apart instead of guessing by extension.
+- `PurePosixPath` silently normalizes `./x` and `a//b`, so the raw string is checked.
+
+Alternatives considered:
+- A single generic `recipes` list, typed by path. Rejected: it would be fragile.
+- Requiring recipes at load time. Rejected: `check` could then not list what is missing.
+
+## 2026-10-22: Freeze record shape (Spec 008, draft)
+Decision (Sandy):
+- **One freeze, written once, just before the Nov 9 test grid**, after the dev encoder grid and
+  the choice of primary system. It replaces the roadmap's separate data freeze around Nov 1. Until
+  then, a read-only `freeze check` lists what is missing.
+- **Post-freeze changes** go through a dated `amend --reason` that appends to a hash-chained list.
+  The original pins never change, the gates enforce the latest pins, and the paper discloses every
+  amendment.
+- **Gates:** the Stage 1 runner's `--allow-test`, the Stage 1, Stage 2 and transfer test scorers,
+  and `analysis run --split test` all require `freeze verify`. Runs outside the frozen grid
+  (seeds × conditions) are refused.
+
+Why:
+- A two-stage record adds a second date and staged checks, and buys almost nothing: only dev is
+  touched between Nov 1 and Nov 9.
+- Spec 001 §7 requires dated, disclosed amendments.
+- Gating the runner stops 5090 hours being spent on runs that couldn't be reported.
+
+Alternatives considered: a two-stage freeze; write-once with no amend tooling; gating only the
+scorers and analysis.
+
+## 2026-10-21: D-07 dev precision, TF-IDF systems (Spec 007 / T14, partial)
+Decision: keep B = 10,000 and the D-07 method as written. This rests on the dev precision report
+from real predictions. The runs were `tfidf-utterance` and `tfidf-context`, trained on `full`,
+seed 13, on `rtx5060-wsl`, in a clean clone at `ab3e49d`. Both have `git_dirty` false.
+- **`tfidf-context`**, test-time line, `stage1_correct`, L2 − L0 benefit difference
+  (full − none, linear):
+  - point +0.0018, 95% CI [−0.0077, +0.0113], half-width **0.0095**;
+  - a second bootstrap seed moves the interval endpoints by at most **0.00006**, against a
+    tolerance of ±0.002.
+- **`tfidf-utterance`**: the benefit is exactly 0, as it must be for a context-blind model.
+- **Cells (dialogues):** L0 969, L1 732, L2 904; exploratory L3 266, INF 191. No cell is sparse
+  or unstable.
+- **Runtime:** the analysis took 64 s for 2 runs and 292 statistics. The full-scale bound was
+  already checked on a synthetic 47-run grid (314 s).
+- **Determinism:** a rerun's report was byte-identical. `tfidf-context` reproduced the committed
+  `b13ac75` dev accuracies exactly.
+
+Why: the Monte Carlo error is about 30 times below tolerance, so a larger B buys nothing. The
+half-width is item-sampling error, so seed averaging in the encoder grids will not shrink it much.
+L0–L2 differences in the context benefit smaller than about 1 point will not be resolvable on dev.
+
+Alternatives considered: raising B to 20,000. It was not needed, because the check passed with
+margin.
+
+Open: T14 still needs one encoder grid on dev (AC-007-16).
+
 ## 2026-10-21: Estimands, run command, tables, figure and error audit (Spec 007 / T6–T13)
 Decision:
 - **Only prespecified tests carry a p-value**: the primary test and the Holm members. Every
