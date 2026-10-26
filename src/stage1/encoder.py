@@ -228,11 +228,12 @@ def predict(model: Any, features: list[Features], batch_size: int, pad_id: int,
 
 
 def checkpoint_fingerprint(args: argparse.Namespace, config: RunConfig, settings: EncoderConfig,
-                           n_train: int) -> dict[str, Any]:
+                           n_train: int, input_hashes: dict[str, str] | None = None) -> dict[str, Any]:
     """Everything that determines the batch sequence and weights, so a resume cannot cross runs."""
     return {"run": config.name, "config_sha256": config.sha256(), "seed": args.seed,
             "train_condition": config.data.train_condition, "smoke": args.smoke,
-            "items_sha256": provenance.sha256(Path(config.data.items)), "n_train": n_train,
+            **(input_hashes if input_hashes is not None else
+               provenance.run_hashes(Path(config.data.items), Path(config.data.dialogues))), "n_train": n_train,
             "micro_batch_size": settings.micro_batch_size, "grad_accum_steps": settings.grad_accum_steps}
 
 
@@ -293,7 +294,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.checkpoint_every is not None:
             checkpointer = Checkpointer(
                 runner.output_dir(args, config) / CHECKPOINT_NAME, args.checkpoint_every,
-                checkpoint_fingerprint(args, config, settings, len(train_features)))
+                checkpoint_fingerprint(args, config, settings, len(train_features), prepared.input_hashes))
         training = train(model, train_features, train_labels, settings, pad_id, device, use_bf16, args.seed,
                          checkpointer)
 

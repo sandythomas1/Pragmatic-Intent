@@ -2,8 +2,8 @@
 # globs that match nothing are errors. Every panel system in configs/analysis/analysis-v1.toml
 # needs a table here, and only those. Training conditions are not listed: they follow from each
 # system's design in the analysis config (matched: none/one/full; test_time: full; llm: untrained).
-# DRAFT until the freeze: the llm and hybrid entries are placeholders (D-05), and three encoder
-# configs still use revision = "main"; `python -m src.data.freeze check` lists what is missing.
+# DRAFT until the freeze: the llm and hybrid entries are placeholders (D-05).
+# All encoder revisions are pinned; `python -m src.data.freeze check` lists what is missing.
 
 version = "freeze-inputs-v1"
 analysis_config = "configs/analysis/analysis-v1.toml"

@@ -44,6 +44,7 @@ class Prepared:
     sets: ScoringSets | None = None
     counts: dict[str, Any] = field(default_factory=dict)
     test_audit: SplitAudit | None = None  # set when eval_split is test (spec 006)
+    input_hashes: dict[str, str] = field(default_factory=dict)
 
 
 def add_common_args(parser: argparse.ArgumentParser) -> None:
@@ -85,6 +86,7 @@ def require_test_freeze(args: argparse.Namespace, config: RunConfig) -> str:
 
 def prepare(config: RunConfig, smoke: bool = False) -> Prepared:
     data = config.data
+    input_hashes = provenance.run_hashes(Path(data.items), Path(data.dialogues))
     items = load_items(Path(data.items))
     dialogues = load_dialogues(Path(data.dialogues))
     items_by_id = {item["item_id"]: item for item in items}
@@ -118,6 +120,7 @@ def prepare(config: RunConfig, smoke: bool = False) -> Prepared:
         counts={"train_excluded": train_excluded, "eval_excluded": eval_excluded,
                 "mismatch_excluded": {"no_donor": len(evaluation) - len(mismatch)}},
         test_audit=audit,
+        input_hashes=input_hashes,
     )
     if not prepared.train or not prepared.eval:
         raise ValueError("no training or evaluation examples after applying the policy")
@@ -149,6 +152,9 @@ def finish(args: argparse.Namespace, config: RunConfig, prepared: Prepared,
            predictions: list[dict[str, Any]], model_info: dict[str, Any], started: float) -> Path:
     """Score, write outputs (IDs and labels only), and append to the results log."""
     data = config.data
+    input_hashes = provenance.run_hashes(Path(data.items), Path(data.dialogues))
+    if prepared.input_hashes and prepared.input_hashes != input_hashes:
+        raise ValueError("data or source changed during the run; outputs were not written")
     audit = prepared.test_audit
     report = build_report(prepared.eval, predictions, prepared.slices, prepared.sets,
                           config.bootstrap_samples, config.bootstrap_seed, dup_ids=audit.dup_ids if audit else None)
@@ -160,7 +166,7 @@ def finish(args: argparse.Namespace, config: RunConfig, prepared: Prepared,
         "smoke": args.smoke, "policy": data.policy, "train_split": data.train_split,
         "eval_split": data.eval_split, "train_condition": data.train_condition,
         "n_train": len(prepared.train), "n_eval": len(prepared.eval),
-        "config_sha256": config.sha256(), "items_sha256": provenance.sha256(Path(data.items)),
+        "config_sha256": config.sha256(), **input_hashes,
         "duration_s": round(time.time() - started, 1), "model": model_info,
         **({"freeze_content_sha256": args.freeze_content_sha256} if getattr(args, "freeze_content_sha256", None) else {}),
         "gpu": provenance.gpu_info(), "environment": provenance.environment(),
@@ -170,6 +176,7 @@ def finish(args: argparse.Namespace, config: RunConfig, prepared: Prepared,
     (out / "config.resolved.json").write_text(json.dumps(config.to_dict(), indent=2) + "\n", encoding="utf-8")
     (out / "predictions.jsonl").write_text(
         "".join(json.dumps(row, sort_keys=True) + "\n" for row in predictions), encoding="utf-8")
+    run["predictions_sha256"] = provenance.sha256(out / "predictions.jsonl")
     (out / "metrics.json").write_text(json.dumps(
         {**report, "run": run, "counts": prepared.counts, "local": provenance.local_details()},
         indent=2, sort_keys=True) + "\n", encoding="utf-8")

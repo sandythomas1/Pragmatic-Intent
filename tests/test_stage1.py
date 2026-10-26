@@ -299,6 +299,17 @@ class RunnerTest(unittest.TestCase):
             self.assertEqual(sorted(record["contrasts"]["full-none"]["by_rule_level"]), ["L0", "L2"])
             self.assertNotIn("hostname", json.dumps(record))
             self.assertIn("hostname", json.loads((out / "metrics.json").read_text(encoding="utf-8"))["local"])
+            from src.stage1 import provenance
+            self.assertEqual(record["dialogues_sha256"], provenance.sha256(root / "dialogues.jsonl"))
+            self.assertEqual(record["predictions_sha256"], provenance.sha256(out / "predictions.jsonl"))
+            self.assertRegex(record["source_sha256"], r"^[0-9a-f]{64}$")
+            from src.stage1.grid_check import verify_completed
+            verify_completed(out, config, args.seed, provenance.run_hashes(root / "items.jsonl", root / "dialogues.jsonl"))
+            before = (out / "metrics.json").read_bytes()
+            (root / "dialogues.jsonl").write_text('{"changed": true}\n', encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "changed during"):
+                runner.finish(args, config, prepared, predictions, {"name": "fake"}, started=0.0)
+            self.assertEqual((out / "metrics.json").read_bytes(), before)
 
 
 class FakeTokenizer:

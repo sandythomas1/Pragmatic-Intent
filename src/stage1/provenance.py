@@ -29,6 +29,27 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def source_sha256(root: Path | None = None) -> str:
+    """Hash Python source paths and content, independent of checkout line endings.
+
+    Include the entire source tree conservatively: a changed renderer or imported scorer
+    matters just as much as the trainer. Outputs, tests and bytecode are excluded.
+    """
+    root = root if root is not None else Path(__file__).resolve().parents[2]
+    files = sorted((root / "src").rglob("*.py"))
+    if not files:
+        raise ValueError("no Python source files found for run provenance")
+    records = [(path.relative_to(root).as_posix(),
+                hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()) for path in files]
+    return hashlib.sha256(json.dumps(records, separators=(",", ":")).encode()).hexdigest()
+
+
+def run_hashes(items: Path, dialogues: Path) -> dict[str, str]:
+    """The data bytes and actual source that determine a run, including dirty edits."""
+    return {"items_sha256": sha256(items), "dialogues_sha256": sha256(dialogues),
+            "source_sha256": source_sha256()}
+
+
 def _git(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["git", *args], capture_output=True, text=True, check=False, cwd=cwd)
 

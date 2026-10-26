@@ -44,14 +44,18 @@ was adjudicated on 2026-10-17. Literary editions (Aesop, King James Bible) are n
 screening tooling: families, exhaustive candidate proposals and a validated text-free
 inclusion/exclusion log ([spec 002](specs/002-literary-sources/spec.md),
 [usage](docs/source_collection_plan.md#screening-tooling)). No literary pilot has been screened yet.
-Option A (spec 001 v1.2) uses fixed wording rules and MultiWOZ act categories; the historical
+Option A (spec 001 v1.3) uses fixed wording rules and MultiWOZ act categories; the historical
 spec 003 form/context/reveal pilot is not run. The shared context renderer and committed test
 manifest are built ([spec 004](specs/004-context-conditions/spec.md)). Stage 2 act/slot recovery,
 separate oracle/routed scoring and the IndirectRequests transfer adapter are now available
 ([usage](docs/stage2_scoring.md), [spec 005](specs/005-scoring/spec.md)). `auto-v2` is frozen and
-provisional pending its fresh L3 spot check; `auto-v1` remains the default. No new model
-results are claimed. Execution is tracked in the
+provisional pending its fresh L3 spot check; `auto-v1` remains the default. The 15-run
+[DeBERTa-v3-base dev grid](docs/wsl_development_2026-10-23.md#grid-complete) is complete;
+reported test runs await the freeze. The [lab readiness handoff](docs/lab_readiness_2026-10-25.md)
+prepares DeBERTa-large dev runs and records the RoBERTa token-budget issue. Execution is tracked in the
 [roadmap](specs/001-pragmatic-intent-study/roadmap.md).
+The [DeBERTa-large lab runbook](docs/deberta_large_lab_runbook.md) gives the private
+transfer package, checksum verification, lab preflight, smoke tests and resumable dev grid.
 
 The [Stage 1 baseline guide](docs/stage1_baselines.md) covers pinned environments and weak-label
 dev experiments on the RTX 5060 (WSL2) or lab RTX 4090. DIRECT variant labels are not human L0-L3

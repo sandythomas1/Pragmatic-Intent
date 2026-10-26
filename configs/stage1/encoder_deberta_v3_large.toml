@@ -15,7 +15,7 @@ train_condition = "full"
 
 [encoder]
 pretrained = "microsoft/deberta-v3-large"
-revision = "main"
+revision = "64a8c8eab3e352a784c658aef62be1662607476f"
 max_length = 512
 batch_size = 32
 micro_batch_size = 8
