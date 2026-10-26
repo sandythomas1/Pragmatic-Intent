@@ -5,8 +5,9 @@ provisional v2 slices; the default and existing model-run configs retain v1. The
 frozen, its held-out round-2 agreement is 29/30 (the same as v1), and fresh L3 precision is pending.
 See [the rule check handoff](option_a_checks.md) and [Stage 2/transfer scoring](stage2_scoring.md).
 
-_Added 2026-10-07. Development code: it has been unit-tested and checked against the real DIRECT +
-MultiWOZ join (data loading only). No model has been trained yet._
+_Updated 2026-10-25. TF-IDF and the 15-run DeBERTa-v3-base dev grid are complete; see the
+[WSL run record](wsl_development_2026-10-23.md). No reported test run has been made.
+The [lab readiness handoff](lab_readiness_2026-10-25.md) records current checks and blockers._
 
 This is the "TF-IDF baseline with a distinct training source and dialogue-separated dev evaluation"
 from the [round 2 review](round2_review.md), plus the cross-encoder runs that come after it. It does
@@ -69,15 +70,16 @@ DIRECT's two rewrites is this". That approximates indirectness, but it is not th
 
 - **Train under one condition, score under all five.** Each run trains with `train_condition` and
   predicts dev under `none`, `one`, `full`, `mismatched` and `mismatched_one`.
-  - Training under each of `none` / `one` / `full` / `mismatched` gives the context ablation.
+  - Matched training under `none` / `one` / `full` gives the primary context ablation.
+    Mismatch controls are evaluated with the full-trained model; mismatched training is optional.
   - Scoring a `full`-trained model under `mismatched` is the relevant-context control at test time.
 - **Paired contrasts.** `metrics.json` reports `one-none`, `full-none`, `full-one`,
   `full-mismatched` and `one-mismatched_one`, each as an accuracy difference with a 95% paired
   bootstrap interval over dialogues, overall and **by variant**. The two mismatch contrasts also
   have a `without_cue_donors` line: the same contrast without examples whose donor context names a
   value from the target turn's user acts (a sensitivity check, see spec 004 FR9). A larger context benefit on
-  `indirect` than on `direct` paraphrases is the descriptive H2 signal. The mixed-effects test
-  belongs in the analysis plan, not here.
+  `indirect` than on `direct` paraphrases is a descriptive diagnostic. The decided dialogue-cluster
+  bootstrap interaction test is specified in the [analysis plan](analysis_plan.md).
 - **Artifact probe.** `tfidf-utterance` sees no context. If it already separates the variants well,
   most of the signal is surface wording (research plan, Phase 3).
 - **Fixed recipe.** There is no early stopping or selection on dev: epochs and the learning rate are
@@ -100,8 +102,8 @@ build covers it; `env_check` confirms this.
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh          # uv, if not installed
 git clone https://github.com/sandythomas1/Pragmatic-Intent.git ~/Pragmatic-Intent
-cd ~/Pragmatic-Intent && git switch feature/stage1-baselines
-uv sync --group gpu                                       # Python 3.12, torch 2.11 + CUDA 12.8, pinned by uv.lock
+cd ~/Pragmatic-Intent && git switch main && git pull --ff-only
+uv sync --locked --group gpu                              # Python 3.12, torch 2.11 + CUDA 12.8, pinned by uv.lock
 uv run python -m src.data.download_sources                # ~420 MB, checksummed
 uv run python -m src.data.build_direct_dataset            # deterministic: same bytes on both machines
 uv run --group gpu python -m src.stage1.env_check --tokenizer microsoft/deberta-v3-base
@@ -132,9 +134,12 @@ uv run --group gpu python -m src.stage1.encoder --config configs/stage1/encoder_
 uv run --group gpu python -m src.stage1.encoder --config configs/stage1/encoder_deberta_v3_large.toml \
   --seed 13 --train-condition full --machine lab-5090 --smoke
 
-# 4. Full grids: 4 training conditions x 5 seeds, resumable (on the 5090 for reported numbers)
-scripts/stage1_grid.sh configs/stage1/encoder_deberta_v3_large.toml lab-5090
-scripts/stage1_grid.sh configs/stage1/encoder_roberta_large.toml lab-5090
+# 4. Inspect the 3 training conditions x 5 seeds without training or installing GPU dependencies
+bash scripts/stage1_grid.sh configs/stage1/encoder_deberta_v3_large.toml lab-5090 --dry-run
+
+# 5. Dev grid after the tokenizer check and smoke pass (not the reported test grid)
+bash scripts/stage1_grid.sh configs/stage1/encoder_deberta_v3_large.toml lab-5090
+# RoBERTa is on hold: see lab_readiness_2026-10-25.md before running it.
 ```
 
 **Encoders (2026-10-19).** With the lab RTX 5090 the planned encoders are the large models:
@@ -154,15 +159,24 @@ resolved value is logged.
   set the peak.
 
 With the grid script, set `MICRO_BATCH=8`, `GRAD_CKPT=1`, `SEEDS="13"` or `CONDITIONS="full"`.
-The default is five seeds (`13 42 2026 314 2718`).
+`GRAD_CKPT=0` adds no gradient-checkpointing override. The default is five seeds
+(`13 42 2026 314 2718`) and three training conditions (`none one full`): 15 dev runs.
+The script uses the project's Python and `uv --locked`, so it cannot silently update the lock.
+Before starting any training, it checks every completed directory in the requested grid. It
+skips only when the resolved recipe, seed, data/source hashes and prediction-file hash match.
+Missing, edited, legacy or mismatched artifacts stop the entire grid without overwriting them.
+Use a separate checkout/output tree for a changed recipe. The dry-run flag uses the same checks
+and prints the remaining commands without starting models or writing logs.
 
 **Checkpoints.** `--checkpoint-every N` saves the full training state every N optimizer steps,
 and once more when training ends, to `<run dir>/checkpoint.pt`. The state covers the weights,
 optimizer, scheduler, data order and RNG states. Rerunning the same command resumes from it,
 with the same batches and dropout stream as an uninterrupted run. The checkpoint is deleted
 after the run's outputs are written. A crash or sleep therefore costs at most N steps, not the
-whole run. A checkpoint from a different recipe, seed, condition, data file or batch layout is
-refused; delete it to restart that run.
+whole run. A checkpoint from a different recipe, seed, condition, items/dialogues file, source
+tree or batch layout is refused. Preserve the old output directory and use a separate one to
+restart with a changed recipe or source. Historical checkpoints without the new hashes are
+also refused by the current trainer; their original source can still read them.
 - The grid script checkpoints every 250 steps by default (`CHECKPOINT_EVERY=0` turns this off).
 - A checkpoint is about 3× the model's fp32 size: roughly 2 GB for base models and 5 GB for large.
 - After a resume, `model.resumed_at_steps` lists the steps each resume started from.

@@ -179,7 +179,8 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   scorers and analysis. See [docs/freeze.md](../../docs/freeze.md) and
   [verification](../008-freeze-record/verification.md).
 - [ ] S: Before the freeze, clear `python -m src.data.freeze check`:
-  - pin the `deberta-v3-large`, `roberta-base` and `roberta-large` revisions;
+  - encoder revisions pinned 2026-10-25; remaining findings are listed in the
+    [lab readiness handoff](../../docs/lab_readiness_2026-10-25.md);
   - name the primary system and set `draft = false`;
   - give the LLM/hybrid recipes and `llm_model`, or drop them from the panel;
   - decide `auto-v1` vs `auto-v2`.
@@ -188,6 +189,22 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   reruns the transcript scan at least one day before.
 - [ ] S: Supply dev model outputs using [the Stage 2 contract](../../docs/stage2_scoring.md).
   The tooling runs no models and does not yet evaluate free-paraphrase adequacy.
+
+- [x] C: Lab readiness checks (2026-10-25): updated the figures lock, pinned the three remaining
+  encoder revisions, repaired the WSL grid launcher and dry-ran both lab profiles. DeBERTa-large
+  train/dev token lengths pass. Both RoBERTa tokenizers have two 514-token mismatched-training
+  inputs; Sandy chose DeBERTa-large preparation and holding RoBERTa, retaining `render-v1`.
+  No renderer or test data changed.
+- [x] C: Lab resume safeguards (2026-10-25): the whole dev grid validates completed artifacts
+  before training. New runs/checkpoints pin dialogue and source hashes; changed inputs during
+  a run are refused. Legacy outputs are preserved and cannot be silently skipped. 918 tests
+  pass on each platform (expected skips); see the lab handoff for evidence and compatibility.
+- [x] C: Package the DeBERTa-large lab handoff (2026-10-26): private archive with Git history,
+  working-tree overlay, pinned local data, checksums and both GPU profiles. WSL and restored
+  checkout suites pass 918 tests (5 skipped); all train/dev tokenizer conditions fit 512.
+  [Preparation evidence](../../docs/lab_preparation_2026-10-26.md).
+- [ ] S: Run the [DeBERTa-large lab smoke and dev grid](../../docs/deberta_large_lab_runbook.md)
+  on a 5090 or 4090 after applying this session's changes. Reported test runs still need WP-08.
 
 - [x] 2026-10-23 to 10-25, at Sandy's request: WSL DeBERTa-base dev grid in
   `~/pi-wsl-20261023` (`none`/`one`/`full` × five seeds), followed by the real dev analysis.

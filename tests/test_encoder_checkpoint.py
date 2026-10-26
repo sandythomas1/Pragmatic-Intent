@@ -145,6 +145,23 @@ class CheckpointResumeTest(unittest.TestCase):
 
 
 class CheckpointSettingsTest(unittest.TestCase):
+    def test_context_changes_invalidate_a_checkpoint_even_if_items_do_not_change(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            items, dialogues = root / "items.jsonl", root / "dialogues.jsonl"
+            items.write_text('{}\n', encoding="utf-8")
+            dialogues.write_text('{"context": "first"}\n', encoding="utf-8")
+            config_path = root / "config.toml"
+            config_path.write_text('[run]\nname = "x"\nkind = "encoder"\n'
+                                   '[data]\ntrain_condition = "full"\n'
+                                   f'items = "{items.as_posix()}"\ndialogues = "{dialogues.as_posix()}"\n'
+                                   '[encoder]\npretrained = "m"\n', encoding="utf-8")
+            config = load_config(config_path)
+            args = argparse.Namespace(seed=13, smoke=False)
+            before = checkpoint_fingerprint(args, config, config.encoder, 100)
+            dialogues.write_text('{"context": "changed"}\n', encoding="utf-8")
+            self.assertNotEqual(before, checkpoint_fingerprint(args, config, config.encoder, 100))
+
     def test_nonpositive_interval_is_rejected(self) -> None:
         for every in (0, -5):
             with self.subTest(every), self.assertRaises(ValueError):
@@ -154,9 +171,12 @@ class CheckpointSettingsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             items = Path(directory) / "items.jsonl"
             items.write_text('{"item_id": "a"}\n', encoding="utf-8")
+            dialogues = Path(directory) / "dialogues.jsonl"
+            dialogues.write_text('{}\n', encoding="utf-8")
             path = Path(directory) / "config.toml"
             path.write_text('[run]\nname = "x"\nkind = "encoder"\n[data]\ntrain_condition = "full"\n'
                             f'items = "{items.as_posix()}"\n'
+                            f'dialogues = "{dialogues.as_posix()}"\n'
                             '[encoder]\npretrained = "m"\nbatch_size = 32\nmicro_batch_size = 16\n', encoding="utf-8")
 
             def fingerprint(seed: int = 13, micro_batch: int = 16, n_train: int = 100) -> dict[str, Any]:

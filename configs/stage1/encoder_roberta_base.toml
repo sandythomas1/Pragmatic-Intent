@@ -12,7 +12,7 @@ train_condition = "full"
 
 [encoder]
 pretrained = "FacebookAI/roberta-base"
-revision = "main"
+revision = "e2da8e2f811d1448a5b465c236feacd80ffbac7b"
 max_length = 512
 batch_size = 32
 micro_batch_size = 16
