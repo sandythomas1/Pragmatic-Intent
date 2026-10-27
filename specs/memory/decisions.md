@@ -5,6 +5,52 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-10-27: DeBERTa-v3-large dev grid on the lab RTX 5090 (Spec 007 dev inputs)
+Decision: add the large grid to `configs/analysis/inputs-dev.toml` as a second matched encoder.
+Nothing in the analysis plan changes. Pending Sandy's review.
+- **Runs.** `deberta-v3-large`, `none`/`one`/`full` × seeds 13, 42, 314, 2026, 2718: 15 runs on
+  `lab-5090` (native Ubuntu, shared GPU), 2026-10-26 14:28 to 2026-10-27 02:07.
+  - Micro-batch 8, gradient checkpointing, effective batch 32, bf16, checkpoints every 250 steps.
+    Peak memory 8.1–8.2 GiB, which leaves room for the other team's 8–10 GB. Without gradient
+    checkpointing the smoke run peaked at 18.96 GiB, which is too close to the limit on a shared card.
+  - Every run records commit `213b8bd`, `git_dirty: false`, revision `64a8c8ea…`, the pinned
+    data hashes, no resumes and one source digest. Each predictions file matches its recorded hash.
+  - Evidence archive SHA-256 `a3e8ba16…24cca8`, unpacked to
+    `outputs/verification/lab-5090-20261027/`. The procedure is `docs/deberta_large_lab_runbook.md`.
+- **Analysis.** The dev run covers 32 runs (TF-IDF ×2, base ×15, large ×15): component check passed;
+  668 statistics, none sparse or unstable. The 51 base and TF-IDF input files are byte-identical to
+  the 2026-10-25 report. The report records `git_dirty: true` only because this inputs file was
+  uncommitted at the time.
+- **Matched line**, `stage1_correct`, L2 − L0 benefit difference (full − none, linear):
+  - large +0.003, 95% CI [−0.005, +0.011], half-width **0.008**; per-seed range +0.001 to +0.005;
+  - base for comparison: +0.005 [−0.002, +0.012], half-width 0.007.
+- **Context (descriptive, dev, not a finding):**
+  - matched accuracy: none 0.908, one 0.910, full 0.910 (base 0.906 / 0.907 / 0.908), seed SD at
+    most 0.002;
+  - matched full − none overall: +0.002 [−0.001, +0.004];
+  - test-time line, full-trained model: full − none overall **+0.065** [0.061, 0.069] (base +0.021);
+  - full − mismatched (test-time): +0.027 [0.024, 0.031] (base +0.017).
+
+Why:
+- **Same picture as base.** Under matched training, context adds almost nothing at either size,
+  and large is only about 0.2–0.3 points above base.
+- **The test-time line is unstable for large.** The full-trained seed 2026 model scores 0.718 when
+  given no context, against 0.866–0.881 for the other four seeds. The train-one models scored with
+  full context range from 0.70 to 0.82. Base showed neither effect. Without seed 2026, test-time
+  full − none is about +0.033. So the test-time benefit for large is mostly a robustness-to-shift
+  effect that differs by seed, which is more evidence for keeping matched training primary
+  (2026-10-20 entry).
+- The pattern also holds against wrong-dialogue context: full − mismatched is larger for large
+  (+0.027) than for base (+0.017), so large uses the real context more but is more fragile when
+  context is removed.
+
+Alternatives considered: rerunning seed 2026 (rejected, because it's a valid run and the seed is
+part of the design), and using only the 5090 profile without checkpointing (rejected because the
+GPU was shared).
+
+Open (Sandy): the paper should report the test-time line with per-seed spread and not only the
+seed mean. RoBERTa base and large remain `not_run`.
+
 ## 2026-10-25: D-07 dev precision, DeBERTa-v3-base grid (Spec 007 / T14, closes AC-007-16)
 Decision: keep B = 10,000 and the D-07 method as written. The encoder evidence agrees with the
 TF-IDF entry below; nothing in the plan changes. Pending Sandy's review.
