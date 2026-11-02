@@ -60,6 +60,15 @@ Where they conflict, spec 001 wins and this file is updated.
 - Claude builds the data, annotation, rendering and scoring infrastructure, the parts that guard
   validity. Sandy writes the model code (TF-IDF, encoder, LLM prompting, hybrid) against those
   interfaces, and Claude reviews it.
+- *Scoped exception (2026-11-02, [spec 009](009-llm-routed-hybrid/spec.md) FR17), for spec 009 only:*
+  1. Claude writes the LLM runner and the hybrid composer, with tests, and Sandy reviews them.
+  2. LLM dependencies go in two new pinned uv groups, `llm` (vLLM) and `api` (provider SDKs),
+     besides `classical` and `gpu`.
+  3. LLM outputs are not byte-reproducible on rerun (GPU batching, provider models). Their cache
+     and prediction files are the hashed reproducibility artifacts. The composer, validators and
+     prompt generator stay byte-deterministic.
+
+  The paper's methods section discloses all three. Model *training* code stays Sandy's.
 - Commits, pushes, PRs, paid runs and contact with people outside the project happen only on
   Sandy's explicit request.
 

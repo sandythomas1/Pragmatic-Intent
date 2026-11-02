@@ -5,6 +5,163 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-11-02: P2 examples: direct/indirect only, 3 per label, `full` condition, one per dialogue (Spec 009 / T3)
+Decision:
+- **Draw.** P2's worked examples come from DIRECT `train` paraphrases labelled `direct` or
+  `indirect`. Each needs a spec 005 `acts-v1` reference with a request category and no conflict,
+  plus prior context. The draw takes 3 per label with seed 20261102 (`random.Random`, shuffling
+  the sorted candidates), at most one per dialogue within a label, interleaved d,i,d,i,d,i.
+- **Rendering.** Each example is shown under the `full` condition, inside T2's `<dialogue>` data
+  block, followed by `Answer:` and its reference answer as sorted-key JSON. That answer must parse
+  under the T1 schema.
+- **What is committed.** `configs/llm/prompts/p2_examples.json` holds only IDs, seed, versions and
+  the sha256 of the items and dialogues files. The rendered prompt goes to git-ignored
+  `outputs/llm/prompts/p2.txt`, and rendering refuses a hash mismatch.
+- **Where it stands.** The real draw succeeded (6 examples, P2 = 1,235 words), so the FR9 fallback
+  is not needed.
+
+Why:
+- **No `no_request` examples.**
+  - The answer schema needs a request category, and a thanks/bye turn has none to show; any
+    example answer for it would be invented.
+  - The interpretation scorer covers only indirect examples, and it accepts a null or
+    `no_request` category for gold `no_request`.
+  - P1's instructions already define the `no_request` route in words.
+- **One per dialogue** stops a single conversation from dominating the 6 examples.
+- **`full` condition.** It shows the model the most context per example.
+- **3 per label** keeps P2 near 1.2k words. The T4 length preflight will confirm whether it fits.
+
+Alternatives considered:
+- **Strict stratification over all three route labels**, including `no_request`. It would need an
+  invented category and would teach a label the scorer barely uses.
+- **k = 5 per label.** It roughly doubles prompt length for an unmeasured gain.
+- **Committing the rendered P2.** That puts corpus text in git (FR18), and DIRECT has no license.
+- **Reversible:** change `K_PER_LABEL`/`EXAMPLE_LABELS` and redraw before the Nov 5 prompt
+  selection. That changes the P2 hash, which is fine because nothing is frozen yet.
+
+## 2026-11-02: Prompt framing, `{{name}}` placeholders and the prompt hash (Spec 009 / T2)
+Decision:
+- **Corpus text never goes through a template.** The committed prompt files
+  (`configs/llm/prompts/p1.txt`, `p2.template.txt`, `t1.txt`) hold instructions only, and they
+  are the system message. `src/llm/prompt.py` builds the data in code as a second (user) message:
+  a fixed notice that everything inside is data, then a tagged block (`<dialogue>` with
+  `<context>` and `<target_utterance>`, or `<request>` with `<utterance>`, `<slot_description>`
+  and `<candidates>`). Any text in a record shaped like one of those tags (any case, spacing or
+  attributes) has its `<` replaced by `&lt;`, so data can't close or reopen the block.
+- **Placeholders are `{{name}}`, and there are only two:** `slot_keys` (P1, P2) and `examples`
+  (P2, filled by T3). Unknown names, malformed braces, names that are given but absent, and leftover
+  placeholders after filling are all errors.
+- **P2 is P1 plus an examples section.** A test enforces that `p2.template.txt` starts with
+  `p1.txt`, so the only difference between P1 and P2 is the examples.
+- **`prompt_sha256`** is the SHA-256 of canonical JSON `{framing: "framing-v1", task,
+  instructions}`. `instructions` is the filled text, after the slot list (and, for P2, the
+  examples) is filled, so the hash changes when the vocabulary, the examples or the
+  code-built framing changes. Files are read as strict UTF-8 with a size limit; CRLF becomes LF, a BOM is
+  dropped and a stray `\r` is refused. `.gitattributes` pins the prompt files to LF.
+- Candidates are shown as JSON strings, with their alias only when it differs. `<ambiguous>`
+  comes from the record (it is appended in `indirect_requests.input_record`).
+
+Why: Keeping instructions and data in separate messages, with code-built framing, is the
+standard defence against prompt injection: no file edit can leak data into the instructions, and
+the hash covers the framing through its version. Double braces keep JSON examples in the
+instructions literal, so `str.format` escaping is never needed. Normalising line endings means a
+Windows checkout (`core.autocrlf=true`) and WSL produce the same hash.
+
+Alternatives considered:
+- **`{name}` with `str.format`.** Every JSON brace in the instructions would need doubling, which
+  is easy to get wrong silently.
+- **Data placeholders inside the template** (`{context}`). Then the template decides where data
+  goes, and a template edit could put data outside the block.
+- **A random per-request fence.** This is not byte-reproducible, and the cache key would change
+  on every run.
+- **Escaping all `<` in data.** This would also change ordinary text such as `<ambiguous>` or
+  "price < 50".
+
+## 2026-11-02: LLM answer schema, failure reasons and the train slot-key vocabulary (Spec 009 / T1)
+Decision:
+- **One parser per task with fixed rules.** `src/llm/schema.py` maps every model answer to a
+  validated answer or to exactly one reason code. The stop reason is checked first: `refusal`
+  gives `refusal`, and `length` always gives `truncated`, even when the JSON is complete. Then
+  come empty output, the 8,192-character raw bound, JSON parsing (duplicate keys and NaN are
+  rejected), shape, enums and duplicates.
+  - An out-of-enum route counts as `schema`.
+  - More slots than the bound counts as `too_long`.
+  - Slot values must pass the scorer's own `checked_text` rule, at most 100 characters.
+- **The answer-to-row builders live beside the parser**, so every row the runner writes comes
+  from a parsed answer. These are the routed, oracle, transfer and invalid rows. An oracle row
+  keeps the interpretation even when the model's own route is `no_request` (the scorer ignores
+  `prediction` there).
+- **The slot-key vocabulary comes from train references only**, with `acts-v1` through
+  `reference()`. It has 56 names and is committed with the items hash. The `--check-dev` count
+  shows all 48 dev reference keys are covered, so the closed enum puts no ceiling on dev.
+
+Why: A fixed check order makes the reason counts comparable across runs and backends. The
+scorer's text rule guarantees that a parsed answer can never fail `validate_predictions` later.
+Building the vocabulary from train only keeps the schema independent of evaluation data. The
+dev check proves this costs nothing, and it reads counts, never text.
+
+Alternatives considered:
+- *Treating a complete JSON with a `length` stop as valid.* Rejected: it depends on the backend,
+  and it would make truncation depend on output length, which correlates with condition.
+- *A vocabulary built over all splits.* Rejected: it reads test, and dev coverage is already
+  complete.
+- *Row builders in the T8 stream module.* Rejected: they would split the contract mapping from
+  the parser it depends on.
+
+## 2026-11-02: Spec 009 review: prompt-selection metric, length preflight, no corpus text in git (Spec 009 / R1–R14)
+Decision (Sandy chose R7; the rest are the review's recommended fixes, all accepted):
+- **Prompt selection uses the hybrid's dev `request_interpretation`.** It is averaged over
+  `none`/`full` and the five `deberta-v3-large` dev routers, on all dev records. P1 wins ties
+  within 0.01. There is a seeded 300-dialogue fallback (seed 20261102), chosen from throughput
+  alone before any accuracy is seen.
+- **`max_model_len` is the worst case**: the 350-word budget's maximum tokens plus prefix plus
+  output. A preflight refuses any over-length prompt, and nothing is truncated or turned
+  `invalid` for length.
+- **P2's few-shot text never enters git.** Only train IDs and the seed are committed, and a
+  deterministic generator renders the prompt into git-ignored `outputs/`.
+- **Transport failures retry and then stop.** Only content failures become `invalid`.
+- **The hybrid row is `invalid` when the router routes and the interpreter row is invalid.** The
+  interpretation enum excludes `no_request`, and `paraphrase` is dropped from the schema.
+- **`src/llm/*.py` is pinned by the freeze.** A new `check_llm_run` gates the runner, and
+  `check_run` gates the composer's router runs on test.
+
+Why:
+- Dev inputs are p50 34, p90 183 and max 350 words. The long tail is almost all with-context
+  conditions, so a percentile limit would turn length failures into a `full − none` effect.
+- Selecting on the reported system's own endpoint avoids two problems. The standalone metric
+  rewards Qwen's routing, which the hybrid never uses. Oracle interpretation ignores the routed
+  population.
+- DIRECT is unlicensed, so committed prompt text would redistribute it.
+
+Alternatives considered: selecting on the standalone LLM or on oracle interpretation; a seeded
+sample as the default; committing the rendered P2; percentile sizing. See spec 009
+[review](../009-llm-routed-hybrid/review.md) and plan Alternatives.
+
+## 2026-11-01: Primary system, interpreter and LLM panel (D-05; Spec 009 draft)
+Decision (Sandy):
+- **Primary system: the routed hybrid.** The `deberta-v3-large` matched router comes from the
+  2026-10-27 lab grid, and `Qwen2.5-7B-Instruct` interprets, at a pinned revision on the lab 5090.
+- **The panel also gets frontier-tier Claude and OpenAI members**, as dated snapshots, if feasible.
+- **Claude writes the runner and composer and Sandy reviews them.** This needs a scoped
+  constitution exception (spec 009 FR17).
+- **`rules_version` stays `auto-v1`.** The v2 L3 spot-check is not needed.
+- **Open:** whether DIRECT text may go to third-party APIs (DIRECT has no license), and the API
+  run scope. No paid run happens until both are settled.
+
+Why: the confirmatory endpoint `request_interpretation` needs intent and slot recovery
+(spec 001 §5), and the encoders only detect, so an encoder alone cannot be the primary system.
+The hybrid reuses the 15 finished large-encoder runs as routers and keeps matched training as the
+primary line. On dev, the oracle stream is a subset of the routed stream with identical input
+hashes (22,560 of 22,560), so one call per distinct input (56,174 on dev) serves the LLM, its
+oracle file and all five hybrid seeds.
+
+Alternatives considered:
+- LLM alone as primary: test-time only, which is the line the dev encoders show is confounded
+  by train/test shift.
+- Detection-only primary: needs a protocol amendment, and drops Stage 2 and H4.
+- Llama-3.1-8B or Qwen3-8B as the interpreter.
+- Small-tier API models.
+
 ## 2026-10-27: DeBERTa-v3-large dev grid on the lab RTX 5090 (Spec 007 dev inputs)
 Decision: add the large grid to `configs/analysis/inputs-dev.toml` as a second matched encoder.
 Nothing in the analysis plan changes. Pending Sandy's review.

@@ -1,0 +1,24 @@
+{
+  "condition": "full",
+  "dialogues_sha256": "574ae000db5562521e3a767f4ee55e4e64abdf89e60d9038c47f4f7d25059949",
+  "example_ids": [
+    "MUL0730_t06:direct",
+    "MUL0930_t10:indirect",
+    "MUL2017_t08:direct",
+    "MUL1411_t04:indirect",
+    "PMUL4000_t06:direct",
+    "MUL1481_t02:indirect"
+  ],
+  "items_sha256": "c7f56b41bde43598f04b867ad6a52189d632c53578cf49734d44b6034550fe83",
+  "k_per_label": 3,
+  "labels": [
+    "direct",
+    "indirect"
+  ],
+  "policy": "direct_variants_v1",
+  "reference_version": "acts-v1",
+  "renderer_version": "render-v1",
+  "seed": 20261102,
+  "split": "train",
+  "version": "p2-examples-v1"
+}
