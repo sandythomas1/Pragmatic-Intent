@@ -3,5 +3,7 @@ data/manifests/*.csv -text
 # Spec 006: `split_audit audit --verify` also compares the summary bytes; the registry is LF too.
 data/manifests/*.json -text
 data/annotations/inspected_test_dialogues.csv -text
+# Spec 009: prompt_sha256 is pinned at the freeze; keep prompt files LF on every checkout.
+configs/llm/prompts/*.txt text eol=lf
 # Linux launchers must also run from a Windows checkout under WSL.
 *.sh text eol=lf

@@ -44,7 +44,7 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 | D-02 second rater | Not required for option A's mechanical labels | Any later human/LLM-judge agreement still needs its own raters and limitations. |
 | D-03 intents/slots | `cat-v1` / MultiWOZ acts under option A | Spec 005 scores observed Inform values and Request names; no contextual-taxonomy approval gate. |
 | D-04 test size/power | Official DIRECT test split; inferential status open | Audit prior inspection and coverage before the study freeze; sparse/noisy rule levels can remain exploratory. |
-| D-05 models/budget | Open; compute settled (2026-10-19) | Lab RTX 5090s are available. Configs for `deberta-v3-large` (planned primary encoder) and `roberta-large` were added, and the grid now runs 5 seeds. Panel, LLM and spending cap are still open. Sandy owns the model code. |
+| D-05 models/budget | **Primary decided 2026-11-01:** routed hybrid (DeBERTa-v3-large router + Qwen2.5-7B-Instruct interpreter); frontier Claude/OpenAI members if feasible. API data use, scope and cap are still open ([spec 009](../009-llm-routed-hybrid/spec.md)). Compute settled (2026-10-19) | Lab RTX 5090s are available. Configs for `deberta-v3-large` (planned primary encoder) and `roberta-large` were added, and the grid now runs 5 seeds. Panel, LLM and spending cap are still open. Sandy owns the model code. |
 | D-06 context windows | **Decided** (Sandy, 2026-10-14) | 350-word budget on `full`/`mismatched`, train and eval, `render-v1`. Truncates 0.9% of test examples. Encoder length check pending (S, WSL). |
 | D-07 statistics | **Method decided** (Sandy, 2026-10-20; spec 001 v1.3 note) | Bootstrap DiD on seed-averaged outcomes; confirmatory L0–L2 linear contrast for one prespecified system on `request_interpretation`; L3/INF exploratory; Holm secondary family with the panel fixed in the config; matched training primary; H3 tested on test-time lines. The `analysis-v1.toml` values are frozen at WP-08 after the dev precision report ([spec 007](../007-analysis-error-audit/spec.md)). Dev precision report done 2026-10-25 (TF-IDF and DeBERTa-v3-base): B = 10,000 kept; L0–L2 half-width 0.0069. |
 | D-08 WDSI | **Withdrawn** (2026-10-12) | The course professor: research goes through the class, December only. |
@@ -203,6 +203,16 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   working-tree overlay, pinned local data, checksums and both GPU profiles. WSL and restored
   checkout suites pass 918 tests (5 skipped); all train/dev tokenizer conditions fit 512.
   [Preparation evidence](../../docs/lab_preparation_2026-10-26.md).
+- [x] C: `/spec-review 009` (2026-11-02): 14 findings, 6 blocking. All were applied and the spec
+  is READY ([review](../009-llm-routed-hybrid/review.md)). Sandy chose prompt selection on the
+  hybrid's dev `request_interpretation`. Next: `/spec-decompose 009`.
+- [x] C: `/spec-decompose 009` (2026-11-02): 15 tasks
+  ([tasks](../009-llm-routed-hybrid/tasks.md)). Critical path to the Nov 5 lab smoke:
+  T1 → T2 → T4 → T5 → T6 → T8 → T12 → T15 runbook. Next: `/spec-implement 009 T1`.
+- [ ] C: Implement 009 T1–T12 and T14, then draft the T15 runbook (target Nov 4). T7 and T13 are
+  off the critical path (OQ1).
+- [ ] S: 009 lab work on the 5090: smoke and prompt selection (Nov 5), then the full dev run and
+  composition (Nov 6), following the T15 runbook.
 - [ ] S: Run the [DeBERTa-large lab smoke and dev grid](../../docs/deberta_large_lab_runbook.md)
   on a 5090 or 4090 after applying this session's changes. Reported test runs still need WP-08.
 
