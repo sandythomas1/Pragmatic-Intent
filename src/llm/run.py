@@ -3,6 +3,7 @@
     python -E -s -m src.llm.run run --recipe configs/llm/<recipe>.toml --split dev --task main
     python -E -s -m src.llm.run run --recipe ... --split dev --task main --variant p2 --conditions none full
     python -E -s -m src.llm.run size --recipe ... --split dev    # tokenizer only: the max_model_len needed
+    python -E -s -m src.llm.run smoke --recipe ... --split dev [--records 20]   # AC-009-13, counts only
 
 One run, in order:
 1. Load the recipe.
@@ -63,6 +64,12 @@ TASKS = ("main", "transfer")
 STREAMS = {"main": ("routed", "oracle", "interpretation"), "transfer": ("transfer",)}
 SOURCE_RECORDS = {"routed": "routed", "oracle": "oracle", "interpretation": "routed", "transfer": "transfer"}
 PROGRESS_EVERY = 1000
+SMOKE_VERSION = "llm-smoke-v1"
+SMOKE_RECORDS = 20  # AC-009-13
+MAX_SMOKE_RECORDS = 2000
+SELECTION_CONDITIONS = ("none", "full")  # FR9
+SAMPLE_FALLBACK_HOURS = 8  # FR9: above this, both variants run on the 300-dialogue sample
+INVALID_RATE_LIMIT = 0.02  # plan Risks: above it, fix the schema/prompt before selection
 TEST_REFUSED = "--split test is refused until the freeze gate is in place (spec 009 T10)"
 BackendFactory = Callable[[Recipe], Backend]
 CounterFactory = Callable[[Recipe], TokenCounter | None]
@@ -207,6 +214,87 @@ def size(recipe: Recipe, *, split: str, root: Path = REPO_ROOT,
     return {"split": split, "system": recipe.system, "model": recipe.model_ref, "max_tokens": recipe.max_tokens,
             "recipe_max_model_len": max_model_len, "required_max_model_len": required,
             "fits": all(entry["over_limit"] == 0 for entry in variants.values()), "prompts": variants}
+
+
+def smoke(recipe: Recipe, *, split: str, records: int = SMOKE_RECORDS, variant: str | None = None,
+          root: Path = REPO_ROOT, backend_factory: BackendFactory = default_backend_factory,
+          sleep: Callable[[float], None] = time.sleep, rng: random.Random | None = None,
+          clock: Callable[[], float] = time.monotonic) -> dict[str, Any]:
+    """AC-009-13 smoke test: real calls on ``records`` distinct dev inputs, reporting counts only.
+
+    - **Which inputs.** The longest rendered prompt, plus the first ``records - 1`` others in
+      input-hash order. The run is deterministic, and the engine is exercised at its worst-case
+      length.
+    - **Length check.** The FR5a preflight runs over every prompt of the variant, so the report
+      carries the worst-case ``max_model_len``.
+    - **Separate from real runs.** Answers bypass the run cache, so throughput is always measured
+      fresh and a smoke run never feeds a scored stream.
+    - **Throughput.** It drives the FR9 switch: if two full ``none``/``full`` passes would take
+      more than ``SAMPLE_FALLBACK_HOURS``, the variants run on the 300-dialogue sample. Accuracy
+      is never computed here.
+    """
+    variant, _ = _check_request(recipe, split, "main", variant, None)
+    if type(records) is not int or not 1 <= records <= MAX_SMOKE_RECORDS:
+        raise RunRefused(f"--records must be between 1 and {MAX_SMOKE_RECORDS}")
+    inputs = _load_inputs(recipe, split, "main", None)
+    slot_keys = schema.load_slot_keys(recipe.slot_keys)
+    calls = plan_calls(recipe, "main", prompt.main_instructions(recipe.prompt_path(variant), slot_keys),
+                       slot_keys, inputs.values())
+    chosen = smoke_sample(calls, records)
+    backend = backend_factory(recipe)
+    if backend.name != recipe.backend or backend.model_id != recipe.model_ref:
+        raise RunRefused("the constructed backend does not match the recipe's backend and model")
+    length = _preflight(recipe, backend, calls)
+    stats, responses = CallStats(), []
+    error_log = ErrorLog(Path("outputs/llm/errors") / recipe.system / "smoke.jsonl", root)
+    began = clock()
+    for start in range(0, len(chosen), recipe.batch_size):
+        batch = [Request(call.key, call.messages, call.schema) for call in chosen[start:start + recipe.batch_size]]
+        responses += generate_with_retry(backend, batch, error_log=error_log, stats=stats, sleep=sleep,
+                                         rng=rng or random.Random())
+    seconds = max(clock() - began, 1e-9)
+
+    allowed = frozenset(slot_keys)
+    invalid: Counter[str] = Counter()
+    for response in responses:
+        outcome = schema.parse_main(response.raw, response.finish_reason, allowed)
+        if isinstance(outcome, schema.Invalid):
+            invalid[outcome.reason] += 1
+    rate = len(responses) / seconds
+    selection_inputs = len({record["input_sha256"] for stream in inputs.values() for record in stream.records
+                            if record["condition"] in SELECTION_CONDITIONS})
+    selection_hours = len(recipe.variants) * selection_inputs / rate / 3600
+    report = {
+        "version": SMOKE_VERSION, "spec": "009", "split": split, "system": recipe.system, "variant": variant,
+        "backend": recipe.backend, "model": recipe.model_ref, "backend_options": dict(recipe.options),
+        "batch_size": recipe.batch_size,
+        "recipe": {"path": _relative(recipe.path, root), "text_sha256": recipe.text_sha256},
+        "code": {"source_sha256": source_sha256(), **git_state(cwd=REPO_ROOT)},
+        "records": len(responses), "seconds": round(seconds, 3), "calls_per_second": round(rate, 3),
+        "retries": stats.retries, "transport_errors": stats.transport_errors,
+        "finish_reasons": dict(sorted(Counter(r.finish_reason for r in responses).items())),
+        "invalid_by_reason": dict(sorted(invalid.items())),
+        "invalid_rate": round(sum(invalid.values()) / len(responses), 4),
+        "invalid_rate_limit": INVALID_RATE_LIMIT,
+        "length": length.as_dict() if length else None,
+        "required_max_model_len": (required_model_len(length.max_prompt_tokens, recipe.max_tokens)
+                                   if length else None),
+        "selection": {"variants": len(recipe.variants), "distinct_inputs_per_variant": selection_inputs,
+                      "estimated_gpu_hours": round(selection_hours, 2), "limit_hours": SAMPLE_FALLBACK_HOURS,
+                      "sample_fallback": selection_hours > SAMPLE_FALLBACK_HOURS},
+        "full_dev": {"distinct_inputs": len(calls), "estimated_gpu_hours": round(len(calls) / rate / 3600, 2)},
+    }
+    streams.write_atomic(Path("outputs/llm/smoke") / recipe.system / f"report.{variant}.{len(chosen)}.json",
+                         streams.json_bytes(report), root)
+    return report
+
+
+def smoke_sample(calls: Sequence[Call], records: int) -> list[Call]:
+    """The longest prompt (by rendered characters; ties by key), then the rest in key order."""
+    if not calls:
+        raise RunRefused("no inputs to smoke-test")
+    longest = max(calls, key=lambda call: (sum(len(m["content"]) for m in call.messages), call.key))
+    return [longest, *[call for call in calls if call is not longest][:records - 1]]
 
 
 def plan_calls(recipe: Recipe, task: str, instructions: prompt.Instructions, slot_keys: Sequence[str],
@@ -359,6 +447,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     size_parser = commands.add_parser("size", help="count prompt tokens and report the max_model_len needed")
     size_parser.add_argument("--recipe", type=Path, required=True)
     size_parser.add_argument("--split", choices=SPLITS, required=True)
+    smoke_parser = commands.add_parser("smoke", help="real calls on a few dev inputs; counts and throughput only")
+    smoke_parser.add_argument("--recipe", type=Path, required=True)
+    smoke_parser.add_argument("--split", choices=SPLITS, required=True)
+    smoke_parser.add_argument("--records", type=int, default=SMOKE_RECORDS)
+    smoke_parser.add_argument("--variant", help="main-task prompt variant (default: the recipe's selected one)")
     args = parser.parse_args(argv)
     if not logging.getLogger().handlers:
         logging.basicConfig(level=logging.INFO, stream=sys.stderr,
@@ -368,6 +461,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise RunRefused(TEST_REFUSED)  # before the recipe or any input is even read
         if args.command == "size":
             print(json.dumps(size(load_recipe(args.recipe), split=args.split), indent=2, sort_keys=True))
+            return 0
+        if args.command == "smoke":
+            report = smoke(load_recipe(args.recipe), split=args.split, records=args.records, variant=args.variant)
+            print(json.dumps(report, indent=2, sort_keys=True))
             return 0
         if args.progress_every < 1:
             raise RunRefused("--progress-every must be positive")

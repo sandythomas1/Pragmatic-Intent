@@ -361,8 +361,87 @@ class SafetyTests(Fixture):
             self.run_task()
 
 
+class SmokeTests(Fixture):
+    """AC-009-13: the smoke command's report (counts, throughput, sizing) and its isolation."""
+
+    def run_smoke(self, records=5, factory=None, seconds=10.0, **kwargs):
+        factory = factory if factory is not None else Factory()
+        ticks = iter([0.0, seconds])
+        report = lr.smoke(self.root.recipe(), split="dev", records=records, root=self.root.path,
+                          backend_factory=factory, sleep=lambda _: None, rng=random.Random(1),
+                          clock=lambda: next(ticks), **kwargs)
+        return report, factory
+
+    def test_report_holds_counts_throughput_and_the_worst_case_length(self):
+        report, factory = self.run_smoke()
+        self.assertEqual(factory.calls, 5, "five distinct inputs, one call each")
+        self.assertEqual((report["records"], report["seconds"], report["calls_per_second"]), (5, 10.0, 0.5))
+        self.assertEqual(report["invalid_by_reason"], {"parse": 2})
+        self.assertEqual(report["invalid_rate"], 0.4)
+        self.assertEqual(report["finish_reasons"], {"stop": 5})
+        self.assertGreater(report["required_max_model_len"], 0)
+        self.assertEqual(report["length"]["prompts"], 5, "the preflight covers every prompt of the variant")
+        selection = report["selection"]
+        self.assertEqual((selection["variants"], selection["distinct_inputs_per_variant"]), (2, 4))
+        self.assertFalse(selection["sample_fallback"])
+        written = self.root.read("outputs/llm/smoke/fake-llm/report.p1.5.json").decode("utf-8")
+        self.assertEqual(json.loads(written), report)
+        for secret in ("zq-sentinel", "purple lighthouse", "PMUL9", "zq book"):
+            self.assertNotIn(secret, written)
+
+    def test_slow_throughput_switches_selection_to_the_sample(self):
+        report, _ = self.run_smoke(seconds=1e5)
+        self.assertGreater(report["selection"]["estimated_gpu_hours"], lr.SAMPLE_FALLBACK_HOURS)
+        self.assertTrue(report["selection"]["sample_fallback"])
+
+    def test_smoke_never_touches_the_run_cache_or_scored_streams(self):
+        self.run_smoke()
+        self.assertFalse((self.root.path / "outputs/llm/cache").exists())
+        self.assertFalse((self.root.path / "outputs/stage2").exists())
+        _, factory = self.run_smoke()
+        self.assertEqual(factory.calls, 5, "a second smoke run calls again, so throughput is always fresh")
+
+    def test_the_sample_starts_with_the_longest_prompt(self):
+        recipe = self.root.recipe()
+        slot_keys = sc.load_slot_keys(recipe.slot_keys)
+        instructions = lr.prompt.main_instructions(recipe.prompt_path("p1"), slot_keys)
+        calls = lr.plan_calls(recipe, "main", instructions, slot_keys,
+                              [li.load_stream(recipe.input_path("dev", "routed"), "routed")])
+        sample = lr.smoke_sample(calls, 3)
+        self.assertEqual(sample[0].record["input_sha256"], ROUTED[1]["input_sha256"])
+        self.assertEqual(len({call.key for call in sample}), 3)
+        self.assertEqual(lr.smoke_sample(calls, 99), [sample[0], *[c for c in calls if c is not sample[0]]])
+
+    def test_bad_requests_are_refused_before_any_backend(self):
+        for kwargs in ({"records": 0}, {"records": lr.MAX_SMOKE_RECORDS + 1}, {"records": True},
+                       {"variant": "p9"}):
+            with self.subTest(kwargs=kwargs):
+                factory = Factory()
+                with self.assertRaises((lr.RunRefused, rc.RecipeError)):
+                    self.run_smoke(factory=factory, **kwargs)
+                self.assertEqual(factory.built, [])
+        factory = Factory()
+        with self.assertRaisesRegex(lr.RunRefused, "T10"):
+            lr.smoke(self.root.recipe(), split="test", root=self.root.path, backend_factory=factory)
+        self.assertEqual(factory.built, [])
+
+    def test_an_overlong_prompt_is_refused_before_any_call(self):
+        self.root.write_recipe(max_model_len=270)
+        factory = Factory()
+        with self.assertRaises(PreflightError):
+            self.run_smoke(factory=factory)
+        self.assertEqual(factory.calls, 0)
+
+    def test_cli_refuses_the_test_split_without_reading_the_recipe(self):
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            code = lr.main(["smoke", "--recipe", "configs/llm/does-not-exist.toml", "--split", "test"])
+        self.assertEqual(code, 1)
+        self.assertIn("refused", stderr.getvalue())
+
+
 class ProvenanceTests(Fixture):
-    FR8 = ("backend", "model", "decoding", "schema_sha256", "inputs", "code", "started", "finished",
+    FR8 =("backend", "model", "decoding", "schema_sha256", "inputs", "code", "started", "finished",
            "counts", "usage", "spend", "prompt", "recipe", "outputs", "preflight")
 
     def test_ac_009_5_every_fr8_field_and_no_key_or_sentinel_anywhere(self):

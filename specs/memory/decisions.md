@@ -5,6 +5,46 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-11-04: Smoke command, a 512-call probe decides FR9, and a JSON nesting bound (Spec 009 / T15)
+Decision:
+- **Smoke command.** `python -m src.llm.run smoke` sends real calls for N dev inputs (default 20,
+  AC-009-13): the longest rendered prompt of the variant, then the rest in input-hash order.
+  - It runs the FR5a preflight over every prompt of the variant.
+  - It bypasses the run cache, so a smoke never feeds a scored stream and its timing is always
+    fresh.
+  - It writes a counts-only report to `outputs/llm/smoke/<system>/report.<variant>.<n>.json`:
+    invalid rate by reason, finish reasons, throughput, `required_max_model_len`, and the FR9
+    switch.
+- **FR9 decision rule, fixed before any accuracy is seen.** The full-vs-sample decision uses a
+  separate 512-call P2 probe (two full 256-wide batches), not the 20-call smoke. The rule is:
+  sample if 2 variants × 22,116 distinct `none`/`full` inputs ÷ the probe's calls/s exceeds 8 h.
+- **`max_model_len`.** It stays at 4096 if `size` reports `fits`. Only a misfit changes the recipe.
+- **Lab environment.** The `llm` environment lives outside the repo
+  (`UV_PROJECT_ENVIRONMENT=$HOME/.venvs/pi-llm`). Recipe changes are committed by Claude and pulled
+  by Sandy, never edited in the lab checkout.
+- **JSON nesting bound.** `schema._decode` rejects nesting deeper than `MAX_NESTING = 32` (outside
+  strings) as `parse` before calling `json.loads`.
+
+Why:
+- **Probe size.** 20 calls fill under a tenth of one vLLM batch, so they understate batched
+  throughput. That understatement could trigger the sample fallback for no reason. Pricing both
+  variants at P2's (longer) rate errs towards the sample, the conservative side.
+- **`max_model_len`.** Shrinking the window to the measured need saves nothing at these lengths. It
+  would also dirty the tree, and every provenance file records that.
+- **Environment.** An in-repo `.venv-llm` isn't git-ignored and would mark every run dirty. vLLM
+  conflicts with the `gpu` and `classical` groups, so it can't share `.venv`.
+- **Nesting bound.** Python's JSON decoder hits its recursion limit at a platform-dependent depth.
+  A 4000-deep array was `parse` on Windows and `schema` on Linux, which failed the suite in WSL
+  (AC-009-13). The answer schema nests 3 deep, so the bound only ever rejects junk. It doesn't
+  change scoring: both labels are invalid.
+
+Alternatives considered:
+- **Smoke through the run cache:** rejected. A rerun would time cache hits, and smoke answers would
+  leak into scored streams.
+- **Deciding FR9 from the 20-call smoke:** rejected (above).
+- **Catching the platform difference in the test only:** rejected. The `invalid_by_reason` counts
+  in a lab report would still depend on the OS.
+
 ## 2026-11-03: Hybrid composer reads a new runner stream; per-run files cover all conditions (Spec 009 / T9)
 Decision:
 - **New runner stream.** The main LLM run writes a third stream, `interpretation.jsonl`. It holds

@@ -513,4 +513,13 @@ without blocking the freeze; the API members then stay out of the panel.
     Sandy's smoke test completes within the memory share, and its numbers are recorded.
   - Every runbook command has been dry-run on fixtures or `--help` in WSL by Claude, with GPU steps
     excluded.
-- Status: todo
+- Status: in-progress (2026-11-04). The runbook is drafted; the evidence is pending Sandy's lab runs.
+  - **Done.** `docs/llm_lab_runbook.md`; the `run.py smoke` command (7 tests in
+    `SmokeTests`); and `specs/009-llm-routed-hybrid/verification.md` with the pre-run evidence.
+  - **Suite.** 1117 tests pass on Windows (with and without git) and in WSL.
+  - **WSL fix.** A JSON nesting bound (`schema.MAX_NESTING`) fixes a WSL-only failure in T1's
+    deep-nesting test.
+  - **CLI checks.** In WSL, every runbook CLI passes `--help`. Each test-split refusal fires before
+    any work.
+  - **Still open.** The `select-prompt` command waits on T11. The AC-009-9 analysis run and the
+    roadmap/decisions close-out wait on the lab evidence.
