@@ -228,7 +228,19 @@ class StreamTests(Fixture):
         oracle_silent = {(r["example_id"], r["condition"]): r for r in oracle}[("PMUL9002_t04:indirect", "full")]
         self.assertEqual(oracle_silent["category"], "booking", "oracle keeps the interpretation")
         self.assertEqual(provenance["counts"]["invalid_calls_by_reason"], {"parse": 2}, "zq-bad under two contexts")
-        self.assertEqual(provenance["counts"]["invalid_rows_by_reason"], {"oracle": {"parse": 2}, "routed": {"parse": 2}})
+        self.assertEqual(provenance["counts"]["invalid_rows_by_reason"],
+                         {"oracle": {"parse": 2}, "routed": {"parse": 2}, "interpretation": {"parse": 2}})
+
+    def test_interpretation_stream_keeps_the_interpretation_on_every_routed_record(self):
+        self.run_task()
+        rows = self.root.rows("outputs/stage2/fake-llm/dev/interpretation.jsonl")
+        self.assertEqual([(r["example_id"], r["condition"]) for r in rows],
+                         [(r["example_id"], r["condition"]) for r in ROUTED], "routed records, input-file order")
+        by_key = {(r["example_id"], r["condition"]): r for r in rows}
+        silent = by_key[("PMUL9002_t04:indirect", "full")]
+        self.assertEqual((silent["prediction"], silent["category"], silent["slots"]),
+                         ("no_request", "booking", {"hotel.people": "two"}), "not nulled under the model's no_request")
+        self.assertTrue(by_key[("PMUL9002_t04:indirect", "one")]["invalid"])
 
     def test_ac_009_1_transfer_stream_passes_the_transfer_scorer(self):
         provenance, factory = self.run_task("transfer")
@@ -253,7 +265,7 @@ class ResumeTests(Fixture):
         with tempfile.TemporaryDirectory() as other:
             clean = Root(Path(other))
             self.run_task(root=clean)
-            for name in ("routed.jsonl", "oracle.jsonl"):
+            for name in ("routed.jsonl", "oracle.jsonl", "interpretation.jsonl"):
                 self.assertEqual(self.root.read(f"outputs/stage2/fake-llm/dev/{name}"),
                                  clean.read(f"outputs/stage2/fake-llm/dev/{name}"))
 
@@ -373,7 +385,7 @@ class ProvenanceTests(Fixture):
         for secret in ("zq-sentinel", "purple lighthouse", FAKE_KEY, "PMUL9001", "zq book"):
             self.assertNotIn(secret, shown)
         output_hashes = provenance["outputs"]
-        self.assertEqual(set(output_hashes), {"routed.jsonl", "oracle.jsonl"})
+        self.assertEqual(set(output_hashes), {"routed.jsonl", "oracle.jsonl", "interpretation.jsonl"})
 
 
 if __name__ == "__main__":

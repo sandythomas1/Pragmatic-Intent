@@ -3,6 +3,9 @@
 There is one row per input record, in input-file order:
 - routed: the model's route, or the ``no_request`` nulls;
 - oracle: the interpretation;
+- interpretation: the interpretation for every *routed* record, even where the model's own route
+  was ``no_request``. The hybrid composer (T9) needs it wherever the router says "request". It is
+  not a scored stream, and no scorer reads it;
 - transfer: ``request``/``value``.
 
 A content failure becomes the contract's ``invalid`` record (``src.llm.schema``). Rows are
@@ -30,7 +33,7 @@ from src.llm.paths import REPO_ROOT, under_outputs
 Outcome = schema.MainAnswer | schema.TransferAnswer | schema.Invalid
 RowBuilder = Callable[[str, str, Any], dict[str, Any]]
 ROW_BUILDERS: Mapping[str, RowBuilder] = {"routed": schema.routed_row, "oracle": schema.oracle_row,
-                                          "transfer": schema.transfer_row}
+                                          "interpretation": schema.oracle_row, "transfer": schema.transfer_row}
 
 
 def build_rows(kind: str, records: Iterable[Mapping[str, Any]], outcomes: Mapping[str, Outcome]

@@ -5,6 +5,39 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-11-03: Hybrid composer reads a new runner stream; per-run files cover all conditions (Spec 009 / T9)
+Decision:
+- **New runner stream.** The main LLM run writes a third stream, `interpretation.jsonl`. It holds
+  the interpretation for every routed record, even where the LLM's own route was `no_request`.
+  `src.llm.compose` composes the router predictions with that stream (FR11).
+- **One file per router run.** Each router run `train-<c>/seed<s>` gives one hybrid routed file
+  covering every condition the run predicted. The analysis inputs pick the run for each
+  condition and line, as for the encoder: matched from train-c, mismatch from train-full.
+- **Oracle.** The hybrid oracle file is a byte copy of the interpreter's.
+- **Refusals before any write.** Every input is checked and every run composed in memory before
+  the first write, so a refusal writes nothing.
+- **Provenance.** It records the hashes of the router config, metrics and predictions, and of
+  the interpreter provenance, interpretation and oracle. It has no timestamps.
+- **Test split.** The composer refuses test until T10.
+
+Why:
+- **The gap.** The LLM routed file nulls the interpretation on an LLM `no_request`, so it can't
+  feed the hybrid. FR3 already guarantees the model returns one; it just wasn't written out.
+- **A stream, not the cache.** Reading the stream keeps the composer independent of the cache's
+  key and layout. It also gives one hashed input to record.
+- **All conditions per run.** This mirrors the stage-1 layout the analysis already consumes, so
+  `inputs-*.toml` points at the hybrid exactly as it does at an encoder run. Filtering would
+  duplicate the role logic that already lives in `src/analysis`.
+
+Alternatives considered:
+- Reading `cache.sqlite` directly: this couples the composer to cache internals and records no
+  hash of a stream. Rejected.
+- Making the LLM routed row keep the interpretation on `no_request`: this breaks the routed
+  contract (FR4: a `no_request` row carries null category and empty slots). Rejected.
+- Writing only the role-matched conditions into each run file (train-none with only `none`,
+  and so on): this is smaller, but the analysis expects stage-1-shaped full files and would need
+  special casing. Rejected.
+
 ## 2026-11-03: vLLM 0.32.0 in its own uv environment; Qwen pinned by commit; tokenizer-only sizing (Spec 009 / T12)
 Decision:
 - **Dependency group.** The `llm` uv group is `vllm==0.32.0` with a Linux-only marker. It is

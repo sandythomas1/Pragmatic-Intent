@@ -11,7 +11,9 @@ One run, in order:
 4. Serve cached keys.
 5. Construct the backend only if there are misses; run the FR5a length preflight over every
    prompt, then send the misses in batches, appending each batch to the cache before the next.
-6. Parse every answer strictly (no repair) and write the streams atomically.
+6. Parse every answer strictly (no repair) and write the streams atomically. For the main task
+   that is routed, oracle and interpretation; the last is the composer's input, see
+   ``src.llm.streams``.
 7. Write provenance last (FR8). A provenance file therefore means a complete run, and it holds
    the hash of every stream it describes.
 
@@ -58,7 +60,8 @@ from src.stage1.provenance import git_state, source_sha256
 
 PROVENANCE_VERSION = "llm-run-v1"
 TASKS = ("main", "transfer")
-STREAMS = {"main": ("routed", "oracle"), "transfer": ("transfer",)}
+STREAMS = {"main": ("routed", "oracle", "interpretation"), "transfer": ("transfer",)}
+SOURCE_RECORDS = {"routed": "routed", "oracle": "oracle", "interpretation": "routed", "transfer": "transfer"}
 PROGRESS_EVERY = 1000
 TEST_REFUSED = "--split test is refused until the freeze gate is in place (spec 009 T10)"
 BackendFactory = Callable[[Recipe], Backend]
@@ -122,9 +125,10 @@ def run(recipe: Recipe, *, split: str, task: str, variant: str | None = None,
     rows_by_kind: dict[str, int] = {}
     invalid_rows: dict[str, dict[str, int]] = {}
     for kind in STREAMS[task]:
-        rows, invalid = streams.build_rows(kind, inputs[kind].records, outcomes)
+        source = inputs[SOURCE_RECORDS[kind]]
+        rows, invalid = streams.build_rows(kind, source.records, outcomes)
         if task == "main":
-            _validate_main(rows, inputs[kind])
+            _validate_main(rows, source)
         data = streams.jsonl_bytes(rows)
         streams.write_atomic(out_dir / f"{kind}.jsonl", data, root)
         written[f"{kind}.jsonl"] = hashlib.sha256(data).hexdigest()

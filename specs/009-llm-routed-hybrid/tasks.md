@@ -330,7 +330,23 @@ without blocking the freeze; the API members then stay out of the panel.
   - AC-009-8: a coverage mismatch, and a router run whose recorded train condition, eval split or
     seed is wrong, are each refused.
   - The composed files pass `interpretation.validate_predictions`.
-- Status: todo
+- Status: done (2026-11-03). Notes:
+  - **Spec gap fixed in the runner (T8).** The LLM `routed.jsonl` nulls the interpretation wherever
+    the LLM itself routes `no_request`, but the hybrid needs that interpretation wherever the router
+    routes a request (FR3). The main task now also writes `interpretation.jsonl`: one row per
+    routed record, built like the oracle row. It is not scored. The composer reads it, not the cache.
+  - **Router roles.** Each `train-<c>/seed<s>` routed file covers every condition its run
+    predicted. The analysis already takes matched c from train-c and the mismatch conditions from
+    train-full (spec 007 FR6). `router_train_condition()` encodes the same rule for T11.
+  - **Run checks.** Smoke runs and `-smoke` directories are refused or skipped. All three train
+    conditions must have the same seed set. `predictions.jsonl` must hash to the
+    `predictions_sha256` recorded in the run's metrics.
+  - **Interpreter check.** The interpreter must be the selected-variant, all-conditions main run.
+  - **Output and provenance.** `oracle.jsonl` is a byte copy of the interpreter's oracle file.
+    Every run is composed in memory before the first write, so a refusal writes nothing.
+    `provenance.compose.json` is written last and has no timestamps.
+  - **Test split.** Refused until T10 adds the freeze gate.
+  - **Tests.** 30 tests in `tests/test_llm_compose.py`; the full suite has 1,108 tests, all OK.
 
 ## T10: Freeze pins and test gates for runner and composer
 - Description:
