@@ -5,6 +5,91 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-11-03: vLLM 0.32.0 in its own uv environment; Qwen pinned by commit; tokenizer-only sizing (Spec 009 / T12)
+Decision:
+- **Dependency group.** The `llm` uv group is `vllm==0.32.0` with a Linux-only marker. It is
+  declared as conflicting with the `gpu` group (torch 2.11 cu128) and the `classical` group
+  (numpy 2.5.3). vLLM 0.32 pins torch 2.13.0 from PyPI, and its numba needs numpy < 2.5. The torch
+  cu128 index source is now scoped to `group = "gpu"`.
+- **Model pin.** `Qwen/Qwen2.5-7B-Instruct` at commit `a09a35458c702b33eeacc393d103063234e8bc28`
+  (HF main, last modified 2025-01-12). It covers weights and tokenizer, with
+  `trust_remote_code=False`. A vLLM recipe needs a 40-hex commit (not a branch or tag),
+  `max_model_len` in (max_tokens, 131072] and `gpu_memory_utilization` in (0, 0.95]. Any other
+  option is refused.
+- **Decoding.** Constraints use vLLM structured outputs (`StructuredOutputsParams(json=…)`, one
+  per request), with greedy decoding, seed 0, bf16 and prefix caching.
+- **Failure mapping.** No vLLM exception maps to `TransportError`. Engine failures and aborted
+  requests stop the run, which resumes from the cache.
+- **Sizing.** `run.py size` counts every prompt with the tokenizer alone: the chat template is
+  rendered as text, then encoded without extra special tokens, which is how vLLM counts.
+- **Fallback.** No transformers fallback stub; it is documented in the backend docstring only.
+
+Why:
+- **Version.** 0.33.0 came out the day before (2026-11-02). 0.32.0 has had two weeks of
+  bug-fix exposure, and both expose the same structured-outputs API; the `guided_*` fields were
+  removed in 0.12.
+- **Separate environment.** Sharing it with DeBERTa would force a torch upgrade and re-validation
+  of the spec 007 router runs. A conflict declaration keeps both reproducible.
+- **Commit pin.** A branch or tag can move under a frozen recipe, and the freeze pins `llm_model`
+  (T14).
+- **Retrying a dead engine** in the same process repeats the failure. A clean rerun is the honest
+  recovery.
+- **Tokenizer-only sizing** means the smoke test can size `max_model_len` before the first engine
+  load, and the 1.7k-word P2 decides the window.
+
+Alternatives considered:
+- **vLLM 0.33.0.** Too new.
+- **Upgrading the `gpu` group to torch 2.13.** It invalidates the frozen router environment.
+- **A transformers stub that raises.** It is dead code until R13 triggers.
+- **Mapping engine errors to `TransportError`.** It gives five pointless in-process retries.
+- **Disclosed limitation.** vLLM batched greedy decoding is not guaranteed bit-identical across
+  batch compositions. The cache makes reruns identical, but a from-scratch rerun may differ on a
+  few items.
+
+## 2026-11-03: LLM runner: cache key, locking, retries, output layout and provenance (Spec 009 / T4–T6, T8)
+Decision:
+- **Cache key and model reference.** The cache key covers `model_ref`, which is `model_id@revision`
+  when the recipe pins a revision. A revision change is therefore a full miss.
+- **Locking.** Each cache gets an OS lock on `<cache>.lock` for the whole run (`msvcrt` on Windows,
+  `flock` on POSIX). A second concurrent run on the same system and task is refused. A cache line
+  with a repeated JSON key is refused as corrupt.
+- **Retries.** Retry works per batch. A `TransportError` gets up to 5 attempts with jittered
+  backoff, and `retry-after` raises the delay up to a 300 s cap. Any other exception stops the run
+  at once (fail closed). Exhausted retries stop the run (`RunStopped`) and never produce `invalid`
+  rows.
+- **Preflight.** The preflight counts every rendered prompt and refuses the run when any prompt plus
+  `max_tokens` is strictly above `max_model_len`. Hitting the limit exactly is allowed.
+- **Lazy backend.** The backend is built only when the cache has misses, and its name and model
+  are checked against the recipe.
+- **Output layout.**
+  - The selected `main` variant over all conditions, and transfer, write to
+    `outputs/stage2/<system>/<split>/`.
+  - Any other variant, or a subset of conditions, writes to
+    `outputs/llm/selection/<system>/<variant>/<split>/`.
+  - Provenance is `provenance.<task>.json`.
+- **Test split.** `--split test` is refused unconditionally until T10. The CLI refuses it before it
+  reads the recipe.
+
+Why:
+- **Resume.** A killed lab run must resume without a stale lock. OS locks die with the process,
+  unlike a sentinel file.
+- **A fully cached rerun** (for example, to re-emit streams after a scoring change) should never
+  load a 7B model onto the GPU.
+- **Selection runs** must not overwrite the canonical stage-2 streams that `compose` and `score`
+  read. A selection run that collides with them would silently change the headline input.
+- **Shared directory.** Main and transfer write to the same stage-2 directory, so one
+  `provenance.json` would be overwritten by whichever task ran last.
+- **Batch-level retry** matches how vLLM and the batch APIs fail: a whole batch at once.
+  Per-request retry would double-count calls.
+
+Alternatives considered:
+- **A PID lock file.** It needs stale-lock cleanup after a kill, and it is racy.
+- **Per-request retry.** It adds complexity for no failure mode we have.
+- **One `provenance.json` holding both tasks.** It needs a read-modify-write across runs, and it
+  loses atomicity.
+- **Keeping `model_id` in the key and recording the revision only in provenance.** A revision bump
+  would then silently reuse old answers.
+
 ## 2026-11-02: P2 examples: direct/indirect only, 3 per label, `full` condition, one per dialogue (Spec 009 / T3)
 Decision:
 - **Draw.** P2's worked examples come from DIRECT `train` paraphrases labelled `direct` or

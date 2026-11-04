@@ -165,7 +165,18 @@ without blocking the freeze; the API members then stay out of the panel.
   - AC-009-3c: an over-length fixture prompt exits non-zero before the first call, and the error
     contains no ID or text.
   - The sizing helper returns the documented rounding on fixtures.
-- Status: todo
+- Status: done (2026-11-03). Done in `src/llm/inputs.py`, `src/llm/preflight.py`, `tests/test_llm_inputs.py` and
+  `tests/test_llm_preflight.py` (24 tests).
+  - On the real dev files (counts only), routed has 56,862 records, oracle has 22,560 (subset holds)
+    and there are 56,174 distinct hashes. The 136 transfer validation records verify. Load time is
+    1.3 s.
+  - `required_model_len` rounds to the next multiple of 512 **strictly above** prompt +
+    `max_tokens`, so there is always a margin of at least one token. That is the spec's "plus a
+    margin".
+  - The library sizing helper (`size_model_len`) is done. Its CLI needs the Qwen tokenizer, so it
+    is wired in T12 (`run.py size`).
+  - Transfer hashes reuse the IndirectRequests exporter's canonical form, which includes
+    `example_id`, so transfer records never collapse.
 
 ## T5: Append-only resumable response cache
 - Description: `src/llm/cache.py` (FR6).
@@ -186,7 +197,13 @@ without blocking the freeze; the API members then stay out of the panel.
   - A truncated last line is recovered, and a corrupt middle line is refused.
   - Two writers appending the same key with different content are detected on load.
   - A path outside `outputs/` is refused.
-- Status: todo
+- Status: done (2026-11-03). Done in `src/llm/cache.py`, `src/llm/paths.py` (shared `under_outputs`
+  guard) and `tests/test_llm_cache.py` (15 tests).
+  - Content equality covers raw text, finish reason and usage. `created` is metadata.
+  - A torn tail is cut off at the first append, so a resumed file is byte-identical to an
+    uninterrupted one (tested).
+  - Raw text is bounded to `MAX_RAW_CHARS + 1`. Backends clip to that bound (T6), which keeps the
+    parser's `too_long` outcome unchanged.
 
 ## T6: Backend interface, fake backend, retry and error sanitizing
 - Description:
@@ -212,7 +229,15 @@ without blocking the freeze; the API members then stay out of the panel.
   - AC-009-5 (sanitizer part): a fake error that echoes a sentinel and a fake key shows neither
     in logs or stderr.
   - An unknown backend name is refused, and importing `src.llm` does not import vllm or the SDKs.
-- Status: todo
+- Status: done (2026-11-03). Done in `src/llm/backends/{__init__,base,fake}.py` and
+  `tests/test_llm_backends.py` (17 tests).
+  - Retry works at batch level.
+  - An exception that isn't a `TransportError` is "unmapped" and stops the run with no retry
+    (fail closed). Real backends must map provider errors to `TransportError`.
+  - `RunStopped` is raised `from None`, so a traceback can't print the original error text.
+  - `retry-after` sets a floor on the delay and is capped at 300 s.
+  - The raw error log is `ErrorLog` under `outputs/`.
+  - `CallStats.calls` counts every attempted request, retries included.
 
 ## T7: Price table, estimate and worst-case spend ledger
 - Description: `src/llm/spend.py` and `configs/llm/prices.toml` (FR16).
@@ -269,7 +294,17 @@ without blocking the freeze; the API members then stay out of the panel.
     logs or stderr.
   - `--split test` is refused by default. The freeze gate is added in T10, and until then the
     refusal is unconditional.
-- Status: todo
+- Status: done (2026-11-03). Done in `src/llm/{recipe,streams,run}.py` and
+  `tests/test_llm_run.py` (20 tests). Cache hardening is in `src/llm/cache.py`: a duplicate JSON
+  key is refused, and `exclusive_lock` stops two runs from interleaving appends.
+  - **Provenance** is `provenance.<task>.json`, because main and transfer share a directory.
+  - **Output directory.** A non-selected variant, or a subset of conditions, writes to
+    `outputs/llm/selection/<system>/<variant>/<split>/`, never to `outputs/stage2/`.
+  - **Lazy backend.** The backend is built only when there are cache misses, so a fully cached
+    rerun never loads the model.
+  - **Preflight** covers every prompt, and `backend_options.max_model_len` is required when the
+    backend has a token counter.
+  - **Paid backends** are refused until T7.
 
 ## T9: Hybrid composer
 - Description: `src/llm/compose.py compose --split dev --router-root outputs/stage1/deberta-v3-large
@@ -373,7 +408,20 @@ without blocking the freeze; the API members then stay out of the panel.
   - The suite passes without the `llm` group installed.
   - The recipe loader refuses a missing or floating revision and a `max_model_len` below the
     preflight requirement.
-- Status: todo
+- Status: done (2026-11-03). Done in `src/llm/backends/vllm_backend.py`, the vLLM option checks
+  in `src/llm/recipe.py`, `run.py size`, `configs/llm/qwen2.5-7b-instruct.toml`, the `llm` group
+  plus uv conflicts in `pyproject.toml`/`uv.lock`, and `tests/test_llm_vllm_backend.py` (14
+  tests, vllm/transformers stubbed).
+  - **Pins.** vLLM 0.32.0 (2026-10-18; it pins torch 2.13.0). The Qwen commit is
+    `a09a3545…bc28`. The revision must be a full 40-hex commit.
+  - **Context window.** The loader refuses `max_model_len <= max_tokens`. The real
+    per-prompt requirement is enforced by the preflight before any call, and reported by
+    `size`, which loads the tokenizer only.
+  - **Fallback.** The transformers fallback is documented in the module docstring and not built
+    (no dead stub).
+  - **Dry run (fake backend, real dev inputs).** 56,174 distinct inputs gave 56,862 routed and
+    22,560 oracle rows, all passing the validators. Transfer gave 136 rows. The longest P2 prompt
+    is 1,734 words.
 
 ## T13: Anthropic and OpenAI backends and `api` dependency group
 - Description:
