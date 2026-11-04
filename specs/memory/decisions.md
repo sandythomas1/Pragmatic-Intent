@@ -5,6 +5,51 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-11-04: Prompt selection reuses the analysis scorer; the FR9 sample lives in the runner (Spec 009 / T11)
+Decision:
+- **Command.** `python -m src.llm.select select-prompt --recipe … --split dev --router-root …`.
+  - It reads the variants from the recipe (`prompts.variants`), not from a `--variants` flag.
+  - It refuses any split but dev before reading anything.
+- **Scoring.** Each variant's `none`/`full` selection run is composed per condition with the
+  matching dev router seeds through `compose.compose_rows`.
+  - The composed rows are scored by `analysis.outcomes.stage2_outcomes`. This function was
+    extracted from the private `_stage2_run` and is otherwise unchanged.
+  - The population is the spec 007 `request_interpretation` one (gold requests with a mapped
+    category).
+  - The mean is taken over conditions × seeds. P1 wins if the best variant beats it by ≤ 0.01.
+- **Inputs are verified.** The variant's provenance shape, rendered prompt hash and stream hashes
+  are checked, and a mismatch stops selection. Coverage is checked by the composer.
+- **Report.** The report is per system: `outputs/llm/selection/<system>/report.json`.
+  - It holds means, per-seed rates, scored counts, invalid rates and hashes. It holds no IDs or
+    text.
+  - It reports `recipe_needs_update` and does not edit the recipe itself.
+- **Invalid rate.** An invalid rate above 2% is flagged in the report and warned on stderr, but
+  selection still runs. FR10 already counts invalid outputs as failures in the mean.
+- **FR9 sample.** `run --sample` (fixed at 300 dialogues, seed 20261102) draws a dialogue-level
+  sample of dev examples and restricts the GPU calls to it.
+  - Provenance records counts and the SHA-256 of the sorted IDs.
+  - `select-prompt` redraws the sample and checks it against that block.
+  - It refuses variants run on different inputs.
+  - `run --sample` is refused once a selection report exists for the system, so the fallback
+    cannot be chosen after seeing scores.
+
+Why:
+- **One scorer.** Reusing the analysis's scorer means the number that selects the prompt is the
+  number the paper reports. The equivalence test also checks it against `stage2.build_report`'s
+  routed success on independently composed rows.
+- **Cost.** The sample has to cut GPU time, so it must act at run time, not only at scoring time.
+- **Per-system report.** Each system then has its own record, and the guard on the existing
+  report has a precise target.
+
+Alternatives considered:
+- Scoring by hand in `select.py`: a second definition of the endpoint that could drift.
+- `--sample-dialogues N --seed S` flags, as in the task text: free parameters invite a re-draw.
+  The FR9 values are fixed, so the flag is boolean.
+- Refusing to select over the invalid-rate limit: it would block selection on a variant whose
+  failures already count against it.
+- Having `select-prompt` rewrite the recipe: a committed config edited by a tool. Claude commits
+  the one-line change instead.
+
 ## 2026-11-04: Smoke command, a 512-call probe decides FR9, and a JSON nesting bound (Spec 009 / T15)
 Decision:
 - **Smoke command.** `python -m src.llm.run smoke` sends real calls for N dev inputs (default 20,

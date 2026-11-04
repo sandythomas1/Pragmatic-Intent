@@ -23,9 +23,14 @@ no example IDs or corpus text.
 - **Input checksums.** Rebuilding the three stage-2 input files reproduced the local copies byte for
   byte; their SHA-256s are pinned in the runbook.
 - **Counts.** 56,174 distinct dev inputs, 22,116 of them under `none`/`full`.
+- **T11 (`select-prompt` and `run --sample`):**
+  - The full suite is 1147 OK on all three platforms above, with skips of 16, 26 and 13 as before.
+  - In WSL, `select-prompt --help` exits zero.
+  - `select-prompt --split test` stops with "prompt selection runs on dev only (FR9)".
+  - `run --sample` without `--conditions` is refused before the corpus is read.
 - **Not exercised by Claude:**
   - every GPU step;
-  - `select-prompt` (T11, not yet implemented).
+  - `select-prompt` on real variant runs.
 
 ## Lab runs (Sandy)
 

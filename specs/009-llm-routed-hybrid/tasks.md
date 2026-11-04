@@ -397,7 +397,19 @@ without blocking the freeze; the API members then stay out of the panel.
   - The selection numbers equal those produced by composing through T9 and scoring
     independently. The equivalence is tested.
   - The sample draw is deterministic and dialogue-level.
-- Status: todo
+- Status: done (2026-11-04)
+  - **Command and paths.** The command is `python -m src.llm.select select-prompt` (variants come
+    from the recipe). The report is `outputs/llm/selection/<system>/report.json`. The sample flag
+    is `run --sample`, fixed at the FR9 values. The decisions log of 2026-11-04 has the reasons.
+  - **Tests.** `tests/test_llm_select.py` has 30 tests:
+    - choose, including the 0.01 boundary;
+    - the draw: deterministic, dialogue-level, independent of pool order;
+    - end-to-end selection on a 30-dialogue fixture, with equivalence to T9 compose plus
+      `stage2.build_report`;
+    - refusals: test split, a missing, changed or other-shaped run, a changed prompt, coverage,
+      samples that differ, a tampered sample block;
+    - the runner's sample path and its guards.
+  - **Full suite.** 1147 tests pass on Windows (with and without git) and in WSL.
 
 ## T12: vLLM backend, `llm` dependency group and Qwen recipe
 - Description:
@@ -521,5 +533,5 @@ without blocking the freeze; the API members then stay out of the panel.
     deep-nesting test.
   - **CLI checks.** In WSL, every runbook CLI passes `--help`. Each test-split refusal fires before
     any work.
-  - **Still open.** The `select-prompt` command waits on T11. The AC-009-9 analysis run and the
-    roadmap/decisions close-out wait on the lab evidence.
+  - **Still open.** The AC-009-9 analysis run and the roadmap/decisions close-out wait on the lab
+    evidence. `select-prompt` landed with T11 on 2026-11-04.

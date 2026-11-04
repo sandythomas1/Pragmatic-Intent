@@ -57,7 +57,8 @@ src/llm/cache.py       append-only JSONL keyed by sha256(task|backend|model|prom
 src/llm/backends/      base.py (interface, transport/content split, retry, error sanitizing) · fake.py (tests)
                        · vllm_backend.py · anthropic_backend.py · openai_backend.py (FR5, FR7)
 src/llm/spend.py       dated price table, estimate, worst-case reservation ledger, --max-usd stop (FR16)
-src/llm/run.py         CLI: estimate | run | select-prompt; writes streams + provenance (FR4, FR8, FR9, FR15)
+src/llm/run.py         CLI: size | smoke | run [--sample]; writes streams + provenance (FR4, FR8, FR9, FR15)
+src/llm/select.py      CLI: select-prompt (dev only) → outputs/llm/selection/<system>/report.json (FR9, T11)
             │
             ├──► outputs/stage2/<llm>/{dev,test}/{routed,oracle}.jsonl, transfer.jsonl, provenance.json
             ▼

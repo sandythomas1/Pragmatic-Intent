@@ -140,8 +140,9 @@ $PI -m src.llm.run smoke --recipe configs/llm/qwen2.5-7b-instruct.toml --split d
 `selection.sample_fallback` in this report is the FR9 decision:
 - If it is `false`, selection uses the full `none`/`full` dev set. This is expected: it is `true`
   only below about 1.5 calls/s.
-- If it is `true`, stop and tell me. The 300-dialogue sample run needs the T11 `--sample-dialogues`
-  path.
+- If it is `true`, add `--sample` to both step 3 `run` commands. That runs both variants on the
+  FR9 sample: 300 dev dialogues, seed 20261102. Tell me the decision either way.
+  - `--sample` is refused once a selection report exists, so decide it here, before step 3.
 
 The estimate prices both variants at P2's rate, so it errs towards the sample.
 
@@ -171,14 +172,23 @@ $PI -m src.llm.select select-prompt --recipe configs/llm/qwen2.5-7b-instruct.tom
 ```
 
 The rule is the hybrid's `request_interpretation`, averaged over the 2 conditions × 5 router seeds.
-P1 wins a tie within 0.01. The decision is written to `outputs/llm/selection/report.json`.
+P1 wins a tie within 0.01.
 
-> **Pending T11.** This command lands with T11 before you reach this step. Pull it with
-> `git pull --ff-only` once I tell you it's pushed; a pull doesn't touch the cache or `outputs/`.
-> It hasn't been dry-run yet.
+The decision is written to `outputs/llm/selection/qwen2.5-7b-instruct/report.json`, and a summary
+is printed. Before scoring, it checks:
+- each variant's provenance and stream hashes;
+- the rendered prompt;
+- coverage;
+- if sampled, that both variants used the same sample.
 
-If P2 wins, I commit `prompts.main = "p2"` in the recipe and you pull it. The recipe change
-doesn't affect the cache key, so P2's `none`/`full` answers are reused in step 4.
+It refuses on a mismatch and writes nothing; send me the error line.
+
+A `warning:` line means a variant's invalid rate is above 2%. Selection still completes, because
+invalid outputs already count as failures, but tell me.
+
+If the summary shows `"recipe_needs_update": true` (P2 won), I commit `prompts.main = "p2"` in the
+recipe and you pull it. The recipe change doesn't affect the cache key, so P2's `none`/`full`
+answers are reused in step 4.
 
 ## 4. Full dev run and transfer (GPU)
 
@@ -255,4 +265,7 @@ I then do the following locally, where all the other panel systems' dev runs liv
   - preflight before any call;
   - test refused.
 - **WSL `--help` checks.** See `specs/009-llm-routed-hybrid/verification.md`.
-- **Not exercised by Claude.** The GPU steps (2–4) and `select-prompt` (pending T11).
+- **`select-prompt` (T11).** It is covered end to end by `tests.test_llm_select` on fixture runs.
+  In WSL, `--help` exits zero, and `--split test` and `run --sample` without `--conditions` are
+  refused.
+- **Not exercised by Claude.** The GPU steps (2–4), and `select-prompt` on real variant runs.

@@ -2,6 +2,7 @@
 
     python -E -s -m src.llm.run run --recipe configs/llm/<recipe>.toml --split dev --task main
     python -E -s -m src.llm.run run --recipe ... --split dev --task main --variant p2 --conditions none full
+    python -E -s -m src.llm.run run ... --variant p2 --conditions none full --sample   # FR9 fallback only
     python -E -s -m src.llm.run size --recipe ... --split dev    # tokenizer only: the max_model_len needed
     python -E -s -m src.llm.run smoke --recipe ... --split dev [--records 20]   # AC-009-13, counts only
 
@@ -57,6 +58,7 @@ from src.llm.paths import REPO_ROOT, under_outputs
 from src.llm.preflight import (LengthReport, PreflightError, TokenCounter, measure, require_fit,
                                 required_model_len)
 from src.llm.recipe import SPLITS, Recipe, RecipeError, load_recipe
+from src.llm.sample import SAMPLE_DIALOGUES, SAMPLE_SEED, Sample, SampleError, draw, report_path
 from src.stage1.provenance import git_state, source_sha256
 
 PROVENANCE_VERSION = "llm-run-v1"
@@ -96,13 +98,18 @@ def default_backend_factory(recipe: Recipe) -> Backend:
 
 
 def run(recipe: Recipe, *, split: str, task: str, variant: str | None = None,
-        conditions: Sequence[str] | None = None, root: Path = REPO_ROOT,
+        conditions: Sequence[str] | None = None, sample: Sample | None = None, root: Path = REPO_ROOT,
         backend_factory: BackendFactory = default_backend_factory, sleep: Callable[[float], None] = time.sleep,
         rng: random.Random | None = None, progress_every: int = PROGRESS_EVERY) -> dict[str, Any]:
-    """Run one task on one split end to end; returns the provenance record it wrote."""
+    """Run one task on one split end to end; returns the provenance record it wrote.
+
+    ``sample`` (FR9 fallback) limits a dev prompt-selection run to the sampled examples.
+    """
     started = _now()
     variant, conditions = _check_request(recipe, split, task, variant, conditions)
-    inputs = _load_inputs(recipe, split, task, conditions)
+    if sample is not None:
+        _check_sample(recipe, split, task, conditions, root)
+    inputs = _load_inputs(recipe, split, task, conditions, sample)
     prompt_path = recipe.prompt_path(variant) if task == "main" else recipe.transfer_prompt
     slot_keys = schema.load_slot_keys(recipe.slot_keys) if task == "main" else ()
     instructions = (prompt.main_instructions(prompt_path, slot_keys) if task == "main"
@@ -145,7 +152,8 @@ def run(recipe: Recipe, *, split: str, task: str, variant: str | None = None,
         "version": PROVENANCE_VERSION, "spec": "009", "task": task, "split": split, "system": recipe.system,
         "variant": variant if task == "main" else None,
         "selected_variant": task == "transfer" or variant == recipe.main_prompt,
-        "conditions": list(conditions) if conditions else None, "sample": "all",
+        "conditions": list(conditions) if conditions else None,
+        "sample": sample.as_provenance() if sample else "all",
         "recipe": {"path": _relative(recipe.path, root), "text_sha256": recipe.text_sha256},
         "backend": recipe.backend, "model": recipe.model_ref, "backend_options": dict(recipe.options),
         "decoding": dict(recipe.decoding),
@@ -343,17 +351,30 @@ def _check_request(recipe: Recipe, split: str, task: str, variant: str | None,
     return variant, tuple(c for c in CONDITIONS if c in conditions)
 
 
-def _load_inputs(recipe: Recipe, split: str, task: str, conditions: Sequence[str] | None) -> dict[str, InputStream]:
+def _check_sample(recipe: Recipe, split: str, task: str, conditions: Sequence[str] | None, root: Path) -> None:
+    """FR9: the sample is for dev prompt selection only, and only before anything has been scored."""
+    if split != "dev" or task != "main" or not conditions:
+        raise RunRefused("the selection sample applies only to dev main-task runs with --conditions")
+    if report_path(recipe.system, root).exists():
+        raise RunRefused("a prompt-selection report already exists; the sample fallback must be decided "
+                         "before any variant output is scored (FR9)")
+
+
+def _load_inputs(recipe: Recipe, split: str, task: str, conditions: Sequence[str] | None,
+                 sample: Sample | None = None) -> dict[str, InputStream]:
     if task == "transfer":
         return {"transfer": load_stream(recipe.input_path(split, "transfer"), "transfer")}
     routed = load_stream(recipe.input_path(split, "routed"), "routed")
     oracle = load_stream(recipe.input_path(split, "oracle"), "oracle")
     check_oracle_subset(routed, oracle)
-    if conditions:
-        routed, oracle = (InputStream(s.kind, tuple(r for r in s.records if r["condition"] in conditions), s.file_sha256)
+    if conditions or sample:
+        def keep(record: Mapping[str, Any]) -> bool:
+            return ((not conditions or record["condition"] in conditions)
+                    and (sample is None or record["example_id"] in sample.example_ids))
+        routed, oracle = (InputStream(s.kind, tuple(r for r in s.records if keep(r)), s.file_sha256)
                           for s in (routed, oracle))
         if not routed.records:
-            raise RunRefused("no input records under the requested conditions")
+            raise RunRefused("no input records under the requested conditions and sample")
     return {"routed": routed, "oracle": oracle}
 
 
@@ -443,6 +464,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     run_parser.add_argument("--task", choices=TASKS, required=True)
     run_parser.add_argument("--variant", help="main-task prompt variant (default: the recipe's selected one)")
     run_parser.add_argument("--conditions", nargs="+", choices=CONDITIONS, help="dev prompt selection only")
+    run_parser.add_argument("--sample", action="store_true",
+                            help=f"FR9 fallback: only the {SAMPLE_DIALOGUES}-dialogue dev sample (seed {SAMPLE_SEED}); "
+                                 "needs --conditions and no selection report yet")
+    run_parser.add_argument("--items", type=Path, default=Path("data/interim/direct/items.jsonl"),
+                            help="with --sample: the DIRECT items the dialogue-level draw is made from")
     run_parser.add_argument("--progress-every", type=int, default=PROGRESS_EVERY)
     size_parser = commands.add_parser("size", help="count prompt tokens and report the max_model_len needed")
     size_parser.add_argument("--recipe", type=Path, required=True)
@@ -469,9 +495,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.progress_every < 1:
             raise RunRefused("--progress-every must be positive")
         recipe = load_recipe(args.recipe)
+        sample = None
+        if args.sample:
+            _check_sample(recipe, args.split, args.task, args.conditions, REPO_ROOT)  # before reading the corpus
+            sample = draw(args.items, args.split, SAMPLE_DIALOGUES, SAMPLE_SEED)
         provenance = run(recipe, split=args.split, task=args.task, variant=args.variant,
-                         conditions=args.conditions, progress_every=args.progress_every)
-    except (RunStopped, RunRefused, RecipeError, InputError, PreflightError, CacheError) as error:
+                         conditions=args.conditions, sample=sample, progress_every=args.progress_every)
+    except (RunStopped, RunRefused, RecipeError, InputError, PreflightError, CacheError, SampleError) as error:
         print(f"LLM {args.command} stopped: {error}", file=sys.stderr)
         return 1
     except (OSError, ValueError) as error:
