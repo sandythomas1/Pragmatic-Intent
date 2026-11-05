@@ -5,6 +5,32 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-11-05: Slot definitions added to the Qwen prompts; lab settings for the 5090 (Spec 009 / T15)
+Decision:
+- **Dev-time prompt change (plan Risks).** The first full selection put both variants over the 2%
+  invalid limit (P1 2.23%, P2 2.02%), nearly all `slot_duplicate`. Both prompts now define
+  `depart`, `dest`, `leave` and `arrive` for trains and taxis, and say each slot name is used at
+  most once. Selection and the dev run were repeated under the new prompts. The first run's
+  outputs are kept under `outputs/archive/` on the lab for disclosure.
+- **`gpu_memory_utilization = 0.80`.** `cbu-5090-right` holds about 4.8 GB with no listed process,
+  leaving 27,249 MiB free against the 27,716 MiB a 0.85 share asks for.
+- **`VLLM_USE_FLASHINFER_SAMPLER=0` on every lab run.** The GPU machines have no system `nvcc`,
+  so the FlashInfer sampler fails while compiling during warmup. Decoding is greedy, so the sampler
+  does not choose answer tokens. Provenance does not record this variable; this entry does.
+- **`max_tokens` stays 256.** Truncation was 2 (P1) and 10 (P2) of 22,116 calls. Truncated answers
+  stay in the denominator as failures (FR10).
+
+Why: `slot_duplicate` was a prompt gap, not model weakness. The prompt listed slot names without
+meanings. In train MultiWOZ references, `train.depart` is a time in 4 of 5,289 values, but the
+model wrote a time there in about 36% of single-value answers, and 1,036 of the roughly 1,444
+duplicated slots were `train.depart` or `taxi.depart`. The definitions come from the MultiWOZ schema
+and train references, not from dev items, and no per-item dev text was read.
+
+Alternatives considered:
+- *Accepting 2.02%.* Rejected by Sandy: the plan's limit has no margin, and P1 was further over.
+- *Repairing duplicates in the parser.* Rejected: FR3 validates without repair, and it would hide
+  the prompt gap.
+
 ## 2026-11-04: Prompt selection reuses the analysis scorer; the FR9 sample lives in the runner (Spec 009 / T11)
 Decision:
 - **Command.** `python -m src.llm.select select-prompt --recipe … --split dev --router-root …`.

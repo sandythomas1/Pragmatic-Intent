@@ -49,6 +49,7 @@ git log -1 --format='%H %s'                  # must include the smoke command (T
 # (an in-repo .venv-* directory would make the tree dirty).
 export UV_PROJECT_ENVIRONMENT=$HOME/.venvs/pi-llm
 export TOKENIZERS_PARALLELISM=false
+export VLLM_USE_FLASHINFER_SAMPLER=0      # the GPU machines have no nvcc; decoding is greedy
 export PI="uv run --locked --no-sync python -E -s"
 uv sync --locked --group llm
 
