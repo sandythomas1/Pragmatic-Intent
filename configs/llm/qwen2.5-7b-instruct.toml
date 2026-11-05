@@ -4,7 +4,7 @@
 # - max_model_len is a placeholder until the smoke test: run
 #     python -E -s -m src.llm.run size --recipe configs/llm/qwen2.5-7b-instruct.toml --split dev
 #   and set it to the reported required_max_model_len (spec 009 T15, AC-009-13).
-# - prompts.main is P1 until prompt selection (T11) picks between P1 and P2.
+# - prompts.main is P2, chosen by prompt selection (T11) on the lab run of 2026-11-05.
 # - P2 is rendered into git-ignored outputs/ because it holds corpus examples (FR18); render it with
 #   src.llm.prompt_gen before any run that uses it.
 version = "llm-recipe-v1"
@@ -19,7 +19,7 @@ temperature = 0
 max_tokens = 256
 
 [prompts]
-main = "p1"
+main = "p2"
 transfer = "configs/llm/prompts/t1.txt"
 
 [prompts.variants]
