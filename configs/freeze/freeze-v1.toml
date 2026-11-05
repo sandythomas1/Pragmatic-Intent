@@ -22,6 +22,8 @@ code = [
   "src/stage1/*.py",
   "src/evaluation/*.py",
   "src/analysis/*.py",
+  "src/llm/*.py",
+  "src/llm/backends/*.py",
 ]
 
 # TF-IDF + logistic regression is deterministic given its data, so one seed suffices.

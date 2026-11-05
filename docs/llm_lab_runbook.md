@@ -2,8 +2,8 @@
 
 Prepared 2026-11-04 for Sandy (spec 009 T15). This is a **dev-only** handoff for the lab RTX 5090.
 It covers the AC-009-13 smoke test, prompt selection (FR9), the full dev run and the hybrid
-composition. Nothing here touches the test split; every command refuses `--split test` until the
-freeze gate (T10) lands.
+composition. Nothing here touches the test split; `run` and `compose` refuse `--split test` without
+a verifying freeze and the frozen recipe, prompt and model (T10).
 
 | Step | Where | GPU | Expected duration |
 |---|---|---|---|

@@ -73,7 +73,7 @@ RUNTIME_FIELDS = (("data", "eval_split"), ("data", "train_condition"),
                   ("encoder", "micro_batch_size"), ("encoder", "gradient_checkpointing"))
 
 _TOP_KEYS = ("version", "analysis_config", "code", "systems")
-_SYSTEM_KEYS = ("stage1", "files", "seeds", "llm_model")
+_SYSTEM_KEYS = ("stage1", "files", "rendered_prompts", "seeds", "llm_model")
 _GLOB_RE = re.compile(r"[A-Za-z0-9_./*?-]+")
 _NAME_RE = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
 _LLM_MODEL_RE = re.compile(r"[A-Za-z0-9._:@/-]{0,128}")
@@ -94,6 +94,7 @@ class SystemRecipe:
     files: tuple[Path, ...]
     seeds: tuple[int, ...]
     llm_model: str | None
+    rendered_prompts: tuple[Path, ...] = ()  # may be git-ignored, so a missing one is a finding (spec 009 T10)
 
 
 @dataclass(frozen=True)
@@ -404,6 +405,8 @@ def _recipe_pins(state: PinState, recipe: SystemRecipe, root: Path) -> None:
         _stage1_pins(state, recipe.name, recipe.stage1, root)
     for path in recipe.files:
         _pin_file(state, f"{prefix}.file.{path.as_posix()}", root, path, text_sha256)
+    for path in recipe.rendered_prompts:
+        _pin_file(state, f"{prefix}.rendered.{path.as_posix()}", root, path, text_sha256)
     if recipe.llm_model is not None:
         state.pins[f"{prefix}.llm_model"] = recipe.llm_model
         if not recipe.llm_model or recipe.llm_model.lower().endswith("latest"):
@@ -468,8 +471,11 @@ def _system(name: str, table: Any, root: Path) -> SystemRecipe:
                   for i, v in enumerate(_list(table.get("files", []), f"{where}.files", MAX_RECIPE_FILES)))
     if len(set(files)) != len(files) or (stage1 is not None and stage1 in files):
         raise FreezeError("duplicate_file", f"{where} lists a recipe file twice", [where])
+    rendered = tuple(_relative(v, f"{where}.rendered_prompts[{i}]") for i, v in enumerate(
+        _list(table.get("rendered_prompts", []), f"{where}.rendered_prompts", MAX_RECIPE_FILES)))
     return SystemRecipe(name=name, stage1=stage1, files=files, seeds=_seeds(table["seeds"], f"{where}.seeds"),
-                        llm_model=_llm_model(table["llm_model"], f"{where}.llm_model") if "llm_model" in table else None)
+                        llm_model=_llm_model(table["llm_model"], f"{where}.llm_model") if "llm_model" in table else None,
+                        rendered_prompts=rendered)
 
 
 def _code_files(value: Any, root: Path) -> tuple[Path, ...]:
@@ -680,6 +686,30 @@ def check_run(frozen: FreezeRecord, run: RunIdentity) -> None:
     if run.train_condition not in conditions_for(system):
         raise FreezeError("condition_not_frozen", f"a {system.design} {system.family} system does not train on "
                                                   f"{run.train_condition[:20]!r}", [prefix])
+
+
+def check_llm_run(frozen: FreezeRecord, system: str, recipe_files: Mapping[str, str],
+                  rendered_prompt_sha256: str | None, llm_model: str) -> None:
+    """An LLM test run is the frozen one: pinned recipe files, rendered prompt and model (spec 009 FR15).
+
+    ``recipe_files`` maps repository-relative paths to their ``text_sha256``. A transfer run has
+    one fixed prompt, pinned as a recipe file, so it passes ``None`` for the rendered prompt.
+    """
+    prefix = f"recipe.{system}"
+    if _panel_system(frozen.config, system) is None or f"{prefix}.seeds" not in frozen.pins:
+        raise FreezeError("system_not_frozen", f"{system[:64]!r} is not a frozen panel system", [prefix])
+    if not recipe_files:
+        raise FreezeError("recipe_not_frozen", f"the {system} run named no recipe files", [prefix])
+    for path, sha256 in sorted(recipe_files.items()):
+        key = f"{prefix}.file.{path}"
+        if frozen.pins.get(key) != sha256:
+            raise FreezeError("recipe_not_frozen", f"{path[:128]} is not the frozen {system} recipe file", [key])
+    rendered = {value for key, value in frozen.pins.items() if key.startswith(f"{prefix}.rendered.")}
+    if rendered_prompt_sha256 is not None and rendered_prompt_sha256 not in rendered:
+        raise FreezeError("prompt_not_frozen", f"the rendered prompt is not the frozen {system} prompt", [prefix])
+    pinned_model = frozen.pins.get(f"{prefix}.llm_model")
+    if not pinned_model or pinned_model != llm_model:
+        raise FreezeError("model_not_frozen", f"the model is not the frozen {system} model", [f"{prefix}.llm_model"])
 
 
 def read_record(path: Path) -> dict[str, Any]:

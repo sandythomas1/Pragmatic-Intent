@@ -373,7 +373,11 @@ without blocking the freeze; the API members then stay out of the panel.
     nothing is written.
   - The existing freeze suites still pass. `freeze check` on a fixture shows `src/llm/` files among
     the code pins.
-- Status: todo
+- Status: done (2026-11-05). Done in `src/data/freeze.py`, `src/llm/{run,compose}.py`,
+  `configs/freeze/freeze-v1.toml`, `tests/test_freeze_llm.py` and `tests/test_llm_gates.py`. Notes:
+  - A test run must use the selected prompt, on every condition, with no sample: P1 stays a pinned
+    file when P2 is selected, so the hash check alone would not catch `--variant p1`.
+  - `smoke` and `size` stay dev only.
 
 ## T11: Prompt selection (`select-prompt`)
 - Description: `src/llm/run.py select-prompt --variants p1 p2 --split dev` (FR9, R7).

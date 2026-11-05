@@ -26,7 +26,7 @@ Where streams go:
   ``outputs/llm/selection/<system>/<variant>/<split>/``, so a partial stream can't be mistaken for
   a scored one.
 
-The test split is refused unconditionally until the freeze gate lands (T10). Paid backends are
+The test split needs a verifying freeze and the frozen recipe, prompt and model (FR15). Paid backends are
 refused until the spend ledger lands (T7). Logs and errors carry counts, hashes and field names
 only, never an example ID or corpus text.
 """
@@ -48,7 +48,7 @@ from pathlib import Path
 from typing import Any
 
 from src.data.direct_dataset import CONDITIONS
-from src.data.freeze import text_sha256
+from src.data.freeze import FreezeError, check_llm_run, require_freeze, text_sha256
 from src.evaluation.interpretation import validate_predictions
 from src.llm import backends, prompt, schema, streams
 from src.llm.backends.base import Backend, CallStats, ErrorLog, Request, RunStopped, generate_with_retry
@@ -72,7 +72,8 @@ MAX_SMOKE_RECORDS = 2000
 SELECTION_CONDITIONS = ("none", "full")  # FR9
 SAMPLE_FALLBACK_HOURS = 8  # FR9: above this, both variants run on the 300-dialogue sample
 INVALID_RATE_LIMIT = 0.02  # plan Risks: above it, fix the schema/prompt before selection
-TEST_REFUSED = "--split test is refused until the freeze gate is in place (spec 009 T10)"
+TEST_REFUSED = "--split test is refused"
+DEV_ONLY = f"{TEST_REFUSED}: this command never runs on test"
 BackendFactory = Callable[[Recipe], Backend]
 CounterFactory = Callable[[Recipe], TokenCounter | None]
 log = logging.getLogger(__name__)
@@ -107,6 +108,7 @@ def run(recipe: Recipe, *, split: str, task: str, variant: str | None = None,
     """
     started = _now()
     variant, conditions = _check_request(recipe, split, task, variant, conditions)
+    frozen_sha256 = _test_gate(recipe, task, variant, conditions, sample, root) if split == "test" else None
     if sample is not None:
         _check_sample(recipe, split, task, conditions, root)
     inputs = _load_inputs(recipe, split, task, conditions, sample)
@@ -165,6 +167,7 @@ def run(recipe: Recipe, *, split: str, task: str, variant: str | None = None,
                           "file_sha256": stream.file_sha256, "records": len(stream.records)}
                    for kind, stream in inputs.items()},
         "code": {"source_sha256": source_sha256(), **git_state(cwd=REPO_ROOT)},
+        **({"freeze_content_sha256": frozen_sha256} if frozen_sha256 else {}),
         "started": started, "finished": _now(),
         "counts": {"distinct_inputs": len(calls), "cache_hits": len(calls) - len(misses),
                    "calls": stats.calls, "batches": stats.batches, "retries": stats.retries,
@@ -195,6 +198,8 @@ def size(recipe: Recipe, *, split: str, root: Path = REPO_ROOT,
 
     It makes no calls and touches no cache. The report holds counts only, so it is safe to print.
     """
+    if split == "test":
+        raise RunRefused(DEV_ONLY)
     _check_request(recipe, split, "main", None, None)
     counter = counter_factory(recipe)
     if counter is None:
@@ -241,6 +246,8 @@ def smoke(recipe: Recipe, *, split: str, records: int = SMOKE_RECORDS, variant: 
       more than ``SAMPLE_FALLBACK_HOURS``, the variants run on the 300-dialogue sample. Accuracy
       is never computed here.
     """
+    if split == "test":
+        raise RunRefused(DEV_ONLY)
     variant, _ = _check_request(recipe, split, "main", variant, None)
     if type(records) is not int or not 1 <= records <= MAX_SMOKE_RECORDS:
         raise RunRefused(f"--records must be between 1 and {MAX_SMOKE_RECORDS}")
@@ -334,8 +341,6 @@ def _check_request(recipe: Recipe, split: str, task: str, variant: str | None,
                    conditions: Sequence[str] | None) -> tuple[str, tuple[str, ...] | None]:
     if split not in SPLITS:
         raise RunRefused(f"split must be one of {list(SPLITS)}")
-    if split == "test":
-        raise RunRefused(TEST_REFUSED)
     if task not in TASKS:
         raise RunRefused(f"task must be one of {list(TASKS)}")
     if recipe.paid:
@@ -349,6 +354,30 @@ def _check_request(recipe: Recipe, split: str, task: str, variant: str | None,
     if len(set(conditions)) != len(conditions) or set(conditions) - set(CONDITIONS):
         raise RunRefused(f"conditions must be distinct values from {list(CONDITIONS)}")
     return variant, tuple(c for c in CONDITIONS if c in conditions)
+
+
+def frozen_recipe_files(recipe: Recipe, root: Path) -> dict[str, str]:
+    """The files that define the run, as repository-relative path -> ``text_sha256`` (FR14)."""
+    paths = (recipe.path, recipe.slot_keys, recipe.transfer_prompt)
+    return {_relative(path, root): text_sha256(path) for path in paths}
+
+
+def _test_gate(recipe: Recipe, task: str, variant: str, conditions: Sequence[str] | None, sample: Sample | None,
+               root: Path) -> str:
+    """FR15: the frozen run or nothing, before any input, cache or backend is touched.
+
+    Returns the freeze's content hash for provenance. P1 stays a pinned file when P2 is selected,
+    so the selected prompt is required here rather than left to the hash check.
+    """
+    if conditions or sample is not None or (task == "main" and variant != recipe.main_prompt):
+        raise RunRefused(f"{TEST_REFUSED}: a test run uses the selected prompt on every condition, with no sample")
+    rendered = text_sha256(recipe.prompt_path(variant)) if task == "main" else None
+    try:
+        frozen = require_freeze(root)
+        check_llm_run(frozen, recipe.system, frozen_recipe_files(recipe, root), rendered, recipe.model_ref)
+    except FreezeError as error:
+        raise RunRefused(f"{TEST_REFUSED}: {error}") from None
+    return frozen.content_sha256
 
 
 def _check_sample(recipe: Recipe, split: str, task: str, conditions: Sequence[str] | None, root: Path) -> None:
@@ -455,6 +484,13 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _require_freeze_first(root: Path) -> None:
+    try:
+        require_freeze(root)
+    except FreezeError as error:
+        raise RunRefused(f"{TEST_REFUSED}: {error}") from None
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -483,8 +519,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         logging.basicConfig(level=logging.INFO, stream=sys.stderr,
                             format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     try:
+        if args.split == "test" and args.command != "run":
+            raise RunRefused(DEV_ONLY)
         if args.split == "test":
-            raise RunRefused(TEST_REFUSED)  # before the recipe or any input is even read
+            _require_freeze_first(REPO_ROOT)  # before the recipe or any input is even read
         if args.command == "size":
             print(json.dumps(size(load_recipe(args.recipe), split=args.split), indent=2, sort_keys=True))
             return 0

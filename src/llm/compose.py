@@ -32,7 +32,7 @@ The router and the interpreter must cover exactly the same ``(example_id, condit
 - Rows keep the router's order and are serialized with sorted keys, so the outputs are
   byte-deterministic.
 
-The test split is refused until the freeze gate lands (T10). Errors name files, codes and
+The test split needs a verifying freeze, and every router run must be the frozen one (FR15b). Errors name files, codes and
 counts, never an example ID or corpus text.
 """
 
@@ -51,6 +51,7 @@ from typing import Any
 from src.analysis.files import AnalysisError, parse_json, parse_jsonl, read_bounded
 from src.data.contexts import MISMATCH_CONDITIONS
 from src.data.direct_dataset import CONDITIONS
+from src.data.freeze import FreezeError, FreezeRecord, RunIdentity, check_run, recipe_sha256, require_freeze
 from src.evaluation.interpretation import validate_predictions
 from src.llm import streams
 from src.llm.paths import REPO_ROOT, under_outputs
@@ -64,7 +65,7 @@ ROUTER_NAME = "deberta-v3-large"
 HYBRID_SYSTEM = "hybrid"
 NO_REQUEST = "no_request"
 ROUTER_TRAIN_CONDITIONS = tuple(c for c in CONDITIONS if c not in MISMATCH_CONDITIONS)
-TEST_REFUSED = "--split test is refused until the freeze gate is in place (spec 009 T10)"
+TEST_REFUSED = "--split test is refused"
 MAX_CONFIG_BYTES = 1 << 20
 MAX_METRICS_BYTES = 64 << 20
 MAX_PREDICTION_BYTES = 512 << 20
@@ -86,6 +87,7 @@ class RouterRun:
     seed: int
     rows: tuple[Mapping[str, Any], ...]
     hashes: Mapping[str, str]  # config / metrics / predictions SHA-256
+    recipe_sha256: str = ""  # the freeze's Stage 1 recipe hash of config.resolved.json
 
     @property
     def label(self) -> str:
@@ -237,7 +239,7 @@ def load_router_run(run_dir: Path, *, split: str, name: str, train_condition: st
     rows = _jsonl(predictions, f"{where} predictions")
     return RouterRun(train_condition, seed, tuple(rows),
                      {"config_sha256": _sha256(config_bytes), "metrics_sha256": _sha256(metrics_bytes),
-                      "predictions_sha256": predictions_sha256})
+                      "predictions_sha256": predictions_sha256}, recipe_sha256(config))
 
 
 def load_interpreter(directory: Path, split: str) -> Interpreter:
@@ -271,16 +273,33 @@ def load_interpreter(directory: Path, split: str) -> Interpreter:
 
 # --- the command ---------------------------------------------------------------------------------
 
+def _require_freeze(root: Path) -> FreezeRecord:
+    try:
+        return require_freeze(root)
+    except FreezeError as error:
+        raise ComposeError("refused", f"{TEST_REFUSED}: {error}") from None
+
+
+def _check_frozen_routers(frozen: FreezeRecord, runs: Sequence[RouterRun], router_name: str) -> None:
+    """FR15b: each router run is the frozen recipe, seed and train condition, before anything is written."""
+    for run in runs:
+        try:
+            check_run(frozen, RunIdentity(router_name, run.recipe_sha256, run.seed, run.train_condition))
+        except FreezeError as error:
+            raise ComposeError(error.code, f"{run.label}: {error}") from None
+
+
 def compose(*, split: str, router_root: Path, interpreter_dir: Path, root: Path = REPO_ROOT,
             router_name: str = ROUTER_NAME) -> dict[str, Any]:
     """Check every input, compose every router run, then write all files and the provenance last."""
     if split not in SPLITS:
         raise ComposeError("unknown_split", f"split must be one of {list(SPLITS)}")
-    if split == "test":
-        raise ComposeError("refused", TEST_REFUSED)
+    frozen = _require_freeze(root) if split == "test" else None
     router_root, interpreter_dir = (path if path.is_absolute() else root / path for path in (router_root, interpreter_dir))
     out_root = under_outputs(Path("outputs/stage2") / HYBRID_SYSTEM / split, root)
     runs = load_router_runs(router_root, split, router_name)
+    if frozen is not None:
+        _check_frozen_routers(frozen, runs, router_name)
     interpreter = load_interpreter(interpreter_dir, split)
 
     pending: dict[str, bytes] = {}
@@ -298,6 +317,7 @@ def compose(*, split: str, router_root: Path, interpreter_dir: Path, root: Path 
         streams.write_atomic(out_root / relative, data, root)
     provenance = {
         "version": COMPOSE_VERSION, "spec": "009", "system": HYBRID_SYSTEM, "split": split,
+        **({"freeze_content_sha256": frozen.content_sha256} if frozen is not None else {}),
         "router": {"name": router_name, "root": _relative(router_root, root),
                    "runs": [{"train_condition": run.train_condition, "seed": run.seed, **run.hashes} for run in runs]},
         "interpreter": {"system": interpreter.system, "model": interpreter.model, "variant": interpreter.variant,
@@ -358,8 +378,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 help="the interpreter's stream directory, e.g. outputs/stage2/<llm>/<split>")
     args = parser.parse_args(argv)
     try:
-        if args.split == "test":
-            raise ComposeError("refused", TEST_REFUSED)  # before any input is read
         provenance = compose(split=args.split, router_root=args.router_root, interpreter_dir=args.interpreter,
                              root=REPO_ROOT)
     except ComposeError as error:

@@ -317,7 +317,7 @@ class SelectionTests(Fixture):
 class SafetyTests(Fixture):
     def test_test_split_is_refused_before_inputs_or_backend(self):
         factory = Factory()
-        with self.assertRaisesRegex(lr.RunRefused, "T10"):
+        with self.assertRaisesRegex(lr.RunRefused, "refused"):
             lr.run(self.root.recipe(), split="test", task="main", root=self.root.path, backend_factory=factory)
         self.assertEqual(factory.built, [])
         self.assertFalse((self.root.path / "outputs/llm/cache").exists())
@@ -421,7 +421,7 @@ class SmokeTests(Fixture):
                     self.run_smoke(factory=factory, **kwargs)
                 self.assertEqual(factory.built, [])
         factory = Factory()
-        with self.assertRaisesRegex(lr.RunRefused, "T10"):
+        with self.assertRaisesRegex(lr.RunRefused, "refused"):
             lr.smoke(self.root.recipe(), split="test", root=self.root.path, backend_factory=factory)
         self.assertEqual(factory.built, [])
 
