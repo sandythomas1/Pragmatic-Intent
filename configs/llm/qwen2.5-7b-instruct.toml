@@ -34,4 +34,4 @@ transfer = "data/interim/stage2/indirect_requests_validation_inputs.jsonl"
 [backend_options]
 revision = "a09a35458c702b33eeacc393d103063234e8bc28"  # HF main as of 2025-01-12, resolved 2026-11-03
 max_model_len = 4096
-gpu_memory_utilization = 0.85
+gpu_memory_utilization = 0.80
