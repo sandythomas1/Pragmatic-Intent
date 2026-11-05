@@ -205,7 +205,7 @@ class RecipeTests(Fixture):
         self.assertRegex(recipe.options["revision"], r"^[0-9a-f]{40}$")
         self.assertEqual((recipe.decoding["temperature"], recipe.max_tokens), (0, 256))
         self.assertEqual(set(recipe.variants), {"p1", "p2"})
-        self.assertNotIn("test", recipe.inputs, "test inputs are added at the freeze (T10/T14)")
+        self.assertEqual(set(recipe.inputs), {"dev", "test"})
 
 
 class SizeTests(Fixture):

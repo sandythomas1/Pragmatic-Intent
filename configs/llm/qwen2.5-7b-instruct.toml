@@ -31,6 +31,11 @@ routed = "data/interim/stage2/dev_routed_inputs.jsonl"
 oracle = "data/interim/stage2/dev_oracle_inputs.jsonl"
 transfer = "data/interim/stage2/indirect_requests_validation_inputs.jsonl"
 
+[inputs.test]
+routed = "data/interim/stage2/test_routed_inputs.jsonl"
+oracle = "data/interim/stage2/test_oracle_inputs.jsonl"
+transfer = "data/interim/stage2/indirect_requests_test_inputs.jsonl"
+
 [backend_options]
 revision = "a09a35458c702b33eeacc393d103063234e8bc28"  # HF main as of 2025-01-12, resolved 2026-11-03
 max_model_len = 4096

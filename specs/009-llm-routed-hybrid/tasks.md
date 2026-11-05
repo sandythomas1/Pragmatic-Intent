@@ -501,7 +501,10 @@ without blocking the freeze; the API members then stay out of the panel.
     or `llm_model_missing` for `hybrid` and `qwen2.5-7b-instruct`.
   - The analysis config loads with the new panel and Holm family.
   - The full suite passes.
-- Status: todo
+- Status: in-progress (2026-11-05). The panel and freeze configs are done: RoBERTa dropped (OQ4,
+  Sandy, 2026-11-05), `auto-v1` kept, `llm` renamed, recipes and `llm_model` filled in. Still open:
+  `rendered_prompts` (after the rerun's selection) and `configs/analysis/inputs-dev.toml` (after
+  the dev evidence).
 
 ## T15: Lab runbook and dev close-out evidence
 - Description:
