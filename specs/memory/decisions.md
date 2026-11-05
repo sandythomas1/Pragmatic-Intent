@@ -5,13 +5,33 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-11-05: Panel and freeze choices before the freeze (Spec 009 / T10, T14)
+Decision (Sandy):
+- **Primary system:** the routed hybrid, confirming D-05.
+- **Rules:** `auto-v1`. The `auto-v2` L3 check did not land before the freeze.
+- **OQ4:** both RoBERTa systems are dropped. The panel is six systems and the Holm family nine
+  members.
+- **`llm_model`:** the Hugging Face commit, as T14 specifies.
+
+Decision (implementation):
+- **A test run must use the selected prompt, on every condition, with no sample.** P1 stays a pinned
+  file when P2 is selected, so comparing hashes alone would let `--variant p1` through.
+- **The rendered prompt is pinned by its text hash** through `rendered_prompts`. P2 is git-ignored
+  (FR18), so it must be regenerated before `freeze verify`; a missing file fails closed. It renders
+  byte-identically on the Mac and the lab (`b736f5e4...`).
+
+Why: unrun members keep p = 1 and make the Holm thresholds stricter, and RoBERTa would need a budget
+change for every model.
+
 ## 2026-11-05: Slot definitions added to the Qwen prompts; lab settings for the 5090 (Spec 009 / T15)
 Decision:
 - **Dev-time prompt change (plan Risks).** The first full selection put both variants over the 2%
   invalid limit (P1 2.23%, P2 2.02%), nearly all `slot_duplicate`. Both prompts now define
   `depart`, `dest`, `leave` and `arrive` for trains and taxis, and say each slot name is used at
   most once. Selection and the dev run were repeated under the new prompts. The first run's
-  outputs are kept under `outputs/archive/` on the lab for disclosure.
+  outputs are kept under `outputs/archive/` on the lab for disclosure. The repeat cleared the
+  limit: P1 0.94% and P2 0.61% invalid. P2 was selected again, with a hybrid mean of 0.1774 against
+  P1's 0.1275 (first run: 0.1665 and 0.1399).
 - **`gpu_memory_utilization = 0.80`.** `cbu-5090-right` holds about 4.8 GB with no listed process,
   leaving 27,249 MiB free against the 27,716 MiB a 0.85 share asks for.
 - **`VLLM_USE_FLASHINFER_SAMPLER=0` on every lab run.** The GPU machines have no system `nvcc`,

@@ -55,6 +55,7 @@ files = [
   "configs/llm/prompts/p2_examples.json",
   "configs/llm/prompts/t1.txt",
 ]
+rendered_prompts = ["outputs/llm/prompts/p2.txt"]
 seeds = [0]
 llm_model = "Qwen/Qwen2.5-7B-Instruct@a09a35458c702b33eeacc393d103063234e8bc28"
 
