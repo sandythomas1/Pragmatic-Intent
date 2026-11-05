@@ -532,7 +532,8 @@ without blocking the freeze; the API members then stay out of the panel.
     Sandy's smoke test completes within the memory share, and its numbers are recorded.
   - Every runbook command has been dry-run on fixtures or `--help` in WSL by Claude, with GPU steps
     excluded.
-- Status: in-progress (2026-11-04). The runbook is drafted; the evidence is pending Sandy's lab runs.
+- Status: in-progress (2026-11-05). Steps 1–4 ran on the lab; see [verification](verification.md).
+  Step 5, the evidence archive and AC-009-9 are still open.
   - **Done.** `docs/llm_lab_runbook.md`; the `run.py smoke` command (7 tests in
     `SmokeTests`); and `specs/009-llm-routed-hybrid/verification.md` with the pre-run evidence.
   - **Suite.** 1117 tests pass on Windows (with and without git) and in WSL.

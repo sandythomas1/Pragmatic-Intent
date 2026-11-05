@@ -209,12 +209,30 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 - [x] C: `/spec-decompose 009` (2026-11-02): 15 tasks
   ([tasks](../009-llm-routed-hybrid/tasks.md)). Critical path to the Nov 5 lab smoke:
   T1 → T2 → T4 → T5 → T6 → T8 → T12 → T15 runbook. Next: `/spec-implement 009 T1`.
-- [ ] C: Implement 009 T1–T12 and T14, then draft the T15 runbook (target Nov 4). T7 and T13 are
-  off the critical path (OQ1).
-- [ ] S: 009 lab work on the 5090: smoke and prompt selection (Nov 5), then the full dev run and
-  composition (Nov 6), following the T15 runbook.
-- [ ] S: Run the [DeBERTa-large lab smoke and dev grid](../../docs/deberta_large_lab_runbook.md)
-  on a 5090 or 4090 after applying this session's changes. Reported test runs still need WP-08.
+- [x] C: Implement 009 T1–T12 and T14, then draft the T15 runbook. Done 2026-11-05 except the T14
+  `inputs-dev.toml` entries, which wait on step 5. T7 and T13 are off the critical path (OQ1).
+- [x] S/C: 009 lab work on the 5090, steps 1–4 (2026-11-05). P2 selected (mean 0.1774, 0.61%
+  invalid) after a dev-time prompt fix; the full dev run is 0.79% invalid. Results are in
+  [verification](../009-llm-routed-hybrid/verification.md), the reasons in the decisions log.
+- [x] S: DeBERTa-large lab dev grid: 15 runs done 2026-10-27, in the dev analysis through PR #6.
+- [x] S: Freeze choices (2026-11-05): hybrid primary, `auto-v1`, RoBERTa dropped (OQ4), `llm_model` is
+  the Hugging Face commit.
+
+**Next, in order (as of 2026-11-05):**
+
+- [ ] S: Merge the spec 009 PR into `main`.
+- [ ] C: 009 step 5: `compose` and `stage2 score` on the lab (CPU), then bring the evidence back,
+  add the `inputs-dev.toml` entries and run `analysis run --split dev` (AC-009-9, T14, T15).
+- [ ] S: Run the transcript scan on the Windows/WSL logs. Only the Mac's logs were scanned on
+  2026-11-05 (53 logs, 0 unregistered). A new row moves the earliest freeze date to the day after it.
+- [ ] S: Tell the lab admins about the 4.8 GB held on `cbu-5090-right` with no listed process.
+- [ ] C: Look into why P1's mean fell (0.1399 to 0.1275) while its invalid rate improved, before
+  the paper's methods section.
+- [ ] S/C: Set `draft = false`, then `freeze check`, `write`, commit and `verify` on the lab. The
+  earliest date is 2026-11-06, because the latest inspection is 2026-11-05. Render P2 on the lab
+  first: `freeze verify` needs that git-ignored file.
+- [ ] S: WP-09 test grid on the 5090 after the freeze (planned around Nov 9). The recipe's test
+  input files need generating first.
 
 - [x] 2026-10-23 to 10-25, at Sandy's request: WSL DeBERTa-base dev grid in
   `~/pi-wsl-20261023` (`none`/`one`/`full` × five seeds), followed by the real dev analysis.

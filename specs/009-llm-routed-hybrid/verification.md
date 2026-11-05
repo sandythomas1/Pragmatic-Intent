@@ -32,11 +32,28 @@ no example IDs or corpus text.
   - every GPU step;
   - `select-prompt` on real variant runs.
 
-## Lab runs (Sandy)
+## Lab runs (2026-11-05, `cbu-5090-right`)
 
-Pending. To record from the evidence archive:
-- **Smoke (20 calls) and probe (512 calls):** invalid rate by reason, finish reasons,
-  calls/s, peak GPU memory, `required_max_model_len` and the FR9 decision.
-- **Selection:** the chosen prompt and both variants' hybrid means (T11 report).
-- **Dev run:** invalid counts, and `stage2 score` for Qwen and the 15 hybrid runs.
+Run through Slurm by Claude at Sandy's request. Settings: `gpu_memory_utilization = 0.80` and
+`VLLM_USE_FLASHINFER_SAMPLER=0` (decisions, 2026-11-05).
+
+- **Size:** `fits` true, `required_max_model_len` 3072, so `max_model_len` stays 4096.
+- **Model load:** 14.29 GiB of weights, 8.92 GiB of KV cache (166,992 tokens).
+- **Smoke (20 calls, P2, before the prompt fix):** 0 invalid, 20 `stop`, 0 transport errors.
+- **Probe (512 calls, P2, before the prompt fix):** 48.2 calls/s; 1.56% invalid (7 `slot_duplicate`,
+  1 `truncated`); finish reasons 511 `stop`, 1 `length`; 0 transport errors; peak 31,456 MiB
+  including about 4.8 GB held by no listed process. FR9: `sample_fallback` false.
+  - Sandy kept `max_tokens` at 256 after the one `length` stop.
+- **Selection, first run (full `none`/`full`, 22,116 calls per variant):** P1 mean 0.1399, 2.23%
+  invalid; P2 mean 0.1665, 2.02% invalid. Both were over the 2% limit, so the prompts were fixed.
+- **Selection, repeat under the new prompts:** P1 mean 0.1275, 0.94% invalid; **P2 mean 0.1774,
+  0.61% invalid; P2 selected** (`higher_mean`). Neither is over the limit.
+- **Dev run (P2, commit `aea7d53`, clean tree):** 56,174 distinct inputs, 22,116 cache hits, 34,058
+  calls, 0 retries, 0 transport errors; 446 invalid calls (0.79%): 429 `slot_duplicate`, 17
+  `truncated`.
+- **Transfer:** 136 records, 0 invalid.
+- **First run:** kept under `outputs/archive/run1-2026-11-05/` on the lab for disclosure.
+
+Pending:
+- **Step 5:** `compose`, and `stage2 score` for Qwen and the 15 hybrid runs.
 - **AC-009-9:** `analysis run --split dev` with `hybrid` reported `run`.
