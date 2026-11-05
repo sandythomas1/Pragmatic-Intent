@@ -26,7 +26,10 @@ Answer two questions about the target utterance.
        details (area, price range, food type, star rating, and so on).
    - "slots": the constraints the user states in the target utterance, as a list of
      {"slot": <slot name>, "value": <value>} objects. Write each value as the user means it, in a
-     few words. Leave the list empty if there are none.
+     few words. Leave the list empty if there are none. Use each slot name at most once; if the
+     user gives several values for one slot, keep the one they mean most. For trains and taxis,
+     "depart" is the place the trip starts from, "dest" is the place it goes to, "leave" is the
+     time of leaving and "arrive" is the time of arriving.
    - "requested_slots": the slot names whose values the user asks the system for (for example
      an address or a phone number). Leave the list empty if there are none.
 

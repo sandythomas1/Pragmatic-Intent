@@ -330,9 +330,19 @@ def _check_stage1_components(evaluation: EvaluationSet, aligned: Mapping[str, tu
 
 def _stage2_run(evaluation: EvaluationSet, run: Stage2Run,
                 label: str) -> tuple[dict[str, tuple[Any, ...]], dict[str, tuple[bool, ...]]]:
-    """Routed and oracle rows through ``interpretation.validate_predictions``, then the component check."""
-    routed_rows = _drop_excluded(parse_jsonl(read_verified(run.routed), f"{label} routed"), evaluation)
-    oracle_rows = _drop_excluded(parse_jsonl(read_verified(run.oracle), f"{label} oracle"), evaluation)
+    """One Stage 2 run's files, verified against their recorded hashes, then ``stage2_outcomes``."""
+    return stage2_outcomes(evaluation, parse_jsonl(read_verified(run.routed), f"{label} routed"),
+                           parse_jsonl(read_verified(run.oracle), f"{label} oracle"), label)
+
+
+def stage2_outcomes(evaluation: EvaluationSet, routed_rows: Sequence[Any], oracle_rows: Sequence[Any],
+                    label: str) -> tuple[dict[str, tuple[Any, ...]], dict[str, tuple[bool, ...]]]:
+    """Routed and oracle rows through ``interpretation.validate_predictions``, then the component check.
+
+    Public so spec 009 prompt selection scores composed rows exactly as this analysis does.
+    """
+    routed_rows = _drop_excluded(routed_rows, evaluation)
+    oracle_rows = _drop_excluded(oracle_rows, evaluation)
     conditions = [c for c in CONDITIONS if any(isinstance(r, dict) and r.get("condition") == c for r in routed_rows)]
     if not conditions:
         raise AnalysisError("invalid_predictions", f"{label}: the routed file predicts no known condition")

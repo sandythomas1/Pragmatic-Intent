@@ -5,6 +5,255 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-11-05: Panel and freeze choices before the freeze (Spec 009 / T10, T14)
+Decision (Sandy):
+- **Primary system:** the routed hybrid, confirming D-05.
+- **Rules:** `auto-v1`. The `auto-v2` L3 check did not land before the freeze.
+- **OQ4:** both RoBERTa systems are dropped. The panel is six systems and the Holm family nine
+  members.
+- **`llm_model`:** the Hugging Face commit, as T14 specifies.
+
+Decision (implementation):
+- **A test run must use the selected prompt, on every condition, with no sample.** P1 stays a pinned
+  file when P2 is selected, so comparing hashes alone would let `--variant p1` through.
+- **The rendered prompt is pinned by its text hash** through `rendered_prompts`. P2 is git-ignored
+  (FR18), so it must be regenerated before `freeze verify`; a missing file fails closed. It renders
+  byte-identically on the Mac and the lab (`b736f5e4...`).
+
+Why: unrun members keep p = 1 and make the Holm thresholds stricter, and RoBERTa would need a budget
+change for every model.
+
+## 2026-11-05: Slot definitions added to the Qwen prompts; lab settings for the 5090 (Spec 009 / T15)
+Decision:
+- **Dev-time prompt change (plan Risks).** The first full selection put both variants over the 2%
+  invalid limit (P1 2.23%, P2 2.02%), nearly all `slot_duplicate`. Both prompts now define
+  `depart`, `dest`, `leave` and `arrive` for trains and taxis, and say each slot name is used at
+  most once. Selection and the dev run were repeated under the new prompts. The first run's
+  outputs are kept under `outputs/archive/` on the lab for disclosure. The repeat cleared the
+  limit: P1 0.94% and P2 0.61% invalid. P2 was selected again, with a hybrid mean of 0.1774 against
+  P1's 0.1275 (first run: 0.1665 and 0.1399).
+- **`gpu_memory_utilization = 0.80`.** `cbu-5090-right` holds about 4.8 GB with no listed process,
+  leaving 27,249 MiB free against the 27,716 MiB a 0.85 share asks for.
+- **`VLLM_USE_FLASHINFER_SAMPLER=0` on every lab run.** The GPU machines have no system `nvcc`,
+  so the FlashInfer sampler fails while compiling during warmup. Decoding is greedy, so the sampler
+  does not choose answer tokens. Provenance does not record this variable; this entry does.
+- **`max_tokens` stays 256.** Truncation was 2 (P1) and 10 (P2) of 22,116 calls. Truncated answers
+  stay in the denominator as failures (FR10).
+
+Why: `slot_duplicate` was a prompt gap, not model weakness. The prompt listed slot names without
+meanings. In train MultiWOZ references, `train.depart` is a time in 4 of 5,289 values, but the
+model wrote a time there in about 36% of single-value answers, and 1,036 of the roughly 1,444
+duplicated slots were `train.depart` or `taxi.depart`. The definitions come from the MultiWOZ schema
+and train references, not from dev items, and no per-item dev text was read.
+
+Alternatives considered:
+- *Accepting 2.02%.* Rejected by Sandy: the plan's limit has no margin, and P1 was further over.
+- *Repairing duplicates in the parser.* Rejected: FR3 validates without repair, and it would hide
+  the prompt gap.
+
+## 2026-11-04: Prompt selection reuses the analysis scorer; the FR9 sample lives in the runner (Spec 009 / T11)
+Decision:
+- **Command.** `python -m src.llm.select select-prompt --recipe … --split dev --router-root …`.
+  - It reads the variants from the recipe (`prompts.variants`), not from a `--variants` flag.
+  - It refuses any split but dev before reading anything.
+- **Scoring.** Each variant's `none`/`full` selection run is composed per condition with the
+  matching dev router seeds through `compose.compose_rows`.
+  - The composed rows are scored by `analysis.outcomes.stage2_outcomes`. This function was
+    extracted from the private `_stage2_run` and is otherwise unchanged.
+  - The population is the spec 007 `request_interpretation` one (gold requests with a mapped
+    category).
+  - The mean is taken over conditions × seeds. P1 wins if the best variant beats it by ≤ 0.01.
+- **Inputs are verified.** The variant's provenance shape, rendered prompt hash and stream hashes
+  are checked, and a mismatch stops selection. Coverage is checked by the composer.
+- **Report.** The report is per system: `outputs/llm/selection/<system>/report.json`.
+  - It holds means, per-seed rates, scored counts, invalid rates and hashes. It holds no IDs or
+    text.
+  - It reports `recipe_needs_update` and does not edit the recipe itself.
+- **Invalid rate.** An invalid rate above 2% is flagged in the report and warned on stderr, but
+  selection still runs. FR10 already counts invalid outputs as failures in the mean.
+- **FR9 sample.** `run --sample` (fixed at 300 dialogues, seed 20261102) draws a dialogue-level
+  sample of dev examples and restricts the GPU calls to it.
+  - Provenance records counts and the SHA-256 of the sorted IDs.
+  - `select-prompt` redraws the sample and checks it against that block.
+  - It refuses variants run on different inputs.
+  - `run --sample` is refused once a selection report exists for the system, so the fallback
+    cannot be chosen after seeing scores.
+
+Why:
+- **One scorer.** Reusing the analysis's scorer means the number that selects the prompt is the
+  number the paper reports. The equivalence test also checks it against `stage2.build_report`'s
+  routed success on independently composed rows.
+- **Cost.** The sample has to cut GPU time, so it must act at run time, not only at scoring time.
+- **Per-system report.** Each system then has its own record, and the guard on the existing
+  report has a precise target.
+
+Alternatives considered:
+- Scoring by hand in `select.py`: a second definition of the endpoint that could drift.
+- `--sample-dialogues N --seed S` flags, as in the task text: free parameters invite a re-draw.
+  The FR9 values are fixed, so the flag is boolean.
+- Refusing to select over the invalid-rate limit: it would block selection on a variant whose
+  failures already count against it.
+- Having `select-prompt` rewrite the recipe: a committed config edited by a tool. Claude commits
+  the one-line change instead.
+
+## 2026-11-04: Smoke command, a 512-call probe decides FR9, and a JSON nesting bound (Spec 009 / T15)
+Decision:
+- **Smoke command.** `python -m src.llm.run smoke` sends real calls for N dev inputs (default 20,
+  AC-009-13): the longest rendered prompt of the variant, then the rest in input-hash order.
+  - It runs the FR5a preflight over every prompt of the variant.
+  - It bypasses the run cache, so a smoke never feeds a scored stream and its timing is always
+    fresh.
+  - It writes a counts-only report to `outputs/llm/smoke/<system>/report.<variant>.<n>.json`:
+    invalid rate by reason, finish reasons, throughput, `required_max_model_len`, and the FR9
+    switch.
+- **FR9 decision rule, fixed before any accuracy is seen.** The full-vs-sample decision uses a
+  separate 512-call P2 probe (two full 256-wide batches), not the 20-call smoke. The rule is:
+  sample if 2 variants × 22,116 distinct `none`/`full` inputs ÷ the probe's calls/s exceeds 8 h.
+- **`max_model_len`.** It stays at 4096 if `size` reports `fits`. Only a misfit changes the recipe.
+- **Lab environment.** The `llm` environment lives outside the repo
+  (`UV_PROJECT_ENVIRONMENT=$HOME/.venvs/pi-llm`). Recipe changes are committed by Claude and pulled
+  by Sandy, never edited in the lab checkout.
+- **JSON nesting bound.** `schema._decode` rejects nesting deeper than `MAX_NESTING = 32` (outside
+  strings) as `parse` before calling `json.loads`.
+
+Why:
+- **Probe size.** 20 calls fill under a tenth of one vLLM batch, so they understate batched
+  throughput. That understatement could trigger the sample fallback for no reason. Pricing both
+  variants at P2's (longer) rate errs towards the sample, the conservative side.
+- **`max_model_len`.** Shrinking the window to the measured need saves nothing at these lengths. It
+  would also dirty the tree, and every provenance file records that.
+- **Environment.** An in-repo `.venv-llm` isn't git-ignored and would mark every run dirty. vLLM
+  conflicts with the `gpu` and `classical` groups, so it can't share `.venv`.
+- **Nesting bound.** Python's JSON decoder hits its recursion limit at a platform-dependent depth.
+  A 4000-deep array was `parse` on Windows and `schema` on Linux, which failed the suite in WSL
+  (AC-009-13). The answer schema nests 3 deep, so the bound only ever rejects junk. It doesn't
+  change scoring: both labels are invalid.
+
+Alternatives considered:
+- **Smoke through the run cache:** rejected. A rerun would time cache hits, and smoke answers would
+  leak into scored streams.
+- **Deciding FR9 from the 20-call smoke:** rejected (above).
+- **Catching the platform difference in the test only:** rejected. The `invalid_by_reason` counts
+  in a lab report would still depend on the OS.
+
+## 2026-11-03: Hybrid composer reads a new runner stream; per-run files cover all conditions (Spec 009 / T9)
+Decision:
+- **New runner stream.** The main LLM run writes a third stream, `interpretation.jsonl`. It holds
+  the interpretation for every routed record, even where the LLM's own route was `no_request`.
+  `src.llm.compose` composes the router predictions with that stream (FR11).
+- **One file per router run.** Each router run `train-<c>/seed<s>` gives one hybrid routed file
+  covering every condition the run predicted. The analysis inputs pick the run for each
+  condition and line, as for the encoder: matched from train-c, mismatch from train-full.
+- **Oracle.** The hybrid oracle file is a byte copy of the interpreter's.
+- **Refusals before any write.** Every input is checked and every run composed in memory before
+  the first write, so a refusal writes nothing.
+- **Provenance.** It records the hashes of the router config, metrics and predictions, and of
+  the interpreter provenance, interpretation and oracle. It has no timestamps.
+- **Test split.** The composer refuses test until T10.
+
+Why:
+- **The gap.** The LLM routed file nulls the interpretation on an LLM `no_request`, so it can't
+  feed the hybrid. FR3 already guarantees the model returns one; it just wasn't written out.
+- **A stream, not the cache.** Reading the stream keeps the composer independent of the cache's
+  key and layout. It also gives one hashed input to record.
+- **All conditions per run.** This mirrors the stage-1 layout the analysis already consumes, so
+  `inputs-*.toml` points at the hybrid exactly as it does at an encoder run. Filtering would
+  duplicate the role logic that already lives in `src/analysis`.
+
+Alternatives considered:
+- Reading `cache.sqlite` directly: this couples the composer to cache internals and records no
+  hash of a stream. Rejected.
+- Making the LLM routed row keep the interpretation on `no_request`: this breaks the routed
+  contract (FR4: a `no_request` row carries null category and empty slots). Rejected.
+- Writing only the role-matched conditions into each run file (train-none with only `none`,
+  and so on): this is smaller, but the analysis expects stage-1-shaped full files and would need
+  special casing. Rejected.
+
+## 2026-11-03: vLLM 0.32.0 in its own uv environment; Qwen pinned by commit; tokenizer-only sizing (Spec 009 / T12)
+Decision:
+- **Dependency group.** The `llm` uv group is `vllm==0.32.0` with a Linux-only marker. It is
+  declared as conflicting with the `gpu` group (torch 2.11 cu128) and the `classical` group
+  (numpy 2.5.3). vLLM 0.32 pins torch 2.13.0 from PyPI, and its numba needs numpy < 2.5. The torch
+  cu128 index source is now scoped to `group = "gpu"`.
+- **Model pin.** `Qwen/Qwen2.5-7B-Instruct` at commit `a09a35458c702b33eeacc393d103063234e8bc28`
+  (HF main, last modified 2025-01-12). It covers weights and tokenizer, with
+  `trust_remote_code=False`. A vLLM recipe needs a 40-hex commit (not a branch or tag),
+  `max_model_len` in (max_tokens, 131072] and `gpu_memory_utilization` in (0, 0.95]. Any other
+  option is refused.
+- **Decoding.** Constraints use vLLM structured outputs (`StructuredOutputsParams(json=…)`, one
+  per request), with greedy decoding, seed 0, bf16 and prefix caching.
+- **Failure mapping.** No vLLM exception maps to `TransportError`. Engine failures and aborted
+  requests stop the run, which resumes from the cache.
+- **Sizing.** `run.py size` counts every prompt with the tokenizer alone: the chat template is
+  rendered as text, then encoded without extra special tokens, which is how vLLM counts.
+- **Fallback.** No transformers fallback stub; it is documented in the backend docstring only.
+
+Why:
+- **Version.** 0.33.0 came out the day before (2026-11-02). 0.32.0 has had two weeks of
+  bug-fix exposure, and both expose the same structured-outputs API; the `guided_*` fields were
+  removed in 0.12.
+- **Separate environment.** Sharing it with DeBERTa would force a torch upgrade and re-validation
+  of the spec 007 router runs. A conflict declaration keeps both reproducible.
+- **Commit pin.** A branch or tag can move under a frozen recipe, and the freeze pins `llm_model`
+  (T14).
+- **Retrying a dead engine** in the same process repeats the failure. A clean rerun is the honest
+  recovery.
+- **Tokenizer-only sizing** means the smoke test can size `max_model_len` before the first engine
+  load, and the 1.7k-word P2 decides the window.
+
+Alternatives considered:
+- **vLLM 0.33.0.** Too new.
+- **Upgrading the `gpu` group to torch 2.13.** It invalidates the frozen router environment.
+- **A transformers stub that raises.** It is dead code until R13 triggers.
+- **Mapping engine errors to `TransportError`.** It gives five pointless in-process retries.
+- **Disclosed limitation.** vLLM batched greedy decoding is not guaranteed bit-identical across
+  batch compositions. The cache makes reruns identical, but a from-scratch rerun may differ on a
+  few items.
+
+## 2026-11-03: LLM runner: cache key, locking, retries, output layout and provenance (Spec 009 / T4–T6, T8)
+Decision:
+- **Cache key and model reference.** The cache key covers `model_ref`, which is `model_id@revision`
+  when the recipe pins a revision. A revision change is therefore a full miss.
+- **Locking.** Each cache gets an OS lock on `<cache>.lock` for the whole run (`msvcrt` on Windows,
+  `flock` on POSIX). A second concurrent run on the same system and task is refused. A cache line
+  with a repeated JSON key is refused as corrupt.
+- **Retries.** Retry works per batch. A `TransportError` gets up to 5 attempts with jittered
+  backoff, and `retry-after` raises the delay up to a 300 s cap. Any other exception stops the run
+  at once (fail closed). Exhausted retries stop the run (`RunStopped`) and never produce `invalid`
+  rows.
+- **Preflight.** The preflight counts every rendered prompt and refuses the run when any prompt plus
+  `max_tokens` is strictly above `max_model_len`. Hitting the limit exactly is allowed.
+- **Lazy backend.** The backend is built only when the cache has misses, and its name and model
+  are checked against the recipe.
+- **Output layout.**
+  - The selected `main` variant over all conditions, and transfer, write to
+    `outputs/stage2/<system>/<split>/`.
+  - Any other variant, or a subset of conditions, writes to
+    `outputs/llm/selection/<system>/<variant>/<split>/`.
+  - Provenance is `provenance.<task>.json`.
+- **Test split.** `--split test` is refused unconditionally until T10. The CLI refuses it before it
+  reads the recipe.
+
+Why:
+- **Resume.** A killed lab run must resume without a stale lock. OS locks die with the process,
+  unlike a sentinel file.
+- **A fully cached rerun** (for example, to re-emit streams after a scoring change) should never
+  load a 7B model onto the GPU.
+- **Selection runs** must not overwrite the canonical stage-2 streams that `compose` and `score`
+  read. A selection run that collides with them would silently change the headline input.
+- **Shared directory.** Main and transfer write to the same stage-2 directory, so one
+  `provenance.json` would be overwritten by whichever task ran last.
+- **Batch-level retry** matches how vLLM and the batch APIs fail: a whole batch at once.
+  Per-request retry would double-count calls.
+
+Alternatives considered:
+- **A PID lock file.** It needs stale-lock cleanup after a kill, and it is racy.
+- **Per-request retry.** It adds complexity for no failure mode we have.
+- **One `provenance.json` holding both tasks.** It needs a read-modify-write across runs, and it
+  loses atomicity.
+- **Keeping `model_id` in the key and recording the revision only in provenance.** A revision bump
+  would then silently reuse old answers.
+
 ## 2026-11-02: P2 examples: direct/indirect only, 3 per label, `full` condition, one per dialogue (Spec 009 / T3)
 Decision:
 - **Draw.** P2's worked examples come from DIRECT `train` paraphrases labelled `direct` or

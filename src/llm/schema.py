@@ -37,6 +37,7 @@ FINISH_REASONS = ("stop", "length", "refusal")
 REASONS = ("empty", "refusal", "truncated", "too_long", "parse", "schema", "category",
            "slot_key", "slot_duplicate", "transfer_value")
 MAX_RAW_CHARS = 8192      # far above max_tokens=256; bounds parsing work on any backend
+MAX_NESTING = 32          # the answer schema nests 3 deep; deeper is junk on every platform
 MAX_SLOTS = 20
 MAX_REQUESTED = 20
 MAX_VALUE_CHARS = 100
@@ -247,10 +248,38 @@ def _decode(raw: str, finish_reason: str) -> Any:
         return Invalid("empty")
     if len(raw) > MAX_RAW_CHARS:
         return Invalid("too_long")
+    if _nesting_depth(raw) > MAX_NESTING:
+        return Invalid("parse")
     try:
         return json.loads(raw, object_pairs_hook=_unique_object, parse_constant=_reject_constant)
     except (ValueError, RecursionError):
         return Invalid("parse")
+
+
+def _nesting_depth(raw: str) -> int:
+    """Deepest ``[``/``{`` nesting outside JSON strings.
+
+    ``json`` hits its recursion limit at a platform-dependent depth, so without this bound the
+    same deep input is ``parse`` on one OS and ``schema`` on another.
+    """
+    depth = deepest = 0
+    in_string = escaped = False
+    for char in raw:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+        elif char == '"':
+            in_string = True
+        elif char in "[{":
+            depth += 1
+            deepest = max(deepest, depth)
+        elif char in "]}":
+            depth -= 1
+    return deepest
 
 
 def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:

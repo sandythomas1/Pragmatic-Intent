@@ -1,0 +1,42 @@
+# Spec 009 primary interpreter: Qwen2.5-7B-Instruct on vLLM (lab RTX 5090, 32 GB).
+#
+# - Weights and tokenizer are pinned to an exact Hugging Face commit; trust_remote_code is never set.
+# - max_model_len is a placeholder until the smoke test: run
+#     python -E -s -m src.llm.run size --recipe configs/llm/qwen2.5-7b-instruct.toml --split dev
+#   and set it to the reported required_max_model_len (spec 009 T15, AC-009-13).
+# - prompts.main is P2, chosen by prompt selection (T11) on the lab run of 2026-11-05.
+# - P2 is rendered into git-ignored outputs/ because it holds corpus examples (FR18); render it with
+#   src.llm.prompt_gen before any run that uses it.
+version = "llm-recipe-v1"
+system = "qwen2.5-7b-instruct"
+backend = "vllm"
+model_id = "Qwen/Qwen2.5-7B-Instruct"
+batch_size = 256
+slot_keys = "configs/llm/slot_keys.json"
+
+[decoding]
+temperature = 0
+max_tokens = 256
+
+[prompts]
+main = "p2"
+transfer = "configs/llm/prompts/t1.txt"
+
+[prompts.variants]
+p1 = "configs/llm/prompts/p1.txt"
+p2 = "outputs/llm/prompts/p2.txt"
+
+[inputs.dev]
+routed = "data/interim/stage2/dev_routed_inputs.jsonl"
+oracle = "data/interim/stage2/dev_oracle_inputs.jsonl"
+transfer = "data/interim/stage2/indirect_requests_validation_inputs.jsonl"
+
+[inputs.test]
+routed = "data/interim/stage2/test_routed_inputs.jsonl"
+oracle = "data/interim/stage2/test_oracle_inputs.jsonl"
+transfer = "data/interim/stage2/indirect_requests_test_inputs.jsonl"
+
+[backend_options]
+revision = "a09a35458c702b33eeacc393d103063234e8bc28"  # HF main as of 2025-01-12, resolved 2026-11-03
+max_model_len = 4096
+gpu_memory_utilization = 0.80

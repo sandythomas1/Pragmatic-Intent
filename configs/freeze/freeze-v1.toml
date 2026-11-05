@@ -2,7 +2,6 @@
 # globs that match nothing are errors. Every panel system in configs/analysis/analysis-v1.toml
 # needs a table here, and only those. Training conditions are not listed: they follow from each
 # system's design in the analysis config (matched: none/one/full; test_time: full; llm: untrained).
-# DRAFT until the freeze: the llm and hybrid entries are placeholders (D-05).
 # All encoder revisions are pinned; `python -m src.data.freeze check` lists what is missing.
 
 version = "freeze-inputs-v1"
@@ -22,6 +21,8 @@ code = [
   "src/stage1/*.py",
   "src/evaluation/*.py",
   "src/analysis/*.py",
+  "src/llm/*.py",
+  "src/llm/backends/*.py",
 ]
 
 # TF-IDF + logistic regression is deterministic given its data, so one seed suffices.
@@ -42,21 +43,30 @@ seeds = [13, 42, 2026, 314, 2718]
 stage1 = "configs/stage1/encoder_deberta_v3_large.toml"
 seeds = [13, 42, 2026, 314, 2718]
 
-[systems.roberta-base]
-stage1 = "configs/stage1/encoder_roberta_base.toml"
-seeds = [13, 42, 2026, 314, 2718]
-
-[systems.roberta-large]
-stage1 = "configs/stage1/encoder_roberta_large.toml"
-seeds = [13, 42, 2026, 314, 2718]
-
-# Placeholders until D-05: Sandy's prompt/config files go in `files`, and llm_model names a
-# dated snapshot, never a floating alias.
-[systems.llm]
-files = []
+# The open-weights interpreter (spec 009 T14). llm_model is the exact Hugging Face commit, which is
+# stricter than a dated name. P2's rendered file is git-ignored, so it is pinned by rendered_prompts
+# and must be regenerated with src.llm.prompt_gen before `freeze verify` on any machine.
+[systems."qwen2.5-7b-instruct"]
+files = [
+  "configs/llm/qwen2.5-7b-instruct.toml",
+  "configs/llm/slot_keys.json",
+  "configs/llm/prompts/p1.txt",
+  "configs/llm/prompts/p2.template.txt",
+  "configs/llm/prompts/p2_examples.json",
+  "configs/llm/prompts/t1.txt",
+]
+rendered_prompts = ["outputs/llm/prompts/p2.txt"]
 seeds = [0]
-llm_model = ""
+llm_model = "Qwen/Qwen2.5-7B-Instruct@a09a35458c702b33eeacc393d103063234e8bc28"
 
+# The primary system: the five DeBERTa-v3-large routers composed with the interpreter's answers.
 [systems.hybrid]
-files = []
-seeds = [13]
+files = [
+  "configs/stage1/encoder_deberta_v3_large.toml",
+  "configs/llm/qwen2.5-7b-instruct.toml",
+  "configs/llm/slot_keys.json",
+  "configs/llm/prompts/p1.txt",
+  "configs/llm/prompts/p2.template.txt",
+  "configs/llm/prompts/p2_examples.json",
+]
+seeds = [13, 42, 2026, 314, 2718]

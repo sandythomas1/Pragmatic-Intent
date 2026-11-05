@@ -352,11 +352,11 @@ class DefaultConfigTest(unittest.TestCase):
         self.assertEqual(h3_systems, {s.name for s in self.config.panel} - {primary})
         self.assertTrue(all(m.reference == primary for m in self.config.family if m.kind == "h3_difference"))
 
-    def test_default_panel_names_todays_systems_and_placeholders(self) -> None:
+    def test_default_panel_names_the_systems_chosen_for_the_freeze(self) -> None:
         names = {s.name for s in self.config.panel}
-        self.assertTrue({"tfidf-utterance", "tfidf-context", "deberta-v3-large", "roberta-large",
-                         "llm", "hybrid"} <= names)
-        self.assertEqual(self.config.system("llm").design, "test_time")
+        self.assertEqual(names, {"tfidf-utterance", "tfidf-context", "deberta-v3-base", "deberta-v3-large",
+                                 "qwen2.5-7b-instruct", "hybrid"})
+        self.assertEqual(self.config.system("qwen2.5-7b-instruct").design, "test_time")
 
 
 if __name__ == "__main__":

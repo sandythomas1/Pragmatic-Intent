@@ -80,6 +80,16 @@ class ParseMainTests(unittest.TestCase):
     def test_deep_nesting_is_a_parse_failure_not_a_crash(self):
         self.assertEqual(parse("[" * 4000 + "]" * 4000), sc.Invalid("parse"))
 
+    def test_nesting_bound_is_platform_independent(self):
+        # Just past the bound is a parse failure even though json itself would decode it.
+        self.assertEqual(parse("[" * (sc.MAX_NESTING + 1) + "]" * (sc.MAX_NESTING + 1)), sc.Invalid("parse"))
+        self.assertEqual(parse("[" * sc.MAX_NESTING + "]" * sc.MAX_NESTING), sc.Invalid("schema"))
+
+    def test_brackets_inside_strings_do_not_count_as_nesting(self):
+        deep_text = "[" * 48 + '\\"' + "{" * 40  # 88 brackets + an escaped quote, within the value limit
+        raw = answer(slots=[{"slot": "hotel.area", "value": deep_text}])
+        self.assertIsInstance(parse(raw), sc.MainAnswer)
+
     def test_backend_contract_violations_raise(self):
         with self.assertRaises(ValueError):
             parse(answer(), "content_filter")

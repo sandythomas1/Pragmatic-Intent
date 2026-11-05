@@ -26,12 +26,23 @@ gpu = [
 figures = [
     "matplotlib==3.10.9",
 ]
+# Spec 009 local LLM interpreter (src/llm/backends/vllm_backend.py). Linux/WSL only: vLLM has no
+# Windows wheels, so on Windows this group installs nothing. vLLM 0.32.0 pins its own torch
+# (2.13.0, from PyPI) and, through numba, numpy < 2.5, so it gets its own environment: it conflicts
+# with the gpu group (torch 2.11) and the classical group (numpy 2.5.3).
+llm = [
+    "vllm==0.32.0; sys_platform == 'linux'",
+]
 
 [tool.uv]
 package = false
+conflicts = [
+    [{ group = "gpu" }, { group = "llm" }],
+    [{ group = "classical" }, { group = "llm" }],
+]
 
 [tool.uv.sources]
-torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'", group = "gpu" }]
 
 [[tool.uv.index]]
 name = "pytorch-cu128"

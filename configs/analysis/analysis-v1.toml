@@ -5,7 +5,7 @@
 # Any change after the freeze is a new config version plus a dated amendment.
 
 version = "analysis-v1"
-rules_version = "auto-v1"   # switch to "auto-v2" only if its L3 check lands before the freeze
+rules_version = "auto-v1"   # chosen 2026-11-05; the auto-v2 L3 check did not land before the freeze
 draft = true                # stays true until the freeze names the primary system (D-05)
 alpha = 0.05                # must equal 1 - confidence: the interval decides the primary test
 
@@ -21,7 +21,7 @@ max_excluded_share = 0.01   # more zero-denominator replicates than this: unstab
 # Confirmatory H2 test: linear (-1, 0, +1) contrast of the full - none benefit over L0-L2, i.e.
 # the L2 - L0 benefit difference. The quadratic contrast is reported descriptively.
 [primary]
-system = "hybrid"           # placeholder until D-05; needs routed + oracle streams
+system = "hybrid"           # D-05, confirmed 2026-11-05; needs routed + oracle streams
 endpoint = "request_interpretation"
 contrast = "full_minus_none"
 trend = "linear"
@@ -65,28 +65,16 @@ design = "matched"
 streams = ["stage1"]
 
 [[panel]]
-name = "roberta-base"
-family = "encoder"
-design = "matched"
-streams = ["stage1"]
-
-[[panel]]
-name = "roberta-large"
-family = "encoder"
-design = "matched"
-streams = ["stage1"]
-
-[[panel]]
-name = "llm"                # placeholder until D-05; untrained, so test_time only
+name = "qwen2.5-7b-instruct"  # the hybrid's interpreter on its own; untrained, so test_time only
 family = "llm"
 design = "test_time"
 streams = ["routed", "oracle", "transfer"]
 
 [[panel]]
-name = "hybrid"             # placeholder until D-05; router declared trained per condition
+name = "hybrid"             # DeBERTa-v3-large router + Qwen interpreter (D-05); router trained per condition
 family = "hybrid"
 design = "matched"
-streams = ["routed", "oracle", "transfer"]
+streams = ["routed", "oracle"]
 
 # Secondary family, Holm-corrected together. Its size is fixed here, never by the inputs: a
 # member whose system is not run keeps its place with p = 1.
@@ -150,25 +138,9 @@ endpoint = "stage1_correct"
 contrast = "full_minus_none"
 
 [[family]]
-name = "h3-roberta-base"
+name = "h3-qwen2.5-7b-instruct"
 kind = "h3_difference"
-system = "roberta-base"
-reference = "hybrid"
-endpoint = "stage1_correct"
-contrast = "full_minus_none"
-
-[[family]]
-name = "h3-roberta-large"
-kind = "h3_difference"
-system = "roberta-large"
-reference = "hybrid"
-endpoint = "stage1_correct"
-contrast = "full_minus_none"
-
-[[family]]
-name = "h3-llm"
-kind = "h3_difference"
-system = "llm"
+system = "qwen2.5-7b-instruct"
 reference = "hybrid"
 endpoint = "request_interpretation"
 contrast = "full_minus_none"
