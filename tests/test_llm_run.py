@@ -315,20 +315,6 @@ class SelectionTests(Fixture):
 
 
 class SafetyTests(Fixture):
-    def test_test_split_is_refused_before_inputs_or_backend(self):
-        factory = Factory()
-        with self.assertRaisesRegex(lr.RunRefused, "T10"):
-            lr.run(self.root.recipe(), split="test", task="main", root=self.root.path, backend_factory=factory)
-        self.assertEqual(factory.built, [])
-        self.assertFalse((self.root.path / "outputs/llm/cache").exists())
-
-    def test_cli_refuses_the_test_split_without_reading_the_recipe(self):
-        stderr = io.StringIO()
-        with redirect_stderr(stderr):
-            code = lr.main(["run", "--recipe", "configs/llm/does-not-exist.toml", "--split", "test", "--task", "main"])
-        self.assertEqual(code, 1)
-        self.assertIn("refused", stderr.getvalue())
-
     def test_paid_backend_is_refused_until_the_ledger_exists(self):
         self.root.write_recipe(backend="anthropic", model_id="claude-zq-20260101")
         factory = Factory()
@@ -421,7 +407,7 @@ class SmokeTests(Fixture):
                     self.run_smoke(factory=factory, **kwargs)
                 self.assertEqual(factory.built, [])
         factory = Factory()
-        with self.assertRaisesRegex(lr.RunRefused, "T10"):
+        with self.assertRaisesRegex(lr.RunRefused, "dev only"):
             lr.smoke(self.root.recipe(), split="test", root=self.root.path, backend_factory=factory)
         self.assertEqual(factory.built, [])
 

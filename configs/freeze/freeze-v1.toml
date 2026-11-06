@@ -22,6 +22,8 @@ code = [
   "src/stage1/*.py",
   "src/evaluation/*.py",
   "src/analysis/*.py",
+  "src/llm/*.py",
+  "src/llm/backends/*.py",
 ]
 
 # TF-IDF + logistic regression is deterministic given its data, so one seed suffices.
@@ -51,7 +53,8 @@ stage1 = "configs/stage1/encoder_roberta_large.toml"
 seeds = [13, 42, 2026, 314, 2718]
 
 # Placeholders until D-05: Sandy's prompt/config files go in `files`, and llm_model names a
-# dated snapshot, never a floating alias.
+# dated snapshot, never a floating alias. An llm system also lists `rendered_prompts`: the
+# `prompt.rendered_sha256` of its dev main and transfer runs (spec 009 FR15).
 [systems.llm]
 files = []
 seeds = [0]

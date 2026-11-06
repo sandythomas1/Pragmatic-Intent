@@ -19,7 +19,7 @@ no example IDs or corpus text.
   `download_sources`, `build_direct_dataset`, `stage2 inputs/score`, `transfer inputs/score`,
   `prompt_gen render`, `llm.run size/smoke/run`, `llm.compose compose`, `analysis run`.
 - **Test-split refusals.** `smoke`, `run` and `compose` with `--split test` stop with the
-  freeze-gate message before any work.
+  freeze-gate message before any work. T10 replaced this behaviour; see below.
 - **Input checksums.** Rebuilding the three stage-2 input files reproduced the local copies byte for
   byte; their SHA-256s are pinned in the runbook.
 - **Counts.** 56,174 distinct dev inputs, 22,116 of them under `none`/`full`.
@@ -31,6 +31,22 @@ no example IDs or corpus text.
 - **Not exercised by Claude:**
   - every GPU step;
   - `select-prompt` on real variant runs.
+
+## Freeze gates (2026-11-06, T10)
+
+- **Full suite:** 1191 OK, with skips of 26 (Windows, no git), 16 (Windows, git) and 13 (WSL).
+- **AC-009-11.** `tests.test_llm_gates` runs against real freeze records in a fixture repository.
+  With no freeze, a moved recipe file, a different rendered prompt or a different `llm_model`, the
+  fake factory records no backend, and no cache or stream is written.
+- **Composer.** An unfrozen seed, an unfrozen recipe or an interpreter outside the freeze stops
+  `compose --split test`, and `outputs/stage2/hybrid/test` is not created.
+- **Real commands, this repository (no freeze record yet):**
+  - `llm.run run --split test` and `llm.compose compose --split test` exit 1 with `freeze_missing`;
+  - `llm.run smoke --split test` exits 1 with the dev-only refusal.
+- **`freeze check`** on the real inputs lists six items: `tree_dirty`, `llm_model_floating`,
+  `analysis_draft`, two `recipe_missing` and the new `rendered_prompts_missing`. T14 and Sandy's
+  commit clear them.
+- **Not exercised:** a test run on the real recipe. It needs T14 and a freeze record.
 
 ## Lab runs (Sandy)
 

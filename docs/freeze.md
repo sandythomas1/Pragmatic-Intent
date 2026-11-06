@@ -14,16 +14,21 @@ number:
 | `labels.*` | rules version, and the `auto-v2` seal if `auto-v2` is used | yes |
 | `code.*` | every file matched by the code globs in `configs/freeze/freeze-v1.toml` | yes |
 | `analysis.*` | the canonical hash of `configs/analysis/analysis-v1.toml` | yes |
-| `recipe.<system>.*` | Stage 1 recipe hash, encoder revision, prompt files, `llm_model`, seeds | yes |
+| `recipe.<system>.*` | Stage 1 recipe hash, encoder revision, prompt files, `llm_model`, rendered-prompt hashes, seeds | yes |
 
 **What enforces it.** Every test-time entry point refuses to run unless `verify` passes:
 - the Stage 1 trainers, with `--eval-split test --allow-test`;
 - `src.evaluation.stage1`, `stage2`, `transfer` and `run`, each with `--split test`;
-- `src.analysis run --split test`.
+- `src.analysis run --split test`;
+- `src.llm.run run --split test` and `src.llm.compose compose --split test`.
 
 The trainers and the test analysis also refuse a Stage 1 run outside the frozen grid: a recipe
 that isn't pinned, a seed that isn't listed, or a training condition the system's design doesn't
-use. Dev runs never read the record.
+use. `compose` applies the same check to each router run, as `deberta-v3-large`.
+
+The LLM runner also refuses a run whose recipe files, rendered prompt or model differ from the
+pins of the system its recipe names, before it reads an input or builds a backend. `compose`
+checks the interpreter's provenance the same way. Dev runs never read the record.
 
 ## Commands
 
@@ -50,6 +55,9 @@ dialogue or item ID, or any text. It exits 0 only when `write` would succeed.
      config files under `files`, and a dated snapshot as `llm_model`, in
      `configs/freeze/freeze-v1.toml`. If a placeholder system is dropped from the panel, drop it
      from both files.
+   - **`rendered_prompts_missing`** for an `llm` system. List `prompt.rendered_sha256` from its dev
+     main and transfer provenance under `rendered_prompts`. `check` can't recompute these, so a
+     wrong hash shows up only when the test run refuses.
    - **`tree_dirty`.** Commit everything except `results/` and `outputs/`.
 
    Also decide `auto-v1` vs `auto-v2` (`rules_version` in the analysis config).

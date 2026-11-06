@@ -373,7 +373,13 @@ without blocking the freeze; the API members then stay out of the panel.
     nothing is written.
   - The existing freeze suites still pass. `freeze check` on a fixture shows `src/llm/` files among
     the code pins.
-- Status: todo
+- Status: done (2026-11-06). There are 47 tests in `tests/test_freeze_llm.py` and
+  `tests/test_llm_gates.py`; the full suite has 1191 tests, all OK on Windows (±git) and WSL.
+  - `run --split test` and `compose --split test` now pass through the freeze instead of being
+    refused. `size`, `smoke` and `select-prompt` stay dev-only.
+  - The code pins add `src/llm/backends/*.py` as well as `src/llm/*.py`, and `compose` also checks
+    the interpreter's provenance (decisions, 2026-11-06).
+  - T14 must fill `rendered_prompts`, `files` and `[inputs.test]`; see that decision entry.
 
 ## T11: Prompt selection (`select-prompt`)
 - Description: `src/llm/run.py select-prompt --variants p1 p2 --split dev` (FR9, R7).

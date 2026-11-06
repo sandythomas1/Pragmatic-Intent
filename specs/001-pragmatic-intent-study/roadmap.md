@@ -211,6 +211,8 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   T1 → T2 → T4 → T5 → T6 → T8 → T12 → T15 runbook. Next: `/spec-implement 009 T1`.
 - [ ] C: Implement 009 T1–T12 and T14, then draft the T15 runbook (target Nov 4). T7 and T13 are
   off the critical path (OQ1).
+  - 2026-11-06: T10 freeze gates done. T14 is next. Prompt selection chose P2 on the lab
+    (2026-11-05); T14 still needs the rendered hashes from the dev run's provenance.
 - [ ] S: 009 lab work on the 5090: smoke and prompt selection (Nov 5), then the full dev run and
   composition (Nov 6), following the T15 runbook.
 - [ ] S: Run the [DeBERTa-large lab smoke and dev grid](../../docs/deberta_large_lab_runbook.md)

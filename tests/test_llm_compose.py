@@ -366,10 +366,7 @@ class ComposeCommandTest(unittest.TestCase):
                 path.write_bytes(path.read_bytes() + b"\n")
                 self.assert_refused("interpreter_changed")
 
-    def test_the_test_split_is_refused(self):
-        with self.assertRaises(lc.ComposeError) as caught:
-            lc.compose(split="test", router_root=ROUTER_ROOT, interpreter_dir=INTERPRETER_DIR, root=self.root)
-        self.assertEqual(caught.exception.code, "refused")
+    def test_an_unknown_split_is_refused(self):
         with self.assertRaises(lc.ComposeError):
             lc.compose(split="zq-split", router_root=ROUTER_ROOT, interpreter_dir=INTERPRETER_DIR, root=self.root)
 
@@ -398,15 +395,6 @@ class CliTest(unittest.TestCase):
         self.assertIn("Composed 6 hybrid runs on dev: 60 rows", stdout)
         self.assertNotIn("PMUL", stdout)
         self.assertTrue((self.root / HYBRID_DIR / "provenance.compose.json").is_file())
-
-    def test_the_test_split_is_refused_before_any_input_is_read(self):
-        with mock.patch.object(lc, "load_router_runs") as router, mock.patch.object(lc, "load_interpreter") as llm:
-            code, stdout, stderr = self.run_main("--split", "test", "--router-root", "zq-missing",
-                                                 "--interpreter", "zq-missing")
-        self.assertEqual(code, 1)
-        self.assertIn("refused", stderr)
-        router.assert_not_called()
-        llm.assert_not_called()
 
     def test_a_refusal_exits_1_without_naming_examples(self):
         write_interpreter(self.root, interpretation=INTERPRETATION[1:])

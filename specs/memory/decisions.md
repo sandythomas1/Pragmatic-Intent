@@ -5,6 +5,47 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-11-06: The freeze gates for the LLM runner and composer (Spec 009 / T10)
+Decision:
+- **Rendered prompts are a list.** `rendered_prompts` holds one hash per prompt family (main and
+  transfer), pinned as one sorted value. `check_llm_run` requires the run's hash to be in it. An
+  `llm` family system without them gets `rendered_prompts_missing`; a hybrid doesn't need them,
+  because the composer checks the interpreter's system.
+- **The file check runs one way.** Every file a run read must be pinned for its system, but a
+  system may pin files a run doesn't read, such as the other task's prompt or P2's template. An
+  empty file list is refused, not passed.
+- **P2's generated file has no file pin.** It is git-ignored under `outputs/`, so the runner skips
+  files there and relies on the rendered hash (FR18).
+- **Code pins cover `src/llm/backends/*.py` too.** T10's text names only `src/llm/*.py`, which
+  misses the vLLM backend, and that backend affects model output.
+- **A test run has no choices.** It takes the recipe's selected prompt over all conditions.
+  `--variant` with another prompt, `--conditions` and `--sample` are refused. `size` and `smoke`
+  stay dev tools, through a fail-closed `allow_test=False` default that only `run()` overrides.
+- **`compose --split test` also checks the interpreter.** Its recipe path and hash, rendered
+  prompt and model must match the frozen system. This goes beyond FR15b, which names router runs
+  only.
+- **For T14.**
+  - `rendered_prompts` come from `prompt.rendered_sha256` in the dev main and transfer provenance.
+    `freeze check` can't recompute them.
+  - The qwen system's `files` must list the recipe, slot keys, prompt files and `t1.txt`, or the
+    gate refuses.
+  - The Qwen recipe needs `[inputs.test]` before the freeze, because the recipe file is pinned.
+    `tests/test_llm_vllm_backend.py` asserts it is absent and changes with it.
+Why: FR15 and FR15b make every LLM test number traceable to one frozen recipe. A list suits a
+system that runs two tasks, because each hash already binds its task. The interpreter check is
+cheap, and without it a hand-edited or stale interpreter directory would compose silently.
+Alternatives considered:
+- *A table of task to hash.* It says more than the check needs and adds a shape to validate.
+- *Requiring every pinned file in each run.* That would refuse the main run for not reading the
+  transfer prompt.
+- *Pinning `outputs/llm/prompts/p2.txt`.* Git-ignored files aren't reproducible from a commit, so
+  `verify` would fail on a fresh checkout.
+- *Requiring all frozen seeds in `compose`.* Not added: a subset passes `check_run`, and the
+  analysis doesn't refuse one either, but its report shows `n_seeds` and `per_seed`. The paper's
+  seed count has to be read from there.
+- *Pinning the test input files.* They are generated after the freeze. Provenance records their
+  `file_sha256`, and `stage2 score` catches missing or extra rows.
+
 ## 2026-11-05: Slot definitions added to the Qwen prompts; lab settings for the 5090 (Spec 009 / T15)
 Decision:
 - **Dev-time prompt change (plan Risks).** The first full selection put both variants over the 2%

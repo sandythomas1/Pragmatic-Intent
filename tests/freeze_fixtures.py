@@ -20,6 +20,7 @@ from src.data import split_audit as sa
 from tests.analysis_fixtures import Workspace, config_dict, config_toml, toml_value
 
 COMMIT = "0123456789abcdef0123456789abcdef01234567"
+RENDERED = "ab" * 32  # an invented rendered-prompt hash
 INPUTS = Path("configs/freeze/freeze-v1.toml")
 INSPECTED = "PMUL9001.json"
 PRIMARY = "PMUL9002.json"
@@ -107,7 +108,8 @@ class FreezeRepo:
             "systems": {
                 "enc": {"stage1": "configs/stage1/enc.toml", "seeds": [13, 42]},
                 "tfidf": {"stage1": "configs/stage1/tfidf.toml", "seeds": [13]},
-                "llm": {"files": ["prompts/llm.txt"], "seeds": [0], "llm_model": "model-2026-01-01"},
+                "llm": {"files": ["prompts/llm.txt"], "seeds": [0], "llm_model": "model-2026-01-01",
+                        "rendered_prompts": [RENDERED]},
                 "pipe": {"files": ["prompts/pipe.txt"], "seeds": [13]},
             },
         }

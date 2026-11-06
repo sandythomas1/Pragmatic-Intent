@@ -26,9 +26,13 @@ Where streams go:
   ``outputs/llm/selection/<system>/<variant>/<split>/``, so a partial stream can't be mistaken for
   a scored one.
 
-The test split is refused unconditionally until the freeze gate lands (T10). Paid backends are
-refused until the spend ledger lands (T7). Logs and errors carry counts, hashes and field names
-only, never an example ID or corpus text.
+The test split (FR15): ``run --split test`` first verifies the freeze, then checks the recipe
+files, the rendered prompt and the model against the frozen pins of the system the recipe claims
+to be. Both happen before any input is read or a backend is built. A test run takes the recipe's
+selected prompt over all conditions; ``size`` and ``smoke`` are dev tools and refuse it.
+
+Paid backends are refused until the spend ledger lands (T7). Logs and errors carry counts, hashes
+and field names only, never an example ID or corpus text.
 """
 
 from __future__ import annotations
@@ -48,7 +52,7 @@ from pathlib import Path
 from typing import Any
 
 from src.data.direct_dataset import CONDITIONS
-from src.data.freeze import text_sha256
+from src.data.freeze import FreezeError, check_llm_run, require_freeze, text_sha256
 from src.evaluation.interpretation import validate_predictions
 from src.llm import backends, prompt, schema, streams
 from src.llm.backends.base import Backend, CallStats, ErrorLog, Request, RunStopped, generate_with_retry
@@ -72,7 +76,7 @@ MAX_SMOKE_RECORDS = 2000
 SELECTION_CONDITIONS = ("none", "full")  # FR9
 SAMPLE_FALLBACK_HOURS = 8  # FR9: above this, both variants run on the 300-dialogue sample
 INVALID_RATE_LIMIT = 0.02  # plan Risks: above it, fix the schema/prompt before selection
-TEST_REFUSED = "--split test is refused until the freeze gate is in place (spec 009 T10)"
+TEST_REFUSED = "--split test is refused here: this command is for dev only, and only `run` passes the freeze gate"
 BackendFactory = Callable[[Recipe], Backend]
 CounterFactory = Callable[[Recipe], TokenCounter | None]
 log = logging.getLogger(__name__)
@@ -106,14 +110,18 @@ def run(recipe: Recipe, *, split: str, task: str, variant: str | None = None,
     ``sample`` (FR9 fallback) limits a dev prompt-selection run to the sampled examples.
     """
     started = _now()
-    variant, conditions = _check_request(recipe, split, task, variant, conditions)
+    variant, conditions = _check_request(recipe, split, task, variant, conditions, allow_test=True)
     if sample is not None:
         _check_sample(recipe, split, task, conditions, root)
-    inputs = _load_inputs(recipe, split, task, conditions, sample)
+    frozen = require_freeze(root) if split == "test" else None
     prompt_path = recipe.prompt_path(variant) if task == "main" else recipe.transfer_prompt
     slot_keys = schema.load_slot_keys(recipe.slot_keys) if task == "main" else ()
     instructions = (prompt.main_instructions(prompt_path, slot_keys) if task == "main"
                     else prompt.transfer_instructions(prompt_path))
+    if frozen is not None:
+        check_llm_run(frozen, recipe.system, _recipe_files(recipe, task, prompt_path, root), instructions.sha256,
+                      recipe.model_ref)
+    inputs = _load_inputs(recipe, split, task, conditions, sample)
     calls = plan_calls(recipe, task, instructions, slot_keys, inputs.values())
     out_dir = output_dir(recipe, split, task, variant, conditions, root)
     cache_path = under_outputs(Path("outputs/llm/cache") / recipe.system / f"{task}.jsonl", root)
@@ -150,6 +158,7 @@ def run(recipe: Recipe, *, split: str, task: str, variant: str | None = None,
 
     provenance = {
         "version": PROVENANCE_VERSION, "spec": "009", "task": task, "split": split, "system": recipe.system,
+        "freeze_content_sha256": frozen.content_sha256 if frozen else None,
         "variant": variant if task == "main" else None,
         "selected_variant": task == "transfer" or variant == recipe.main_prompt,
         "conditions": list(conditions) if conditions else None,
@@ -330,11 +339,12 @@ def output_dir(recipe: Recipe, split: str, task: str, variant: str, conditions: 
     return under_outputs(Path("outputs/llm/selection") / recipe.system / variant / split, root)
 
 
-def _check_request(recipe: Recipe, split: str, task: str, variant: str | None,
-                   conditions: Sequence[str] | None) -> tuple[str, tuple[str, ...] | None]:
+def _check_request(recipe: Recipe, split: str, task: str, variant: str | None, conditions: Sequence[str] | None,
+                   *, allow_test: bool = False) -> tuple[str, tuple[str, ...] | None]:
+    """``allow_test`` is for ``run`` alone, which gates the test split on the freeze itself."""
     if split not in SPLITS:
         raise RunRefused(f"split must be one of {list(SPLITS)}")
-    if split == "test":
+    if split == "test" and not allow_test:
         raise RunRefused(TEST_REFUSED)
     if task not in TASKS:
         raise RunRefused(f"task must be one of {list(TASKS)}")
@@ -344,11 +354,27 @@ def _check_request(recipe: Recipe, split: str, task: str, variant: str | None,
         raise RunRefused("the transfer task has one fixed prompt and one condition; drop --variant/--conditions")
     variant = variant or recipe.main_prompt
     recipe.prompt_path(variant)
+    if split == "test" and (variant != recipe.main_prompt or conditions):
+        raise RunRefused("a test run uses the recipe's selected prompt over all conditions")
     if conditions is None or len(conditions) == 0:
         return variant, None
     if len(set(conditions)) != len(conditions) or set(conditions) - set(CONDITIONS):
         raise RunRefused(f"conditions must be distinct values from {list(CONDITIONS)}")
     return variant, tuple(c for c in CONDITIONS if c in conditions)
+
+
+def _recipe_files(recipe: Recipe, task: str, prompt_path: Path, root: Path) -> dict[str, str]:
+    """What a test run must match file by file (FR15): the recipe, the slot vocabulary and the prompt.
+
+    A prompt generated under ``outputs/`` (P2) is git-ignored, so it has no file pin. The freeze
+    pins its template, ID list and generator instead, and the rendered hash covers its text (FR18).
+    """
+    files = {_relative(recipe.path, root): recipe.text_sha256}
+    if task == "main":
+        files[_relative(recipe.slot_keys, root)] = text_sha256(recipe.slot_keys)
+    if not prompt_path.resolve().is_relative_to((root / "outputs").resolve()):
+        files[_relative(prompt_path, root)] = text_sha256(prompt_path)
+    return files
 
 
 def _check_sample(recipe: Recipe, split: str, task: str, conditions: Sequence[str] | None, root: Path) -> None:
@@ -483,7 +509,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         logging.basicConfig(level=logging.INFO, stream=sys.stderr,
                             format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     try:
-        if args.split == "test":
+        if args.split == "test" and args.command != "run":
             raise RunRefused(TEST_REFUSED)  # before the recipe or any input is even read
         if args.command == "size":
             print(json.dumps(size(load_recipe(args.recipe), split=args.split), indent=2, sort_keys=True))
@@ -501,7 +527,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             sample = draw(args.items, args.split, SAMPLE_DIALOGUES, SAMPLE_SEED)
         provenance = run(recipe, split=args.split, task=args.task, variant=args.variant,
                          conditions=args.conditions, sample=sample, progress_every=args.progress_every)
-    except (RunStopped, RunRefused, RecipeError, InputError, PreflightError, CacheError, SampleError) as error:
+    except (RunStopped, RunRefused, FreezeError, RecipeError, InputError, PreflightError, CacheError,
+            SampleError) as error:
         print(f"LLM {args.command} stopped: {error}", file=sys.stderr)
         return 1
     except (OSError, ValueError) as error:

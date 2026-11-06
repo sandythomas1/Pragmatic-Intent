@@ -73,7 +73,7 @@ RUNTIME_FIELDS = (("data", "eval_split"), ("data", "train_condition"),
                   ("encoder", "micro_batch_size"), ("encoder", "gradient_checkpointing"))
 
 _TOP_KEYS = ("version", "analysis_config", "code", "systems")
-_SYSTEM_KEYS = ("stage1", "files", "seeds", "llm_model")
+_SYSTEM_KEYS = ("stage1", "files", "seeds", "llm_model", "rendered_prompts")
 _GLOB_RE = re.compile(r"[A-Za-z0-9_./*?-]+")
 _NAME_RE = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
 _LLM_MODEL_RE = re.compile(r"[A-Za-z0-9._:@/-]{0,128}")
@@ -94,6 +94,7 @@ class SystemRecipe:
     files: tuple[Path, ...]
     seeds: tuple[int, ...]
     llm_model: str | None
+    rendered_prompts: tuple[str, ...] = ()  # sorted; one hash per prompt family the system runs (spec 009 FR15)
 
 
 @dataclass(frozen=True)
@@ -410,6 +411,11 @@ def _recipe_pins(state: PinState, recipe: SystemRecipe, root: Path) -> None:
             state.problem("llm_model_floating", f"{prefix}.llm_model", "name a dated snapshot, not an alias")
     elif system is not None and system.family == "llm":
         state.missing("llm_model_missing", f"{prefix}.llm_model", "an llm system needs its model snapshot")
+    if recipe.rendered_prompts:
+        state.pins[f"{prefix}.rendered_prompts"] = ",".join(recipe.rendered_prompts)
+    elif system is not None and system.family == "llm":
+        state.missing("rendered_prompts_missing", f"{prefix}.rendered_prompts",
+                      "an llm system needs the rendered-prompt hashes of its dev runs")
 
 
 def _stage1_pins(state: PinState, name: str, path: Path, root: Path) -> None:
@@ -469,7 +475,8 @@ def _system(name: str, table: Any, root: Path) -> SystemRecipe:
     if len(set(files)) != len(files) or (stage1 is not None and stage1 in files):
         raise FreezeError("duplicate_file", f"{where} lists a recipe file twice", [where])
     return SystemRecipe(name=name, stage1=stage1, files=files, seeds=_seeds(table["seeds"], f"{where}.seeds"),
-                        llm_model=_llm_model(table["llm_model"], f"{where}.llm_model") if "llm_model" in table else None)
+                        llm_model=_llm_model(table["llm_model"], f"{where}.llm_model") if "llm_model" in table else None,
+                        rendered_prompts=_rendered_prompts(table.get("rendered_prompts", []), f"{where}.rendered_prompts"))
 
 
 def _code_files(value: Any, root: Path) -> tuple[Path, ...]:
@@ -526,6 +533,15 @@ def _llm_model(value: Any, where: str) -> str:
     if not isinstance(value, str) or _LLM_MODEL_RE.fullmatch(value) is None:
         raise FreezeError("wrong_type", f"{where} must be a model ID string of [A-Za-z0-9._:@/-]", [where])
     return value
+
+
+def _rendered_prompts(value: Any, where: str) -> tuple[str, ...]:
+    digests = _list(value, where, MAX_RECIPE_FILES)
+    if any(not isinstance(digest, str) or _SHA256_RE.fullmatch(digest) is None for digest in digests):
+        raise FreezeError("wrong_type", f"{where} must hold SHA-256 hex digests", [where])
+    if len(set(digests)) != len(digests):
+        raise FreezeError("duplicate_prompt", f"{where} repeats a hash", [where])
+    return tuple(sorted(digests))
 
 
 def _name(value: str) -> str:
@@ -680,6 +696,34 @@ def check_run(frozen: FreezeRecord, run: RunIdentity) -> None:
     if run.train_condition not in conditions_for(system):
         raise FreezeError("condition_not_frozen", f"a {system.design} {system.family} system does not train on "
                                                   f"{run.train_condition[:20]!r}", [prefix])
+
+
+def check_llm_run(frozen: FreezeRecord, system: str, recipe_files: Mapping[str, str],
+                  rendered_prompt_sha256: str, llm_model: str) -> None:
+    """An LLM run is the frozen ``system``: pinned files, a pinned rendered prompt, the pinned model (spec 009 FR15).
+
+    ``recipe_files`` maps each repository-relative POSIX path the run read to its ``text_sha256``.
+    Every one must be pinned for this system; a file with no pin is refused like a changed one. The
+    reverse doesn't hold: a system also pins files no single run reads, such as the other task's
+    prompt. A system has one rendered prompt per task, and each hash already binds its task.
+    """
+    prefix = f"recipe.{system}"
+    if _panel_system(frozen.config, system) is None or f"{prefix}.seeds" not in frozen.pins:
+        raise FreezeError("system_not_frozen", f"{system[:64]!r} is not a frozen panel system", [prefix])
+    if not recipe_files:
+        raise FreezeError("recipe_file_not_frozen", f"no recipe files to check for {system}", [prefix])
+    claimed = {f"{prefix}.file.{path}": digest for path, digest in recipe_files.items()}
+    moved = sorted(key for key, digest in claimed.items() if key not in frozen.pins or frozen.pins[key] != digest)
+    if moved:
+        raise FreezeError("recipe_file_not_frozen", f"{len(moved)} recipe file(s) differ from the freeze: "
+                                                    f"{', '.join(key[:200] for key in moved)}", moved)
+    prompts = f"{prefix}.rendered_prompts"
+    if (not isinstance(rendered_prompt_sha256, str) or _SHA256_RE.fullmatch(rendered_prompt_sha256) is None
+            or rendered_prompt_sha256 not in frozen.pins.get(prompts, "").split(",")):
+        raise FreezeError("prompt_not_frozen", f"the rendered prompt is not a frozen {system} prompt", [prompts])
+    model = f"{prefix}.llm_model"
+    if not llm_model or frozen.pins.get(model) != llm_model:
+        raise FreezeError("llm_model_not_frozen", f"the run's model is not the frozen {system} model", [model])
 
 
 def read_record(path: Path) -> dict[str, Any]:
