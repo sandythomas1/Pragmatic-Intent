@@ -702,7 +702,7 @@ def check_llm_run(frozen: FreezeRecord, system: str, recipe_files: Mapping[str, 
         raise FreezeError("recipe_not_frozen", f"the {system} run named no recipe files", [prefix])
     for path, sha256 in sorted(recipe_files.items()):
         key = f"{prefix}.file.{path}"
-        if frozen.pins.get(key) != sha256:
+        if key not in frozen.pins or frozen.pins[key] != sha256:
             raise FreezeError("recipe_not_frozen", f"{path[:128]} is not the frozen {system} recipe file", [key])
     rendered = {value for key, value in frozen.pins.items() if key.startswith(f"{prefix}.rendered.")}
     if rendered_prompt_sha256 is not None and rendered_prompt_sha256 not in rendered:
