@@ -32,8 +32,8 @@ The router and the interpreter must cover exactly the same ``(example_id, condit
 - Rows keep the router's order and are serialized with sorted keys, so the outputs are
   byte-deterministic.
 
-The test split needs a verifying freeze, and every router run must be the frozen one (FR15b). Errors name files, codes and
-counts, never an example ID or corpus text.
+The test split needs a verifying freeze, and every router run and the interpreter run must be the
+frozen ones (FR15b). Errors name files, codes and counts, never an example ID or corpus text.
 """
 
 from __future__ import annotations
@@ -51,7 +51,8 @@ from typing import Any
 from src.analysis.files import AnalysisError, parse_json, parse_jsonl, read_bounded
 from src.data.contexts import MISMATCH_CONDITIONS
 from src.data.direct_dataset import CONDITIONS
-from src.data.freeze import FreezeError, FreezeRecord, RunIdentity, check_run, recipe_sha256, require_freeze
+from src.data.freeze import (FreezeError, FreezeRecord, RunIdentity, check_llm_run, check_run, recipe_sha256,
+                             require_freeze)
 from src.evaluation.interpretation import validate_predictions
 from src.llm import streams
 from src.llm.paths import REPO_ROOT, under_outputs
@@ -102,6 +103,7 @@ class Interpreter:
     interpretation: tuple[Mapping[str, Any], ...]
     oracle: bytes
     hashes: Mapping[str, str]  # provenance / interpretation / oracle SHA-256
+    provenance: Mapping[str, Any]  # the run's record, which the test gate compares with the freeze
 
 
 # --- the composition rule (FR11) -----------------------------------------------------------------
@@ -268,7 +270,8 @@ def load_interpreter(directory: Path, split: str) -> Interpreter:
                        files["oracle"],
                        {"provenance_sha256": _sha256(provenance_bytes),
                         "interpretation_sha256": _sha256(files["interpretation"]),
-                        "oracle_sha256": _sha256(files["oracle"])})
+                        "oracle_sha256": _sha256(files["oracle"])},
+                       provenance)
 
 
 # --- the command ---------------------------------------------------------------------------------
@@ -289,6 +292,26 @@ def _check_frozen_routers(frozen: FreezeRecord, runs: Sequence[RouterRun], route
             raise ComposeError(error.code, f"{run.label}: {error}") from None
 
 
+def check_frozen_interpreter(frozen: FreezeRecord, interpreter: Interpreter) -> None:
+    """FR15b: the interpreter run recorded the frozen recipe, prompt and model.
+
+    The freeze pins the prompt file's text hash, which the run records as ``template_sha256``.
+    ``rendered_sha256`` is a different hash, of the filled instructions, and never matches a pin.
+    Every value here comes from a file, so a missing or null one is refused before the comparison.
+    """
+    try:
+        recipe, prompt = interpreter.provenance["recipe"], interpreter.provenance["prompt"]
+        recipe_path, recipe_hash, prompt_hash = recipe["path"], recipe["text_sha256"], prompt["template_sha256"]
+    except (KeyError, TypeError):
+        raise ComposeError("malformed_interpreter", "the interpreter provenance lacks its recipe or prompt") from None
+    if not all(isinstance(value, str) for value in (recipe_path, recipe_hash, prompt_hash)):
+        raise ComposeError("malformed_interpreter", "the interpreter recipe or prompt fields are wrongly typed")
+    try:
+        check_llm_run(frozen, interpreter.system, {recipe_path: recipe_hash}, prompt_hash, interpreter.model)
+    except FreezeError as error:
+        raise ComposeError(error.code, f"interpreter: {error}") from None
+
+
 def compose(*, split: str, router_root: Path, interpreter_dir: Path, root: Path = REPO_ROOT,
             router_name: str = ROUTER_NAME) -> dict[str, Any]:
     """Check every input, compose every router run, then write all files and the provenance last."""
@@ -301,6 +324,8 @@ def compose(*, split: str, router_root: Path, interpreter_dir: Path, root: Path 
     if frozen is not None:
         _check_frozen_routers(frozen, runs, router_name)
     interpreter = load_interpreter(interpreter_dir, split)
+    if frozen is not None:
+        check_frozen_interpreter(frozen, interpreter)
 
     pending: dict[str, bytes] = {}
     counts: dict[str, dict[str, int]] = {}

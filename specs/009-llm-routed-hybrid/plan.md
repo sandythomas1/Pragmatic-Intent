@@ -139,7 +139,8 @@ Key details:
   - Runner: a new `check_llm_run` compares each recipe file's `text_sha256`, the rendered-prompt
     hash and `llm_model` with the frozen `recipe.<system>.*` pins, before it imports a backend.
     The existing `check_run` is Stage 1 only.
-  - Composer: it calls `check_run` for every router run as system `deberta-v3-large`.
+  - Composer: it calls `check_run` for every router run as system `deberta-v3-large`, and
+    `check_llm_run` for the identity the interpreter run recorded in its provenance.
 
 ## Alternatives Considered
 

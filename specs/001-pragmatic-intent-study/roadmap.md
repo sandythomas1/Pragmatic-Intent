@@ -220,7 +220,8 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 
 **Next, in order (as of 2026-11-05):**
 
-- [ ] S: Merge the spec 009 PR into `main`.
+- [x] S: Merge the spec 009 PR into `main` (PR #8, 2026-11-05).
+- [ ] S: Review and merge the composer interpreter gate before the freeze. It changes pinned code.
 - [ ] C: 009 step 5: `compose` and `stage2 score` on the lab (CPU), then bring the evidence back,
   add the `inputs-dev.toml` entries and run `analysis run --split dev` (AC-009-9, T14, T15).
 - [ ] S: Run the transcript scan on the Windows/WSL logs. Only the Mac's logs were scanned on

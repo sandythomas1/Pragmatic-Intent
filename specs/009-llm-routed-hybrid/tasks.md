@@ -359,8 +359,9 @@ without blocking the freeze; the API members then stay out of the panel.
     (FR14).
   - **Runner gate (FR15).** `run --split test` calls `require_freeze` and then `check_llm_run`
     before it constructs a backend.
-  - **Composer gate (FR15b).** `compose --split test` calls `require_freeze` and then
-    `check_run` for each router run as `deberta-v3-large`.
+  - **Composer gate (FR15b).** `compose --split test` calls `require_freeze`, then `check_run`
+    for each router run as `deberta-v3-large`, then `check_llm_run` on the identity the
+    interpreter run recorded.
 - Files likely touched: `src/data/freeze.py`, `configs/freeze/freeze-v1.toml`, `src/llm/run.py`,
   `src/llm/compose.py`, `tests/test_freeze_llm.py`, `tests/test_llm_gates.py`
 - Depends on: T8, T9
@@ -370,7 +371,8 @@ without blocking the freeze; the API members then stay out of the panel.
     different `llm_model`, the run exits non-zero before a backend is constructed (asserted
     through a fake backend factory that records construction).
   - A router run with an unfrozen seed or recipe makes `compose --split test` exit non-zero, and
-    nothing is written.
+    nothing is written. The same holds for an interpreter run with an unfrozen system, recipe,
+    prompt or model, or with those fields missing.
   - The existing freeze suites still pass. `freeze check` on a fixture shows `src/llm/` files among
     the code pins.
 - Status: done (2026-11-05). Done in `src/data/freeze.py`, `src/llm/{run,compose}.py`,
@@ -378,6 +380,7 @@ without blocking the freeze; the API members then stay out of the panel.
   - A test run must use the selected prompt, on every condition, with no sample: P1 stays a pinned
     file when P2 is selected, so the hash check alone would not catch `--variant p1`.
   - `smoke` and `size` stay dev only.
+  - 2026-11-06: the composer gate now covers the interpreter run too; see the decisions log.
 
 ## T11: Prompt selection (`select-prompt`)
 - Description: `src/llm/run.py select-prompt --variants p1 p2 --split dev` (FR9, R7).
