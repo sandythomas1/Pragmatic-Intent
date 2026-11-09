@@ -209,7 +209,9 @@ today.
   a backend or making a call.
 - **FR15b Test gate (composer).** `compose --split test` calls `freeze verify` and checks each
   router run against the frozen `deberta-v3-large` recipe (stage1 recipe hash, seed and train
-  condition) through the existing Stage 1 run check, before writing anything.
+  condition) through the existing Stage 1 run check. It also checks that the interpreter run
+  recorded the frozen recipe file, rendered prompt and `llm_model`. Both happen before it writes
+  anything.
 
 **Paid-run controls**
 - **FR16 Spend cap.** Before an API run, `estimate` prints the call count, token estimate and cost

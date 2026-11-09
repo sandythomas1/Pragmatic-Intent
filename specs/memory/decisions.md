@@ -5,6 +5,29 @@ records what was decided, why, the alternatives considered, and which spec or ta
 
 <!-- New entries go at the top, most recent first -->
 
+## 2026-11-06: The composer also checks the interpreter run against the freeze (Spec 009 / T10)
+Decision (Sandy): extend FR15b. It covered only the router runs, so `compose --split test` would
+accept any test interpreter run it was given.
+
+Decision (implementation):
+- **`check_frozen_interpreter` compares what the run recorded** (recipe file, prompt, model) with
+  the pins through `check_llm_run`, before anything is written.
+- **The prompt comparison uses `prompt.template_sha256`.** That is the prompt file's text hash, which
+  is what the freeze pins. `prompt.rendered_sha256` covers the filled instructions and never matches.
+- **Missing or null fields are `malformed_interpreter`.** `check_llm_run` also stops treating a
+  missing pin as equal to a null digest, because its inputs can now come from a file.
+
+Why: the runner's gate proves a run was frozen when it ran. Only a check at the composer ties that
+run to the freeze the hybrid is built under.
+
+Alternatives considered: requiring `freeze_content_sha256` to match. It also proves the run passed
+the runner's gate, but a dated amendment changes that hash, so any amendment would force a rerun of
+the Qwen test grid. Checking `slot_keys.json` as well: the provenance records its hash but not its
+path, and the pinned recipe already names the path.
+
+Limit: the provenance is a file, so this catches mistakes and stale runs, not forgery. It does not
+tie the interpreter to `hybrid`'s own pins, because the panel has one LLM system.
+
 ## 2026-11-05: Panel and freeze choices before the freeze (Spec 009 / T10, T14)
 Decision (Sandy):
 - **Primary system:** the routed hybrid, confirming D-05.

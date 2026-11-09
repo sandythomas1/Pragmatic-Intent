@@ -91,6 +91,10 @@ class CheckLlmRunTests(unittest.TestCase):
     def test_a_moved_recipe_file_is_refused(self) -> None:
         self.assert_refused("recipe_not_frozen", files={"prompts/moved.txt": "file-hash"})
 
+    def test_a_null_digest_on_an_unpinned_path_is_not_a_match(self) -> None:
+        """A missing pin must not compare equal to a null read from a provenance file."""
+        self.assert_refused("recipe_not_frozen", files={"prompts/moved.txt": None})
+
     def test_no_recipe_files_at_all_is_refused(self) -> None:
         self.assert_refused("recipe_not_frozen", files={})
 
