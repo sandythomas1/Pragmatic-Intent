@@ -244,6 +244,10 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 - [ ] S/C: Set `draft = false`, then `freeze check`, `write`, commit and `verify` on the lab. The
   earliest date is 2026-11-06, because the latest inspection is 2026-11-05. Render P2 on the lab
   first: `freeze verify` needs that git-ignored file.
+  - C, 2026-11-09 on Windows: Sandy kept the hybrid as primary, so `draft = false`. `write --on
+    2026-11-09` gave 98 pins, content `64454bed0ecc`, and `verify` passes locally.
+  - Left for S: merge the freeze PR, then on the lab pull `main`, regenerate `data/interim/`,
+    render P2 and run `freeze verify`. It must print "verified" before the grid.
 - [ ] S: WP-09 test grid on the 5090 after the freeze (planned around Nov 9). The recipe's test
   input files need generating first.
 
