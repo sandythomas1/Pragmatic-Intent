@@ -54,6 +54,30 @@ Run through Slurm by Claude at Sandy's request. Settings: `gpu_memory_utilizatio
 - **Transfer:** 136 records, 0 invalid.
 - **First run:** kept under `outputs/archive/run1-2026-11-05/` on the lab for disclosure.
 
-Pending:
-- **Step 5:** `compose`, and `stage2 score` for Qwen and the 15 hybrid runs.
-- **AC-009-9:** `analysis run --split dev` with `hybrid` reported `run`.
+## Step 5 and AC-009-9 (2026-11-09, native Windows CPU, commit a3bff5c)
+
+Step 5 ran on Sandy's Windows machine, not the lab. It needs no GPU, and the 15 router runs were
+already local (PR #6). Logs are in `outputs/verification/windows-20261109/`. The lab logs are in
+`outputs/verification/lab-5090-20261105/`.
+- **Evidence received:** `qwen-dev.tar.gz`, SHA-256 `d6b3e9de…7c81`. It arrived without its
+  `.sha256`, so this hash is a record, not a transfer check. It holds only plain files under
+  `outputs/`: no absolute or `..` paths, no links.
+  - The four output files match the hashes in their provenance.
+  - The three input hashes match the local `data/interim/stage2/` files.
+  - The main run is `p2`, `selected_variant` true, all conditions, model commit
+    `a09a3545…`, from commit `aea7d53` with a clean tree.
+- **Compose:** 15 hybrid runs, 852,930 rows, 6,587 invalid. The lab's compose of the same inputs
+  gave the same counts.
+- **Scores:** all 17 `score` commands exit zero: Qwen dev, Qwen transfer (136 items, 0 invalid)
+  and the 15 hybrid runs. Each dev score covers 11,394 weak examples.
+- **AC-009-9 met.** `analysis run --split dev` exits zero with 6 systems run and 0 not run;
+  `hybrid` runs on `full`, `none` and `one` × 5 seeds. The component check passed for 48 runs,
+  with 1,786 statistics (0 sparse, 0 unstable).
+- **Precision (FR-10; dev diagnostic, not a finding):** hybrid `request_interpretation` L2 − L0
+  benefit difference, +0.010, 95% CI [−0.009, +0.029], half-width **0.019**. The second bootstrap
+  seed agrees within 0.000, so B = 10,000 stands. This half-width is about 2.5 times
+  DeBERTa-large's `stage1_correct` (0.008).
+- **AC-009-10 met.** `freeze check` reports only `tree_dirty` and `analysis_draft`, with no
+  recipe or `llm_model` findings.
+- **Inputs-file setback:** in an earlier attempt, the analysis refused the inputs file with
+  `system_outside_panel: ['qwen2']`. The table key `qwen2.5-7b-instruct` needed quotes in TOML.

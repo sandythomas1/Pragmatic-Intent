@@ -221,9 +221,13 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 **Next, in order (as of 2026-11-05):**
 
 - [x] S: Merge the spec 009 PR into `main` (PR #8, 2026-11-05).
-- [ ] S: Review and merge the composer interpreter gate before the freeze. It changes pinned code.
-- [ ] C: 009 step 5: `compose` and `stage2 score` on the lab (CPU), then bring the evidence back,
+- [x] S: Review and merge the composer interpreter gate before the freeze. It changes pinned code
+  (PR #9, merged 2026-11-09 as a3bff5c after C's review; 1185 tests OK on Windows).
+- [x] C: 009 step 5: `compose` and `stage2 score` on the lab (CPU), then bring the evidence back,
   add the `inputs-dev.toml` entries and run `analysis run --split dev` (AC-009-9, T14, T15).
+  Done 2026-11-09 on Windows, not the lab. The compose counts match the lab's, and AC-009-9 and
+  AC-009-10 are met. The hybrid's dev half-width is 0.019
+  ([verification](../009-llm-routed-hybrid/verification.md)).
 - [ ] S: Run the transcript scan on the Windows/WSL logs. Only the Mac's logs were scanned on
   2026-11-05 (53 logs, 0 unregistered). A new row moves the earliest freeze date to the day after it.
 - [ ] S: Tell the lab admins about the 4.8 GB held on `cbu-5090-right` with no listed process.
