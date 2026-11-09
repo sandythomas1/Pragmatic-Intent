@@ -228,8 +228,16 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   Done 2026-11-09 on Windows, not the lab. The compose counts match the lab's, and AC-009-9 and
   AC-009-10 are met. The hybrid's dev half-width is 0.019
   ([verification](../009-llm-routed-hybrid/verification.md)).
-- [ ] S: Run the transcript scan on the Windows/WSL logs. Only the Mac's logs were scanned on
+- [x] S: Run the transcript scan on the Windows/WSL logs. Only the Mac's logs were scanned on
   2026-11-05 (53 logs, 0 unregistered). A new row moves the earliest freeze date to the day after it.
+  Done by C on 2026-11-09, count-only with the IDs kept out of the session:
+  - the Pragmatic-Intent Claude Code logs plus `~/.codex/sessions`: 65 logs, 13 test dialogues
+    mentioned, 0 unregistered;
+  - the other 16 Claude Code project folders: 359 logs, 0 mentioned;
+  - WSL has no Claude or Codex logs.
+
+  Nothing was registered, so the earliest freeze date is still 2026-11-06. Rescan only if a
+  session works with test data before the freeze.
 - [ ] S: Tell the lab admins about the 4.8 GB held on `cbu-5090-right` with no listed process.
 - [ ] C: Look into why P1's mean fell (0.1399 to 0.1275) while its invalid rate improved, before
   the paper's methods section.
