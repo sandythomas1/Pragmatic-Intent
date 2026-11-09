@@ -6,7 +6,7 @@
 
 version = "analysis-v1"
 rules_version = "auto-v1"   # chosen 2026-11-05; the auto-v2 L3 check did not land before the freeze
-draft = true                # stays true until the freeze names the primary system (D-05)
+draft = false               # primary confirmed as hybrid by Sandy on 2026-11-09, after the dev precision report
 alpha = 0.05                # must equal 1 - confidence: the interval decides the primary test
 
 [bootstrap]
@@ -21,7 +21,7 @@ max_excluded_share = 0.01   # more zero-denominator replicates than this: unstab
 # Confirmatory H2 test: linear (-1, 0, +1) contrast of the full - none benefit over L0-L2, i.e.
 # the L2 - L0 benefit difference. The quadratic contrast is reported descriptively.
 [primary]
-system = "hybrid"           # D-05, confirmed 2026-11-05; needs routed + oracle streams
+system = "hybrid"           # D-05, confirmed 2026-11-05 and 2026-11-09; needs routed + oracle streams
 endpoint = "request_interpretation"
 contrast = "full_minus_none"
 trend = "linear"
