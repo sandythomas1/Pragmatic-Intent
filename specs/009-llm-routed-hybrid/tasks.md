@@ -506,8 +506,10 @@ without blocking the freeze; the API members then stay out of the panel.
   - The full suite passes.
 - Status: in-progress (2026-11-05). The panel and freeze configs are done: RoBERTa dropped (OQ4,
   Sandy, 2026-11-05), `auto-v1` kept, `llm` renamed, recipes and `llm_model` filled in. `rendered_prompts`
-  names P2, selected on the repeat run. Still open: `configs/analysis/inputs-dev.toml` (after the
-  dev evidence).
+  names P2, selected on the repeat run.
+- Status: done (2026-11-09). `configs/analysis/inputs-dev.toml` lists Qwen and the 15 hybrid
+  runs. The dev analysis loads it, and `freeze check` meets AC-009-10
+  ([verification](verification.md)).
 
 ## T15: Lab runbook and dev close-out evidence
 - Description:
@@ -536,7 +538,8 @@ without blocking the freeze; the API members then stay out of the panel.
   - Every runbook command has been dry-run on fixtures or `--help` in WSL by Claude, with GPU steps
     excluded.
 - Status: in-progress (2026-11-05). Steps 1–4 ran on the lab; see [verification](verification.md).
-  Step 5, the evidence archive and AC-009-9 are still open.
+  - **2026-11-09.** Step 5 ran on Windows from Sandy's `qwen-dev.tar.gz`. AC-009-9 is met.
+    Still open: the decisions-log entry and the limitations disclosures (FR17, R14).
   - **Done.** `docs/llm_lab_runbook.md`; the `run.py smoke` command (7 tests in
     `SmokeTests`); and `specs/009-llm-routed-hybrid/verification.md` with the pre-run evidence.
   - **Suite.** 1117 tests pass on Windows (with and without git) and in WSL.

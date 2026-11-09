@@ -1,6 +1,8 @@
 # Dev inputs for the spec 007 analysis (format: src/analysis/inputs.py). The TF-IDF runs are from
 # 2026-10-21, the DeBERTa-v3-base grid from 2026-10-25 (WSL) and the DeBERTa-v3-large grid from
-# 2026-10-27 (lab RTX 5090, commit 213b8bd); the other panel systems are not_run until their grids land.
+# 2026-10-27 (lab RTX 5090, commit 213b8bd). Qwen's dev run is from 2026-11-05 (lab RTX 5090, commit
+# aea7d53); the hybrid was composed and both were scored on Windows on 2026-11-09. Any other panel
+# system is not_run until its grid lands.
 version = "analysis-inputs-v1"
 split = "dev"
 
@@ -50,4 +52,29 @@ stage1 = [
   { train_condition = "full", seed = 2026, run_dir = "outputs/stage1/deberta-v3-large/train-full/seed2026" },
   { train_condition = "full", seed = 314, run_dir = "outputs/stage1/deberta-v3-large/train-full/seed314" },
   { train_condition = "full", seed = 2718, run_dir = "outputs/stage1/deberta-v3-large/train-full/seed2718" },
+]
+
+[systems."qwen2.5-7b-instruct"]
+stage2 = [
+  { train_condition = "untrained", seed = 0, routed = "outputs/stage2/qwen2.5-7b-instruct/dev/routed.jsonl", oracle = "outputs/stage2/qwen2.5-7b-instruct/dev/oracle.jsonl" },
+]
+transfer = "outputs/stage2/metrics/qwen2.5-7b-instruct.transfer.json"
+
+[systems.hybrid]
+stage2 = [
+  { train_condition = "none", seed = 13, routed = "outputs/stage2/hybrid/dev/train-none/seed13/routed.jsonl", oracle = "outputs/stage2/hybrid/dev/train-none/seed13/oracle.jsonl" },
+  { train_condition = "none", seed = 42, routed = "outputs/stage2/hybrid/dev/train-none/seed42/routed.jsonl", oracle = "outputs/stage2/hybrid/dev/train-none/seed42/oracle.jsonl" },
+  { train_condition = "none", seed = 2026, routed = "outputs/stage2/hybrid/dev/train-none/seed2026/routed.jsonl", oracle = "outputs/stage2/hybrid/dev/train-none/seed2026/oracle.jsonl" },
+  { train_condition = "none", seed = 314, routed = "outputs/stage2/hybrid/dev/train-none/seed314/routed.jsonl", oracle = "outputs/stage2/hybrid/dev/train-none/seed314/oracle.jsonl" },
+  { train_condition = "none", seed = 2718, routed = "outputs/stage2/hybrid/dev/train-none/seed2718/routed.jsonl", oracle = "outputs/stage2/hybrid/dev/train-none/seed2718/oracle.jsonl" },
+  { train_condition = "one", seed = 13, routed = "outputs/stage2/hybrid/dev/train-one/seed13/routed.jsonl", oracle = "outputs/stage2/hybrid/dev/train-one/seed13/oracle.jsonl" },
+  { train_condition = "one", seed = 42, routed = "outputs/stage2/hybrid/dev/train-one/seed42/routed.jsonl", oracle = "outputs/stage2/hybrid/dev/train-one/seed42/oracle.jsonl" },
+  { train_condition = "one", seed = 2026, routed = "outputs/stage2/hybrid/dev/train-one/seed2026/routed.jsonl", oracle = "outputs/stage2/hybrid/dev/train-one/seed2026/oracle.jsonl" },
+  { train_condition = "one", seed = 314, routed = "outputs/stage2/hybrid/dev/train-one/seed314/routed.jsonl", oracle = "outputs/stage2/hybrid/dev/train-one/seed314/oracle.jsonl" },
+  { train_condition = "one", seed = 2718, routed = "outputs/stage2/hybrid/dev/train-one/seed2718/routed.jsonl", oracle = "outputs/stage2/hybrid/dev/train-one/seed2718/oracle.jsonl" },
+  { train_condition = "full", seed = 13, routed = "outputs/stage2/hybrid/dev/train-full/seed13/routed.jsonl", oracle = "outputs/stage2/hybrid/dev/train-full/seed13/oracle.jsonl" },
+  { train_condition = "full", seed = 42, routed = "outputs/stage2/hybrid/dev/train-full/seed42/routed.jsonl", oracle = "outputs/stage2/hybrid/dev/train-full/seed42/oracle.jsonl" },
+  { train_condition = "full", seed = 2026, routed = "outputs/stage2/hybrid/dev/train-full/seed2026/routed.jsonl", oracle = "outputs/stage2/hybrid/dev/train-full/seed2026/oracle.jsonl" },
+  { train_condition = "full", seed = 314, routed = "outputs/stage2/hybrid/dev/train-full/seed314/routed.jsonl", oracle = "outputs/stage2/hybrid/dev/train-full/seed314/oracle.jsonl" },
+  { train_condition = "full", seed = 2718, routed = "outputs/stage2/hybrid/dev/train-full/seed2718/routed.jsonl", oracle = "outputs/stage2/hybrid/dev/train-full/seed2718/oracle.jsonl" },
 ]
