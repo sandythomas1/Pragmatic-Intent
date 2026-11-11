@@ -1,7 +1,20 @@
 {
-  "amendments": [],
+  "amendments": [
+    {
+      "changes": {
+        "recipe.qwen2.5-7b-instruct.rendered.outputs/llm/prompts/p2.txt": {
+          "new": "b736f5e4868b4a644de00dd6542e52ea38f6940971d89cc31ccc24811ef40a62",
+          "old": "5c7d9b8246ff1e164bbd93654947047b94fdb6494197063d3aa98106734985fa"
+        }
+      },
+      "commit": "4fc4c7ac262411928873ab0e12a655626ba2ddc5",
+      "on": "2026-11-11",
+      "previous_content_sha256": "64454bed0ecc459f571e7930ea3de8f9145a7002ca75fcc1546c710320a68740",
+      "reason": "Correct the rendered P2 pin: the 2026-11-09 write hashed a stale local render from before the aea7d53 prompt fix (5c7d9b82). The selected P2 is the post-fix render b736f5e4, as in the selection run provenance. No test run has used the freeze."
+    }
+  ],
   "analysis_config_sha256": "231365295e222af75627dbe1b8de92b2b1f09712cbf2ff58cf7416c8175acd18",
-  "content_sha256": "64454bed0ecc459f571e7930ea3de8f9145a7002ca75fcc1546c710320a68740",
+  "content_sha256": "5c5759f767c9571ee0a01e5092b8ad03d390a73ec2474b89c00f69bab16e9982",
   "freeze_date": "2026-11-09",
   "inputs_path": "configs/freeze/freeze-v1.toml",
   "original_pins": {
@@ -197,7 +210,7 @@
     "recipe.qwen2.5-7b-instruct.file.configs/llm/qwen2.5-7b-instruct.toml": "4aa1f8b67bf07f96678f9b5eae303e041bf19188f12b509951a95936d75cfc8c",
     "recipe.qwen2.5-7b-instruct.file.configs/llm/slot_keys.json": "90f4add788431b3087fa0bdbbc1291f9ce5f789390016a8a355900ad18089508",
     "recipe.qwen2.5-7b-instruct.llm_model": "Qwen/Qwen2.5-7B-Instruct@a09a35458c702b33eeacc393d103063234e8bc28",
-    "recipe.qwen2.5-7b-instruct.rendered.outputs/llm/prompts/p2.txt": "5c7d9b8246ff1e164bbd93654947047b94fdb6494197063d3aa98106734985fa",
+    "recipe.qwen2.5-7b-instruct.rendered.outputs/llm/prompts/p2.txt": "b736f5e4868b4a644de00dd6542e52ea38f6940971d89cc31ccc24811ef40a62",
     "recipe.qwen2.5-7b-instruct.seeds": "0",
     "recipe.tfidf-context.seeds": "13",
     "recipe.tfidf-context.stage1": "4378f71a8a71957adea6c569d7e86f715ae4a7bd23a1f0ca5508ed8c00a7cea4",

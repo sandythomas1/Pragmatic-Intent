@@ -246,6 +246,10 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   first: `freeze verify` needs that git-ignored file.
   - C, 2026-11-09 on Windows: Sandy kept the hybrid as primary, so `draft = false`. `write --on
     2026-11-09` gave 98 pins, content `64454bed0ecc`, and `verify` passes locally.
+  - C, 2026-11-11: amendment 1 fixes the rendered P2 pin. The write had hashed a stale local
+    `p2.txt` from before the aea7d53 prompt fix (`5c7d9b82`); the selected P2 is `b736f5e4`, as in
+    the selection run's provenance. Content is now `5c5759f767c9`, and `verify` passes on a fresh
+    render. No test run had used the freeze. The paper discloses the amendment.
   - Left for S: merge the freeze PR, then on the lab pull `main`, regenerate `data/interim/`,
     render P2 and run `freeze verify`. It must print "verified" before the grid.
 - [ ] S: WP-09 test grid on the 5090 after the freeze (planned around Nov 9). The recipe's test
