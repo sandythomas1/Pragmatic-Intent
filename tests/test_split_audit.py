@@ -574,7 +574,10 @@ class TranscriptScanTest(unittest.TestCase):
 
     def test_cli_register_adds_rows(self) -> None:
         self.log("a.jsonl", b"SNG90003\n")
-        with mock.patch.object(sys, "stdout", io.StringIO()), self.assertLogs(sa.logger, "INFO"):
+        # Read no freeze date from the real repository's record.
+        no_freeze = self.ws.root / "data/manifests/freeze.json"
+        with mock.patch.object(sys, "stdout", io.StringIO()), self.assertLogs(sa.logger, "INFO"), \
+                mock.patch.object(sa, "FREEZE_FILE", no_freeze):
             code = sa.main(["scan", "--items", str(self.ws.root / "data/interim/direct/items.jsonl"),
                             "--registry", str(self.ws.registry), "--transcripts", str(self.logs),
                             "--register", "--on", "2026-10-20"])
