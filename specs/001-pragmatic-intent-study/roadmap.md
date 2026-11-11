@@ -239,8 +239,10 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
   Nothing was registered, so the earliest freeze date is still 2026-11-06. Rescan only if a
   session works with test data before the freeze.
 - [ ] S: Tell the lab admins about the 4.8 GB held on `cbu-5090-right` with no listed process.
-- [ ] C: Look into why P1's mean fell (0.1399 to 0.1275) while its invalid rate improved, before
-  the paper's methods section.
+- [x] C: Look into why P1's mean fell (0.1399 to 0.1275) while its invalid rate improved, before
+  the paper's methods section. Done 2026-11-11: after the fix, the zero-shot P1 adds extra
+  same-domain slots on non-trip items. P2's examples prevent that, and the choice of P2 stands
+  ([verification](../009-llm-routed-hybrid/verification.md)).
 - [ ] S/C: Set `draft = false`, then `freeze check`, `write`, commit and `verify` on the lab. The
   earliest date is 2026-11-06, because the latest inspection is 2026-11-05. Render P2 on the lab
   first: `freeze verify` needs that git-ignored file.
