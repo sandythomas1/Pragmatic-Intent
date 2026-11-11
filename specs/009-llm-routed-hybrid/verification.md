@@ -54,6 +54,39 @@ Run through Slurm by Claude at Sandy's request. Settings: `gpu_memory_utilizatio
 - **Transfer:** 136 records, 0 invalid.
 - **First run:** kept under `outputs/archive/run1-2026-11-05/` on the lab for disclosure.
 
+### Why P1's mean fell after the prompt fix (diagnosed 2026-11-11, dev only)
+
+`scripts/diagnose_prompt_change.py` compared each variant's first selection run (commit `338fb00`)
+with its repeat (`aea7d53`) on the `request_interpretation` population, 9,032 items per condition.
+The code (`source_sha256` `4ff3631f…`), router inputs and model are the same in both runs; only the
+prompt text changed. The runs came from the lab (`selection-runs.tar.gz`, sha256 `942221ea…`).
+The reports hold totals only: `outputs/research/{p1,p2}-prompt-change.json`.
+
+| | `none` exact | `full` exact | pooled change | lost / gained | mean slots (`none`, `full`) |
+|---|---|---|---|---|---|
+| P1 | 0.1313 → 0.1198 | 0.1489 → 0.1354 | −0.0125 | 642 / 416 | 2.10 → 2.30, 2.15 → 2.39 |
+| P2 | 0.1598 → 0.1719 | 0.1737 → 0.1832 | +0.0109 | 351 / 547 | 1.79 → 1.88, 1.86 → 2.01 |
+
+- The interpreter-only changes match the hybrid selection means: P1 −0.0124 and P2 +0.0109.
+  The router plays no part in the drop.
+- **The loss is on items that aren't train or taxi requests.**
+  - P1 on hotel, restaurant and attraction items (5,936 per condition): 0.1253 → 0.1041 (`none`) and
+    0.1242 → 0.1046 (`full`).
+  - P1 on trip items (3,096 per condition): 0.1428 → 0.1499 and 0.1964 → 0.1944.
+  - P2 rose on trip items (0.1780 → 0.2041 and 0.1906 → 0.2213) and held steady on the others.
+- **How it fails: extra slots from the item's own domain.**
+  - P1's `slots_extra` count rose by 211 (`none`) and 309 (`full`).
+  - On the 364 non-trip items P1 lost, an ad-hoc tally using the script's functions found 476 added
+    slot names. 386 are from the item's own domain (for example `restaurant.name`, `.addr`, `.ref`
+    and `.phone` on restaurant requests), 53 are train or taxi slots, and 37 come from other domains.
+- **The invalid rate fell, but few of those answers became exact.** P1's invalid answers fell by
+  122 (`none`) and 164 (`full`); only 27 and 29 of them became exact.
+- **Reading:** the longer slot instruction made the zero-shot prompt list more slots across the
+  board, and exactness counts any extra slot as an error. P2's six examples anchor how many slots
+  to list, so it gained from the same wording.
+- **Effect on the study:** none. P2 was ahead under both prompts (0.1665 vs 0.1399, then 0.1774 vs
+  0.1275). The paper can disclose P1's sensitivity to wording in one sentence.
+
 ## Step 5 and AC-009-9 (2026-11-09, native Windows CPU, commit a3bff5c)
 
 Step 5 ran on Sandy's Windows machine, not the lab. It needs no GPU, and the 15 router runs were
