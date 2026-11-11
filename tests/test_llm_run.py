@@ -323,8 +323,9 @@ class SafetyTests(Fixture):
         self.assertFalse((self.root.path / "outputs/llm/cache").exists())
 
     def test_cli_refuses_the_test_split_without_reading_the_recipe(self):
+        # An empty root has no freeze record, whatever the real repository holds.
         stderr = io.StringIO()
-        with redirect_stderr(stderr):
+        with redirect_stderr(stderr), mock.patch.object(lr, "REPO_ROOT", self.root.path):
             code = lr.main(["run", "--recipe", "configs/llm/does-not-exist.toml", "--split", "test", "--task", "main"])
         self.assertEqual(code, 1)
         self.assertIn("refused", stderr.getvalue())

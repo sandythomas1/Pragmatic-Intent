@@ -326,8 +326,10 @@ class DefaultConfigTest(unittest.TestCase):
     def setUp(self) -> None:
         self.config = load_config(Path(__file__).resolve().parents[1] / DEFAULT_CONFIG)
 
-    def test_default_loads_as_a_draft(self) -> None:
-        self.assertTrue(self.config.draft)
+    def test_default_is_the_frozen_config_with_hybrid_primary(self) -> None:
+        """Sandy confirmed the hybrid as primary and left draft mode on 2026-11-09, for the freeze."""
+        self.assertFalse(self.config.draft)
+        self.assertEqual(self.config.primary.system, "hybrid")
         self.assertEqual(self.config.rules_version, "auto-v1")
 
     def test_default_encodes_the_2026_10_20_decisions(self) -> None:
