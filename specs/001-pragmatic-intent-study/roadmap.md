@@ -254,6 +254,38 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
     render P2 and run `freeze verify`. It must print "verified" before the grid.
 - [ ] S: WP-09 test grid on the 5090 after the freeze (planned around Nov 9). The recipe's test
   input files need generating first.
+  - C, 2026-11-18: Sandy can use only one 5090, and the grid is about 17 h of GPU time, so it now
+    runs in resumable sessions on one card.
+    - **What was added.** `scripts/stage1_test_grid.sh` (pins `GPU=` as the only visible device,
+      caps runs with `MAX_RUNS`, stops on a STOP file, writes to `outputs/stage1-test/`) and
+      `scripts/plan_test_grid.py` (checks the freeze and every run before any GPU time).
+    - **Order.** TF-IDF, then the Qwen test run, then DeBERTa-large one seed per session
+      (2.3 h each, 11.7 h measured), then compose, then DeBERTa-base last. Base is the cut if time
+      runs out.
+    - **Checks.** The planner verifies against the real freeze locally: 32 runs, all in the
+      frozen grid. No pinned code changed.
+    - [Runbook](../../docs/wp09_single_gpu_runbook.md).
+    - **Schedule.** Sandy chose two overnight blocks. Night 1 runs TF-IDF, Qwen and all of
+      DeBERTa-large; compose follows the next morning. Night 2 runs DeBERTa-base, which is still
+      run last and cut if needed.
+    - **Handoff, 2026-11-18 evening (for the MacBook session).** Sandy plans to start night 1
+      tonight from the MacBook, on whichever lab computer with a 5090 is free.
+      1. Merge the WP-09 launcher PR into `main` first. The lab clones `main`, and the launcher
+         is not on `main` until the merge.
+      2. On the lab, follow the [runbook](../../docs/wp09_single_gpu_runbook.md):
+         - "Session 0", then "Session 1", while Sandy watches;
+         - then, in tmux, `GPU=<the 5090's index> SYSTEMS="deberta-v3-large"
+           scripts/stage1_test_grid.sh lab-5090` (about 11.7 h).
+      3. Stop and report, rather than work around, if any of these happen:
+         - `freeze verify` doesn't print `verified`;
+         - `git status --short` isn't empty;
+         - the dry run doesn't end with `32 run(s) planned`;
+         - any test-gate refusal appears.
+      4. Don't print test dialogue IDs or text in the chat. Logs, `metrics.json` and checksums are
+         fine.
+      5. Afterwards, record here how far it got: the commit, the machine, the runs finished, and
+         the three test-input checksums.
+      - PR #12 (the P1 diagnosis) isn't needed for tonight.
 
 - [x] 2026-10-23 to 10-25, at Sandy's request: WSL DeBERTa-base dev grid in
   `~/pi-wsl-20261023` (`none`/`one`/`full` × five seeds), followed by the real dev analysis.
