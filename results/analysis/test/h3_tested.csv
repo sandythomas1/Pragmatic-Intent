@@ -1,0 +1,8 @@
+system,reference,line,endpoint,contrast,level,point,ci_low,ci_high,p,p_holm,examples,dialogues,status,provenance
+tfidf-utterance,hybrid,test_time,stage1_correct,full_minus_none,overall,-0.08861920688007645,-0.09328521227087093,-0.08410061699098244,0.0001,,10465,934,ok,report.json#provenance (config 231365295e22)
+tfidf-context,hybrid,test_time,stage1_correct,full_minus_none,overall,-0.07858576206402293,-0.0842115292996665,-0.07322362052274928,0.0001,,10465,934,ok,report.json#provenance (config 231365295e22)
+deberta-v3-base,hybrid,test_time,stage1_correct,full_minus_none,overall,-0.07107501194457716,-0.0749735194992778,-0.06724582338902149,0.0001,,10465,934,ok,report.json#provenance (config 231365295e22)
+deberta-v3-large,hybrid,test_time,stage1_correct,full_minus_none,overall,-0.0037840420449116174,-0.005551858541686466,-0.002040038131553859,0.0001,,10465,934,ok,report.json#provenance (config 231365295e22)
+qwen2.5-7b-instruct,hybrid,test_time,request_interpretation,full_minus_none,overall,0.0015630636046651434,0.0005558912386706963,0.0026427560169891458,0.001,,8317,927,ok,report.json#provenance (config 231365295e22)
+qwen2.5-7b-instruct,hybrid,test_time,type_exact,full_minus_none,overall,-0.08671703165343787,-0.09345419847328244,-0.08014685117198532,,,10457,934,ok,report.json#provenance (config 231365295e22)
+qwen2.5-7b-instruct,hybrid,test_time,stage1_correct,full_minus_none,overall,-0.08470138557095079,-0.09424736337488016,-0.07544647120618853,,,10465,934,ok,report.json#provenance (config 231365295e22)
