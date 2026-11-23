@@ -1,0 +1,7 @@
+system,endpoint,included,excluded,excluded_share
+tfidf-utterance,stage1_correct,booking; info_seeking; recommendation; travel,,0.0
+tfidf-context,stage1_correct,booking; info_seeking; recommendation; travel,,0.0
+deberta-v3-base,stage1_correct,booking; info_seeking; recommendation; travel,,0.0
+deberta-v3-large,stage1_correct,booking; info_seeking; recommendation; travel,,0.0
+qwen2.5-7b-instruct,request_interpretation,booking; info_seeking; recommendation; travel,,0.0
+hybrid,request_interpretation,booking; info_seeking; recommendation; travel,,0.0

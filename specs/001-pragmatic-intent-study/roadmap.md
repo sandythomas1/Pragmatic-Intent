@@ -62,7 +62,7 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
 | WP-06 Act references, Stage 2/routing scorers, IndirectRequests transfer (FR-15) | Code | C | **005** scoring | Tooling implemented 2026-10-18; dev inputs prepared. Model outputs and later adequacy/LLM-judge calibration pending. |
 | WP-07 Models on dev | Code | **S**, C reviews | none (Sandy's code) | DeBERTa-v3-base dev grid done 2026-10-25 in WSL (`none`/`one`/`full` × five seeds, 15 runs) and analyzed. Matched dev accuracy: none 0.906, one 0.907, full 0.908 (dev diagnostics, not findings). [Run record](../../docs/wsl_development_2026-10-23.md). The large encoders, LLM and hybrid are not yet run. |
 | WP-08 Feasibility and freeze record | Human + code | S, C manifest | 004/005 freeze tooling; **008** [freeze record](../008-freeze-record/spec.md) | Tooling done 2026-10-22 (spec 008 T1–T9; [procedure](../../docs/freeze.md)). `python -m src.data.freeze check` lists what Sandy must settle before `write`: the draft config, 3 unpinned encoder revisions, the LLM/hybrid recipes. There is one freeze, just before the Nov 9 grid. Every test entry point is gated on `verify`. |
-| WP-09 Held-out grid and hybrid | Code run | S | none | Test grid run 2026-11-19 to 11-22: TF-IDF, Qwen, DeBERTa-large and the hybrid are scored; DeBERTa-base finished 2026-11-22 (job 468). All 32 Stage 1 test rows are recorded. Next: `analysis run --split test`. |
+| WP-09 Held-out grid and hybrid | Code run | S | none | Test grid run 2026-11-19 to 11-22: TF-IDF, Qwen, DeBERTa-large and the hybrid are scored; DeBERTa-base finished 2026-11-22 (job 468). All 32 Stage 1 test rows are recorded. Test analysis run 2026-11-23 (job 469): primary H2 interval includes 0. |
 | WP-10 Analysis and error audit | Code + human | C analysis tooling, S audit | **007** [analysis and error audit](../007-analysis-error-audit/spec.md) (renumbered from 006 on 2026-10-19) | Drafted, reviewed (R1–R11 applied) and decomposed into 14 tasks on 2026-10-20 ([tasks](../007-analysis-error-audit/tasks.md)). T1 (config `configs/analysis/analysis-v1.toml`, draft) done 2026-10-20; T2 (shared bootstrap engine, Holm) done 2026-10-21; T3–T13 done 2026-10-21: the full `python -m src.analysis run` and `error-audit` tooling, 731 tests. T14 done 2026-10-25, pending Sandy's review: the real dev analysis of the TF-IDF runs and the DeBERTa-v3-base grid passed (91 s, component check, Monte Carlo 0.00016); the precision numbers are in the D-07 entry of `specs/memory/decisions.md`. Next: `/spec-retro 007`. Sandy runs `uv lock` for the new `figures` group. |
 | WP-11 Paper and demo | Human | S, P guides the CS-paper form | none | Related work (FR-11) can start now. |
 | WP-12 Publication extension | none | none | none | **Withdrawn** 2026-10-12. |
@@ -319,6 +319,18 @@ Freeze, leakage checks, scorer verification and honest limits are never cut.
     - Private evidence archives (test predictions, never in git) are at `~/wp09-test-evidence.tar.gz`
       on the lab, with a verified copy on Sandy's Mac (sha256 `1e25b96d…`). The base archive is
       `~/wp09-test-evidence-base.tar.gz` (sha256 `e352d4a2…`), also copied and verified on the Mac.
+    - **Test analysis, 2026-11-23 (job 469, CPU on cbu-5090-left, commit `60b7af6`).**
+      `python -m src.analysis run --split test --inputs configs/analysis/inputs-test.toml --allow-test`
+      exited 0 in 4 min. Every FR21 gate passed: 6 systems and 48 runs, 0 not run, 0 sparse or unstable statistics.
+      The tables are in [`results/analysis/test/`](../../results/analysis/test/). `report.json`
+      stays private, in `outputs/` and the archive `~/wp09-analysis/wp09-test-analysis.tar.gz` (sha256 `5396dbb5…`,
+      copied and verified on the Mac).
+      - **Primary (confirmatory H2, hybrid, matched):** the L2 − L0 benefit difference is −0.005 [−0.027, 0.018],
+        p 0.686: `interval_includes_0`. The test set doesn't support it.
+      - Secondary (Holm): H1 trend +0.033 [0.012, 0.054], p_holm 0.008. Full − mismatched (hybrid) +0.057,
+        p_holm 0.001. H2 detection trend 0.000, p_holm 0.940. H4 detection vs. oracle +0.024, p_holm 0.213.
+        H3: TF-IDF and DeBERTa-base are 0.07–0.09 below the hybrid's context benefit, DeBERTa-large 0.004 below,
+        all p_holm 0.001.
 
 - [x] 2026-10-23 to 10-25, at Sandy's request: WSL DeBERTa-base dev grid in
   `~/pi-wsl-20261023` (`none`/`one`/`full` × five seeds), followed by the real dev analysis.

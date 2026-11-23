@@ -1,0 +1,2 @@
+system,model_family,gpt_family,split,n,request_recall,value_accuracy,end_to_end,invalid_outputs,data_kind,label
+qwen2.5-7b-instruct,qwen,false,test,194,0.030927835051546393,0.6082474226804123,0.020618556701030927,0,llm_generated_transfer,LLM-generated (IndirectRequests); never pooled with the human-authored benchmark

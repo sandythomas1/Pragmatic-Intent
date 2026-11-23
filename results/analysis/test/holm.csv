@@ -1,0 +1,10 @@
+name,kind,system,reference,endpoint,contrast,condition,point,ci_low,ci_high,p,p_holm,examples,dialogues,status,provenance
+h1-trend,h1_trend,hybrid,,request_interpretation,,none,0.03318922358636375,0.01204876724392942,0.05412159441786396,0.0026,0.0078,2137,797,ok,report.json#provenance (config 231365295e22)
+h2-detection-trend,h2_trend,hybrid,,stage1_correct,full_minus_none,,0.0003038742384753766,-0.007932025190350817,0.008590115840977365,0.9398,0.9398,2139,797,ok,report.json#provenance (config 231365295e22)
+h4-detection-vs-oracle,h4_contrast,hybrid,,,,,0.024463724168912765,-0.005015803594398877,0.05461730892058772,0.1066,0.2132,1272,687,ok,report.json#provenance (config 231365295e22)
+full-minus-mismatched,mismatch_control,hybrid,,request_interpretation,full_minus_mismatched,,0.05709112854556427,0.04806201550387597,0.06593539054966249,0.0001,0.0009000000000000001,8285,927,ok,report.json#provenance (config 231365295e22)
+h3-tfidf-utterance,h3_difference,tfidf-utterance,hybrid,stage1_correct,full_minus_none,,-0.08861920688007645,-0.09328521227087093,-0.08410061699098244,0.0001,0.0009000000000000001,10465,934,ok,report.json#provenance (config 231365295e22)
+h3-tfidf-context,h3_difference,tfidf-context,hybrid,stage1_correct,full_minus_none,,-0.07858576206402293,-0.0842115292996665,-0.07322362052274928,0.0001,0.0009000000000000001,10465,934,ok,report.json#provenance (config 231365295e22)
+h3-deberta-v3-base,h3_difference,deberta-v3-base,hybrid,stage1_correct,full_minus_none,,-0.07107501194457716,-0.0749735194992778,-0.06724582338902149,0.0001,0.0009000000000000001,10465,934,ok,report.json#provenance (config 231365295e22)
+h3-deberta-v3-large,h3_difference,deberta-v3-large,hybrid,stage1_correct,full_minus_none,,-0.0037840420449116174,-0.005551858541686466,-0.002040038131553859,0.0001,0.0009000000000000001,10465,934,ok,report.json#provenance (config 231365295e22)
+h3-qwen2.5-7b-instruct,h3_difference,qwen2.5-7b-instruct,hybrid,request_interpretation,full_minus_none,,0.0015630636046651434,0.0005558912386706963,0.0026427560169891458,0.001,0.004,8317,927,ok,report.json#provenance (config 231365295e22)

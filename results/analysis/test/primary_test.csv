@@ -1,0 +1,2 @@
+label,system,line,endpoint,contrast,weights,status,point,ci_low,ci_high,p,decision,quadratic_point,quadratic_ci_low,quadratic_ci_high,examples,dialogues,provenance
+L2 − L0 benefit difference (linear contrast),hybrid,matched,request_interpretation,full_minus_none,-1; 0; 1,ok,-0.0048119870085702385,-0.027228049938118067,0.018048434515537923,0.6862,interval_includes_0,0.01855964162685396,-0.020012549436652902,0.0574102669236648,2137,797,report.json#provenance (config 231365295e22)

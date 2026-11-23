@@ -1,0 +1,3 @@
+system,line,condition,definition,point,ci_low,ci_high,p,p_holm,examples,dialogues,status,provenance
+qwen2.5-7b-instruct,test_time,full,"drop(detection) - drop(oracle), drop = rate_L0 - rate_L2",0.02164757412398924,-0.008742262054635713,0.05224621494167295,,,1272,687,ok,report.json#provenance (config 231365295e22)
+hybrid,matched,full,"drop(detection) - drop(oracle), drop = rate_L0 - rate_L2",0.024463724168912765,-0.005015803594398877,0.05461730892058772,0.1066,,1272,687,ok,report.json#provenance (config 231365295e22)
