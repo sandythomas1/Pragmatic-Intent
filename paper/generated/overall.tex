@@ -1,0 +1,20 @@
+% Generated; do not edit. Regenerate with:
+%   python -m src.analysis.paper_tables --tables results/analysis/test --out paper/generated
+% Source: results/analysis/test/h1_rates.csv sha256=28f332c7dd5086b37ad31e4148700eedf9fddf48d5b86959ee66b78598e02caa
+% Source: results/analysis/test/mismatch_controls.csv sha256=8588c0a2b867e17ddf18e136c9320de0c7f9e1a59a10aa5044e7c53b4cf79994
+% Analysis config: 231365295e22
+\begin{tabular}{llrrrrrr}
+\toprule
+System & Endpoint & none & one & full & mism. & mism.-one & full$-$mism. \\
+\midrule
+TF-IDF (utterance) & detection & 0.897 & 0.897 & 0.897 & 0.897 & 0.897 & 0.000 \\
+TF-IDF (context) & detection & 0.885 & 0.891 & 0.895 & 0.889 & 0.885 & +0.006 \\
+DeBERTa-v3-base & detection & 0.924 & 0.926 & 0.926 & 0.911 & 0.910 & +0.015 \\
+DeBERTa-v3-large & detection & 0.927 & 0.930 & 0.928 & 0.903 & 0.905 & +0.025 \\
+Qwen2.5-7B-Instruct & detection & 0.668 & 0.678 & 0.672 & 0.598 & 0.622 & +0.073 \\
+Routed hybrid & detection & 0.921 & 0.927 & 0.926 & 0.892 & 0.895 & +0.034 \\
+\midrule
+Qwen2.5-7B-Instruct & interp. & 0.179 & 0.197 & 0.186 & 0.127 & 0.148 & +0.059 \\
+Routed hybrid & interp. & 0.181 & 0.200 & 0.186 & 0.130 & 0.153 & +0.057 \\
+\bottomrule
+\end{tabular}

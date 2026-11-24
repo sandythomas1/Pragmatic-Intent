@@ -1,0 +1,438 @@
+% Pragmatic Intent: FR-12 paper draft (NeurIPS 2026 style, preprint mode).
+% Every number in a table, and every number in the results prose, comes from paper/generated/,
+% which src/analysis/paper_tables.py writes from the frozen test analysis. Do not type results by
+% hand: change the analysis, regenerate, rebuild. See paper/README.md.
+\documentclass{article}
+
+\usepackage[preprint]{neurips_2026}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+
+\input{generated/numbers}
+
+% An unresolved item the draft owner must fill in before submission.
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+
+\title{Does Dialogue Context Help More When Requests Are Less Direct?\\
+A Preregistered Test on Task-Oriented Dialogue Rewrites}
+
+\author{%
+  Sandy Thomas\\
+  \todo{affiliation}\\
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Assistants must recover what a user wants even when the request is phrased indirectly. A common
+intuition is that preceding dialogue matters most for exactly those turns. We test that intuition
+with a frozen, preregistered protocol on MultiWOZ dialogues whose user turns were rewritten into
+direct and indirect variants by the DIRECT corpus. Each example is assigned a rule-based
+indirectness level (L0--L3) and scored under five context conditions: none, the preceding turn,
+the full history, and two mismatched histories taken from another dialogue. We evaluate request
+detection and structured request interpretation for TF-IDF, DeBERTa-v3, Qwen2.5-7B-Instruct and a
+routed hybrid. The confirmatory test, whether the full-history benefit grows from L0 to L2 for the
+hybrid, is null: the linear contrast is \PrimaryEst{} with 95\% CI \PrimaryCI{} ($p=\PrimaryP$).
+Context is nonetheless used: interpretation is \ControlEst{} \ControlCI{} higher with the true
+history than with another dialogue's. The main bottleneck is not detection, which is near ceiling on gold
+requests (\DetectFull), but interpretation, where even oracle routing reaches only \OracleFull.
+Contrary to the usual expectation, interpretation success rises rather than falls from L0 to L2.
+We release the code, frozen configuration and table-generation pipeline.
+\end{abstract}
+
+% ---------------------------------------------------------------------------------------------
+\section{Introduction}
+\label{sec:intro}
+
+Users rarely state requests in the form an assistant is trained to parse. ``I need a cheap hotel
+in the north'' and ``The north would be handy, and money's a bit tight this month'' can ask for
+the same thing. The second leaves the request implicit and relies on the listener to recover it,
+often with help from what was said earlier \citep{searle1975indirect,blumkulka1989ccsarp}. For a
+task-oriented assistant this raises two practical questions. Does the system notice that a
+request was made (\emph{detection})? And does it recover what was asked for, the intent and its
+slot values (\emph{interpretation})?
+
+A natural hypothesis is that dialogue context helps more as requests become less direct: a direct
+request carries its own content, whereas a hint needs the conversation to be understood. This
+paper tests that hypothesis (H2) under a protocol that was frozen before any test-set result was
+seen. We also report three secondary questions fixed in the same protocol: whether performance
+falls as indirectness increases (H1), whether the context benefit differs by model family (H3),
+and whether detection degrades more slowly than interpretation (H4).
+
+Our setting holds the target wording fixed and varies only the context. We use DIRECT
+\citep{takayama2021direct}, which rewrites MultiWOZ \citep{budzianowski2018multiwoz,eric2020multiwoz21}
+user turns into direct and indirect paraphrases, and assign each rewrite a level with a versioned
+wording rule. Every example is then scored under five context conditions, including two
+\emph{mismatched} conditions that substitute another dialogue's history as a control for models
+that merely benefit from extra text.
+
+\paragraph{Findings.}
+\begin{itemize}
+  \item The preregistered interaction is null. For the routed hybrid, the L2$-$L0 difference in
+        the full-history benefit is \PrimaryEst{} \PrimaryCI{} on \PrimaryExamples{} L2 examples
+        from \PrimaryDialogues{} dialogues. Overall, full history adds only \FullNoneEst{}
+        \FullNoneCI{} to interpretation; the single preceding turn adds \OneNoneEst{} \OneNoneCI.
+  \item Models do use context. The true history beats another dialogue's history by
+        \ControlEst{} \ControlCI{} in interpretation, and the effect survives removing donors that
+        mention a cue (\CueFreeEst{} \CueFreeCI).
+  \item Interpretation, not detection, is the bottleneck. On gold indirect requests the hybrid
+        detects \DetectFull{} under full context, yet oracle interpretation is \OracleFull, and
+        routed interpretation matches it.
+  \item H1 is reversed for interpretation: success rises from L0 to L2 by \HoneEst{} \HoneCI{}
+        (Holm $p=\HoneP$). Detection falls slightly over the same range.
+\end{itemize}
+
+We make no claim to be first with a context ablation, a graded notion of indirectness or a
+shuffled-context control; each has precedents (\S\ref{sec:related}). The contribution is a
+controlled, preregistered combination of them for assistant requests, with detection, oracle
+interpretation and routed interpretation scored on the same items.
+
+% ---------------------------------------------------------------------------------------------
+\section{Related work}
+\label{sec:related}
+
+\paragraph{Pragmatic meaning and assistant dialogue.}
+Resources for pragmatic inference target different kinds of meaning. \citet{george2020implicatures}
+annotate implied meanings in dialogue snippets, and Circa \citep{louis2020circa} covers indirect
+answers to polar questions. Both support contextual interpretation, but neither labels requests
+to an assistant. DIRECT \citep{takayama2021direct} is our closest predecessor: it augments
+MultiWOZ with crowd-written pragmatic paraphrases and evaluates directness prediction and
+paraphrase generation with and without dialogue history, finding that history does not help every
+task. That mixed result motivates scoring detection and interpretation separately. We keep DIRECT's
+rewrites but replace its variant labels with rule-assigned wording levels. IndirectRequests
+\citep{mannekote2025indirect} instead generates requests from SGD schemas with an LLM and has them
+rated by crowd workers. We use it only as a separately reported transfer test.
+
+\paragraph{Context, indirectness and evaluation design.}
+Context-dependent speech-act interpretation has a long experimental lineage, from indirect
+speech-act schemas \citep{roque2020isa} to INDIR-IT's paired literal and indirect contexts
+\citep{orsini2025indirit}. DRInQ \citep{arai2026drinq} varies the context around fixed questions,
+and READI \citep{kim2026readi} grades indirectness in a visual setting with a shuffled-image
+control. Neither contextual inference nor a corrupted-context control is new here. Broader
+conversational context also helps dialogue-act recognition \citep{zelasko2021dialogacts}, and
+lexical classifiers with and without context \citep{li2022implicatures} show why a context-blind
+baseline is informative. Wider evaluations compare human and model pragmatic interpretation
+\citep{hu2023pragmatics}, and \citet{ma2025survey} survey the area. Our narrower question is
+whether the benefit of the preceding \emph{text} context varies across indirectness levels in
+assistant dialogue, with the target wording and the reference acts held fixed across conditions.
+
+% ---------------------------------------------------------------------------------------------
+\section{Data and annotation}
+\label{sec:data}
+
+\paragraph{Source and splits.}
+We join DIRECT's rewrites to MultiWOZ~2.1 and keep MultiWOZ's official splits; DIRECT training
+dialogues that MultiWOZ assigns to validation become development data. Each example is one
+rewritten user turn after the first turn, so every example has some history. A split audit,
+completed before scoring, removed cross-split duplicates and inspected dialogues. The test set
+holds 10{,}465 examples from 934 dialogues.\footnote{Counts from
+\texttt{results/analysis/test/report.json} and the split-audit summary; see
+Appendix~\ref{app:repro}.} Exact duplicates within test are flagged (15.0\%) and re-analysed in a
+sensitivity line that drops them.
+
+\paragraph{Labels.}
+The reference for each example is the original turn's MultiWOZ dialogue acts. These map to a
+request type (direct, indirect or no request) and, for requests, to an intent category
+(\texttt{cat-v1}: information seeking, booking, travel, recommendation) with its slot values.
+DIRECT's variant label supplies the direct/indirect distinction for Stage~1.
+
+\paragraph{Indirectness levels.}
+A versioned rule set (\texttt{auto-v1}) assigns each rewrite one level, applied in order:
+\textbf{NR} (only social acts), \textbf{L0} (a need or want statement, a command or a plain
+question), \textbf{L1} (a conventional formula such as ``could you''), \textbf{NR} (declining an
+offer), \textbf{INF} (no preference, a bare yes/no or a fragment), \textbf{L2} (a hint that names
+the detail sought), and \textbf{L3} (anything else). The levels are a proxy, not gold. Checked
+against the author's labels, the rules agreed on 31 of 39 items ($\kappa=0.74$) in two rounds and
+29 of 30 ($\kappa=0.93$) in a third. L3 is the weakest level: only 12 of 40 audited L3 items were
+truly L3, most of the rest being non-requests or L2. The rules also show that DIRECT's ``indirect''
+label is weak for our purpose: about 27\% of indirect test rewrites read as plain L0 requests.
+
+\paragraph{Context conditions.}
+The target text is identical in all five conditions. \texttt{none} gives the target alone,
+\texttt{one} adds the single preceding turn, and \texttt{full} adds every preceding turn.
+\texttt{mismatched} and \texttt{mismatched\_one} substitute the history of a donor dialogue from
+the same split, chosen by a seeded draw from dialogues sharing no domain with the target.
+Turns are rendered as \texttt{User:}/\texttt{System:} lines. Context plus target is capped at 350
+whitespace tokens by dropping the oldest turns, which affects 0.9\% of test examples. Contrasts
+with a mismatched condition use the 10{,}393 examples that have a donor.
+
+% ---------------------------------------------------------------------------------------------
+\section{Task and models}
+\label{sec:models}
+
+\paragraph{Two stages.}
+Stage~1 classifies a turn as a direct request, an indirect request or no request. Stage~2
+interprets a request as one \texttt{cat-v1} category plus slot--value pairs under a closed schema
+(56 slot keys). Our primary endpoint, \emph{request interpretation}, counts an example as correct
+when it is a gold request, the system predicts some request, and the category and normalised slot
+values match exactly. Invalid model output counts as an error. \emph{Detection} below means
+three-way Stage~1 accuracy over all examples, unless stated otherwise.
+
+\paragraph{Systems.}
+\begin{itemize}
+  \item \textbf{TF-IDF} logistic regression on word $n$-grams ($n\le2$) \citep{pedregosa2011sklearn},
+        trained once on \texttt{full} inputs: an \emph{utterance} variant that never sees
+        context, whose benefit is zero by construction, and a \emph{context} variant.
+  \item \textbf{DeBERTa-v3-base and -large} \citep{he2023debertav3}, fine-tuned for Stage~1 with
+        five seeds under each of \texttt{none}, \texttt{one} and \texttt{full}.
+  \item \textbf{Qwen2.5-7B-Instruct} \citep{qwen2024qwen25}, prompted for both stages with six
+        fixed DIRECT-train examples (prompt P2, chosen over a zero-shot prompt on development
+        data), greedy decoding and schema-constrained output via vLLM \citep{kwon2023vllm}.
+  \item \textbf{Routed hybrid} (the primary system): the DeBERTa-v3-large detector routes each
+        turn, and Qwen interprets the turns routed as requests. A turn routed to no request stays
+        a non-request.
+\end{itemize}
+
+\paragraph{Lines.}
+A trained system can be scored two ways. On the \emph{matched} line, condition $c$ is scored by
+the model trained on $c$; this is the primary line. On the \emph{test-time} line, the model
+trained on \texttt{full} is scored under every condition. Untrained and single-model systems have
+only the test-time line. Mismatched contrasts always use the test-time line.
+
+% ---------------------------------------------------------------------------------------------
+\section{Experimental setup}
+\label{sec:setup}
+
+\paragraph{Preregistration.}
+The data, rules, prompts, model revisions, hyperparameters and analysis plan were frozen in a
+hashed record before test inference. One amendment, logged before any test output was read,
+re-pinned the selected prompt after a development-set bug fix. An earlier Qwen test run that
+predated the amendment was archived unread.
+
+\paragraph{Hypotheses and tests.}
+H2 is the single confirmatory test: for the hybrid on the matched line, the linear
+$(-1,0,+1)$ contrast over L0, L1 and L2 of the \texttt{full}$-$\texttt{none} benefit in request
+interpretation. L3, INF and NR are excluded from the trend because their rules are least
+reliable. A secondary family of nine statistics is Holm-adjusted together
+\citep{holm1979}: the H1 interpretation trend, the detection-only H2 trend, the H4 contrast,
+the \texttt{full}$-$\texttt{mismatched} control, and five H3 differences between each panel
+system's test-time context benefit and the hybrid's. H4 is the L0$-$L2 drop in detection minus
+the drop in oracle interpretation under \texttt{full}, on gold indirect requests, with the
+protocol predicting a negative value. Everything else is descriptive.
+
+\paragraph{Statistics.}
+All intervals are 95\% percentile intervals from a dialogue-cluster bootstrap with 10{,}000
+replicates \citep{efron1993bootstrap}, resampling dialogues because turns from one dialogue are
+dependent. Seeds are averaged per example before resampling. A level cell with fewer than 30
+dialogues is marked sparse and never tested.
+
+% ---------------------------------------------------------------------------------------------
+\section{Results}
+\label{sec:results}
+
+\begin{table}[t]
+  \caption{Overall success by context condition on test. Detection is three-way Stage~1
+  accuracy over all examples; interp.\ is request interpretation on gold requests. DeBERTa and
+  the hybrid are on the matched line; TF-IDF and Qwen have one model each (test-time line). The
+  last column is the test-time \texttt{full}$-$\texttt{mismatched} control.}
+  \label{tab:overall}
+  \centering
+  \small
+  \input{generated/overall}
+\end{table}
+
+\paragraph{Overall.}
+Table~\ref{tab:overall} gives each system's success under every condition. The fine-tuned
+detectors reach about 0.93 three-way accuracy whatever the context, and Qwen's prompted detection
+is much weaker (\QwenDetNone{} without context). Interpretation is low for every system: the hybrid
+reaches \HybridInterpNone{} without context, \HybridInterpOne{} with one turn and
+\HybridInterpFull{} with the full history. The single preceding turn helps most
+(\OneNoneEst{} \OneNoneCI{} over none), and adding the rest of the history takes some of that
+back (\FullOneEst{} \FullOneCI).
+
+\begin{table}[t]
+  \caption{The preregistered test and the Holm-adjusted secondary family. Contrasts are
+  L2$-$L0 linear trends unless named otherwise; H3 rows compare each system's test-time
+  \texttt{full}$-$\texttt{none} benefit with the hybrid's on the named endpoint.}
+  \label{tab:confirmatory}
+  \centering
+  \small
+  \input{generated/confirmatory}
+\end{table}
+
+\paragraph{H2: no interaction.}
+The confirmatory contrast is \PrimaryEst{} \PrimaryCI{} ($p=\PrimaryP$; Table~\ref{tab:confirmatory}).
+Dropping exact duplicates gives \SensEst{} \SensCI. The detection-only trend is also flat. Per
+level (Table~\ref{tab:levels}), the full-history benefit is within $\pm0.01$ for L0--L2. The only
+level with a clearly positive benefit is L3 (\LthreeGain{} \LthreeCI{}, $n=\LthreeExamples$),
+which lies outside the prespecified trend and is the least reliable rule level, so we treat it as
+exploratory.
+
+\begin{table}[t]
+  \caption{Routed hybrid by rule level (matched line). $n$ counts gold requests with a mapped
+  category, so NR here holds the few gold requests the rules call non-requests. Detection is
+  three-way Stage~1 accuracy on all examples at that level.}
+  \label{tab:levels}
+  \centering
+  \small
+  \input{generated/levels}
+\end{table}
+
+\paragraph{Context is used.}
+A null interaction does not mean the models ignore context. Hybrid interpretation is
+\ControlEst{} \ControlCI{} higher with the true history than with another dialogue's, and the control is positive
+for every context-reading system in Table~\ref{tab:overall}. True history therefore carries
+information the models use; its benefit over no history is small because the rewritten target
+turn usually already states the category and slot values.
+
+\paragraph{H1 reversed for interpretation.}
+Interpretation success rises from L0 to L2 (\HoneEst{} \HoneCI{}, Holm $p=\HoneP$), the opposite
+of H1. Detection falls slightly over the same range (Table~\ref{tab:levels}). One reading is that
+L2 hints, by the rule's definition, name the detail being sought, while many L0 rewrites are
+underspecified requests (``I need a hotel'') whose slot values lie in earlier turns. Indirectness
+is observed rather than manipulated here, so this is a description of the corpus, not a causal
+effect of wording.
+
+\paragraph{H3: family differences reflect training.}
+All five H3 differences are significant after Holm adjustment, but four of them say more about
+the test-time line than about families. The detector trained on \texttt{full} loses accuracy
+when evaluated without context, which inflates its test-time benefit; systems trained or prompted
+without that dependence show smaller benefits. The design-matched comparison
+(Table~\ref{tab:overall}) shows no family with a large context benefit, and Qwen and the hybrid
+differ by only \(0.002\) because they share one interpreter.
+
+\begin{table}[t]
+  \caption{Detection, oracle and routed interpretation for the hybrid on identical gold indirect
+  requests (matched line).}
+  \label{tab:stages}
+  \centering
+  \small
+  \input{generated/stages}
+\end{table}
+
+\paragraph{H4: interpretation is the bottleneck.}
+On gold indirect requests the router detects \DetectFull{} under \texttt{full}, but interpretation
+given a perfect router (oracle) is \OracleFull, and routed interpretation equals it
+(Table~\ref{tab:stages}). Routing therefore costs almost nothing; nearly all loss is in recovering
+the category and slots. The H4 contrast is \HfourEst{} \HfourCI{} (Holm $p=\HfourP$): detection
+does not degrade measurably more slowly than interpretation.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/context_by_level}
+  \caption{\texttt{full}$-$\texttt{none} benefit by rule level, with 95\% dialogue-cluster
+  bootstrap intervals, for every system and line. Hollow markers are sparse or unstable cells.}
+  \label{fig:levels}
+\end{figure}
+
+Figure~\ref{fig:levels} shows the same per-level benefits for every system and line. Matched-line
+benefits are near zero at every level, whereas the test-time detectors gain at NR and INF, where
+the full-trained model has learned to rely on context.
+
+\paragraph{Transfer.}
+On the 194 IndirectRequests test items, run without context and zero-shot, Qwen recovers
+requests poorly (recall \TransferRecall) although the values it returns are often right
+(\TransferValue), for an end-to-end score of \TransferEndToEnd{} (Table~\ref{tab:transfer},
+Appendix~\ref{app:extra}). This data is LLM-generated and its items have no non-requests, so it
+cannot support a context claim or a false-positive rate.
+
+% ---------------------------------------------------------------------------------------------
+\section{Analysis and error audit}
+\label{sec:audit}
+
+\todo{Fill after the error audit. Design (fixed before scoring): 60 request-interpretation errors
+of the hybrid under \texttt{full} on test, 15 per level L0--L3, drawn uniformly within each level
+with a seeded draw. Each is coded once from a closed set: literal reading, wrong intent or slot,
+missed cue, unsupported addition, source mismatch, malformed response, routing failure, with an
+optional flag for a questionable reference. Report counts by level and code with the shortfall,
+and the non-request false-positive rate, since over-inference is not sampled.}
+
+% ---------------------------------------------------------------------------------------------
+\section{Limitations}
+\label{sec:limitations}
+
+\textbf{Proxy labels.} The levels come from wording rules, not human judgments of indirectness,
+and the L3 rule is unreliable. DIRECT's direct/indirect labels are weak, and the intent
+reference is the original turn's acts, which a rewrite may not fully preserve. \textbf{One
+annotator.} All rule checks and the error audit are by the author, so no inter-annotator agreement
+is available. \textbf{Coverage.} \texttt{cat-v1} covers four MultiWOZ intents; troubleshooting,
+advice and device control are absent. \textbf{Observational levels.} Levels are not randomised,
+and they correlate with intent and turn position. \textbf{Panel.} One LLM and one interpreter
+are tested, and the hybrid's five seeds share one interpreter pass, so its seed variation reflects
+only the router. DeBERTa-v3-large's test-time line is seed-unstable without context.
+\textbf{Inspected data.} Some test dialogues were inspected during development; they are
+excluded as targets but stay in the donor pool, so 568 test examples take a mismatched history
+from an inspected dialogue (split-audit summary in \texttt{data/manifests/}). \textbf{Context
+format.} A 350-token budget truncates 0.9\% of histories, and only text context is studied.
+
+% ---------------------------------------------------------------------------------------------
+\section{Ethics and broader impact}
+\label{sec:ethics}
+
+The study uses public English corpora of simulated travel-booking dialogue with no personal data;
+no new human-subject data was collected. Better recovery of indirect requests could make
+assistants easier to use for people who prefer indirect phrasing, but over-inference, acting on a
+request the user did not make, is a real risk, which is why we report non-request accuracy
+alongside interpretation. LLM outputs may vary across runtimes even under greedy decoding; we
+release all predictions. An AI coding assistant (Claude) wrote most of the analysis code under the
+author's direction and review; all design decisions, labels and claims are the author's.
+
+% ---------------------------------------------------------------------------------------------
+\section{Conclusion}
+\label{sec:conclusion}
+
+Under a preregistered test, dialogue context did not help more as DIRECT rewrites became less
+direct. Models do read the context, since a mismatched history hurts, but on these data the
+target turn usually carries what is needed, and the hard part is recovering the exact category and
+slots rather than noticing the request. Future work should test levels with independent human
+judgments, deliberately underspecified targets, and more than one interpreter.
+
+\begin{ack}
+\todo{acknowledgements and funding, or remove.}
+\end{ack}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+% ---------------------------------------------------------------------------------------------
+\appendix
+
+\section{Reproduction and provenance}
+\label{app:repro}
+
+Every table is generated from the frozen test analysis (analysis config \texttt{\AnalysisConfig})
+by a single command run from the repository root:
+{\footnotesize
+\begin{verbatim}
+python -m src.analysis.paper_tables --tables results/analysis/test --out paper/generated
+\end{verbatim}
+}
+Each generated fragment records the command, the SHA-256 of every input file and the analysis
+config hash in its header comment. Table~\ref{tab:provenance} lists the inputs. The figure is drawn
+from \texttt{results/analysis/test/figure\_data.csv} by \texttt{python -m src.analysis.figures} (matplotlib, via the \texttt{figures} uv group).
+The freeze record, prompts, model revisions and per-run commands are in the repository's
+\texttt{data/manifests/} and \texttt{configs/} directories. Encoder runs used one NVIDIA RTX 5090.
+
+\begin{table}[h]
+  \caption{Inputs behind each generated fragment.}
+  \label{tab:provenance}
+  \centering
+  \footnotesize
+  \input{generated/provenance}
+\end{table}
+
+\section{Additional results}
+\label{app:extra}
+
+\begin{table}[h]
+  \caption{IndirectRequests transfer (LLM-generated data, no context, reported separately from
+  the main test).}
+  \label{tab:transfer}
+  \centering
+  \small
+  \input{generated/transfer}
+\end{table}
+
+\end{document}

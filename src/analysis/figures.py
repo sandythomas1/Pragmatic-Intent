@@ -37,7 +37,7 @@ LEVEL_ORDER = ("L0", "L1", "L2", "L3", "INF", "NR")
 SERIES = {"request_interpretation": ("#2a78d6", "o"), "type_exact": ("#eb6834", "s"), "stage1_correct": ("#1baf7a", "^")}
 SURFACE, TEXT_PRIMARY, TEXT_SECONDARY, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3df"
 ENDPOINT_LABELS = {"request_interpretation": "request + interpretation (primary)",
-                   "type_exact": "type-exact (spec 005)", "stage1_correct": "detection (Stage 1)"}
+                   "type_exact": "type-exact", "stage1_correct": "detection (Stage 1)"}
 _NUMERIC = ("point", "ci_low", "ci_high")
 
 
@@ -128,7 +128,7 @@ def render(rows: Sequence[dict[str, Any]], out: Path) -> list[Path]:
     handles.append(plt.Line2D([], [], color=TEXT_SECONDARY, marker="o", linestyle="", markersize=6,
                               markerfacecolor=SURFACE, label="sparse / unstable (not tested)"))
     figure.legend(handles=handles, loc="upper center", ncol=len(handles), frameon=False, fontsize=8,
-                  labelcolor=TEXT_PRIMARY, bbox_to_anchor=(0.5, 1.02))
+                  labelcolor=TEXT_PRIMARY, bbox_to_anchor=(0.5, 0.995))  # inside the canvas, or savefig clips it
     figure.tight_layout(rect=(0, 0, 1, 0.94))
     out.parent.mkdir(parents=True, exist_ok=True)
     paths = [out.with_suffix(".svg"), out.with_suffix(".pdf")]

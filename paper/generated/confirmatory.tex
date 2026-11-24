@@ -1,0 +1,25 @@
+% Generated; do not edit. Regenerate with:
+%   python -m src.analysis.paper_tables --tables results/analysis/test --out paper/generated
+% Source: results/analysis/test/primary_test.csv sha256=d056e1f1f4c5ae21ba2adc7f3829d4eceeb1130fa822ba711363464ab0f8f1e6
+% Source: results/analysis/test/holm.csv sha256=ced3a28a8575314aad5009be2f278c8ad36f6e03aa7da3f36e3c3004982801c0
+% Analysis config: 231365295e22
+\begin{tabular}{lrcr}
+\toprule
+Statistic & Estimate & 95\% CI & $p$ \\
+\midrule
+\multicolumn{4}{l}{\emph{Confirmatory (H2): routed hybrid, interpretation, L2$-$L0 of full$-$none}} \\
+Linear contrast & $-$0.005 & [$-$0.027, 0.018] & 0.686 \\
+Quadratic term (descriptive) & +0.019 & [$-$0.020, 0.057] & -- \\
+\midrule
+\multicolumn{4}{l}{\emph{Secondary family (Holm-adjusted $p$)}} \\
+H1: interpretation trend L2$-$L0, none & +0.033 & [0.012, 0.054] & 0.008 \\
+H2 (detection): L2$-$L0 of full$-$none & 0.000 & [$-$0.008, 0.009] & 0.940 \\
+H4: detection drop $-$ oracle drop & +0.024 & [$-$0.005, 0.055] & 0.213 \\
+Control: full$-$mismatched (interp.) & +0.057 & [0.048, 0.066] & $<$0.001 \\
+H3: TF-IDF (utterance) $-$ hybrid (detection) & $-$0.089 & [$-$0.093, $-$0.084] & $<$0.001 \\
+H3: TF-IDF (context) $-$ hybrid (detection) & $-$0.079 & [$-$0.084, $-$0.073] & $<$0.001 \\
+H3: DeBERTa-v3-base $-$ hybrid (detection) & $-$0.071 & [$-$0.075, $-$0.067] & $<$0.001 \\
+H3: DeBERTa-v3-large $-$ hybrid (detection) & $-$0.004 & [$-$0.006, $-$0.002] & $<$0.001 \\
+H3: Qwen2.5-7B-Instruct $-$ hybrid (interp.) & +0.002 & [0.001, 0.003] & 0.004 \\
+\bottomrule
+\end{tabular}
