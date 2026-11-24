@@ -92,6 +92,9 @@ that merely benefit from extra text.
         routed interpretation matches it.
   \item H1 is reversed for interpretation: success rises from L0 to L2 by \HoneEst{} \HoneCI{}
         (Holm $p=\HoneP$). Detection falls slightly over the same range.
+  \item Intent matters more than level (exploratory). The full-history benefit runs from
+        \IntentBookingEst{} for booking to \IntentRecommendationEst{} for recommendation, and
+        info-seeking requests are almost never interpreted exactly.
 \end{itemize}
 
 We make no claim to be first with a context ablation, a graded notion of indirectness or a
@@ -211,6 +214,29 @@ hashed record before test inference. One amendment, logged before any test outpu
 re-pinned the selected prompt after a development-set bug fix. An earlier Qwen test run that
 predated the amendment was archived unread.
 
+\paragraph{Prompt selection.}
+Two prompts were written before any development run: P1 gives zero-shot schema instructions,
+and P2 adds six DIRECT-train examples drawn with a fixed seed. Each was run on every development
+example under \texttt{none} and \texttt{full}. It was scored as the hybrid's request
+interpretation, averaged over both conditions and the five router seeds, a metric that does not
+favour either answer to H2. In a first round both prompts broke the preregistered 2\% limit on
+invalid output (P1 2.23\%, P2 2.02\%), so both were fixed and rerun. In the second round P2
+scored 0.177 against P1's 0.128, with 0.61\% and 0.94\% invalid output, and was
+selected.\footnote{Development-set numbers from
+\texttt{specs/009-llm-routed-hybrid/verification.md}; no test data was used.}
+
+\paragraph{Training and inference.}
+DeBERTa-v3-base and -large are fine-tuned as cross-encoders on the three-way Stage~1 label, with
+an effective batch of 32, two epochs, weight decay 0.01, bf16 and inputs of at most 512 subword
+tokens. Base uses a learning rate of $2\times10^{-5}$ with 6\% warmup; large uses
+$1\times10^{-5}$ with 10\% warmup, because large DeBERTa can collapse to a single class at higher
+rates. TF-IDF uses unigrams and bigrams with a minimum document frequency of 2 and $C=1$; its
+context variant keeps separate vocabularies for the target turn and the history. Qwen runs at a
+pinned model revision in vLLM, with temperature 0, at most 256 output tokens and a 4{,}096-token
+window. Encoder runs used one NVIDIA RTX~5090; one DeBERTa-v3-large seed (three training
+conditions) took about 2.3 hours. Exact values are in the frozen configuration files
+(Appendix~\ref{app:repro}).
+
 \paragraph{Hypotheses and tests.}
 H2 is the single confirmatory test: for the hybrid on the matched line, the linear
 $(-1,0,+1)$ contrast over L0, L1 and L2 of the \texttt{full}$-$\texttt{none} benefit in request
@@ -319,6 +345,28 @@ given a perfect router (oracle) is \OracleFull, and routed interpretation equals
 the category and slots. The H4 contrast is \HfourEst{} \HfourCI{} (Holm $p=\HfourP$): detection
 does not degrade measurably more slowly than interpretation.
 
+\begin{table}[t]
+  \caption{Routed hybrid request interpretation by intent category (H5, exploratory; matched
+  line). $n$ counts gold requests in the category.}
+  \label{tab:intents}
+  \centering
+  \small
+  \input{generated/intents}
+\end{table}
+
+\paragraph{H5 (exploratory): intents differ more than levels.}
+Interpretation varies far more across intents than across levels (Table~\ref{tab:intents}).
+Info-seeking requests are almost never interpreted exactly (\IntentInfoSeekingFull{} under
+\texttt{full}), against \IntentBookingFull{} to \IntentRecommendationFull{} for the other three
+intents. Context also cuts both ways. The full-history benefit is \IntentBookingEst{}
+\IntentBookingCI{} for booking but \IntentRecommendationEst{} \IntentRecommendationCI{} for
+recommendation, and the two largely cancel in the overall benefit. Level and intent are
+correlated, so we reweight each level's benefit to the pooled intent mix over L0--L2. The
+standardized trend is \StdTrendEst{} \StdTrendCI, so the null interaction is not an artefact of
+intent composition. One hypothesis for the booking loss, which the error audit
+(\S\ref{sec:audit}) can test, is that the history offers slot values from earlier turns that are
+absent from the target turn's reference, so copying them counts as an unsupported addition.
+
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{figures/context_by_level}
@@ -332,7 +380,7 @@ benefits are near zero at every level, whereas the test-time detectors gain at N
 the full-trained model has learned to rely on context.
 
 \paragraph{Transfer.}
-On the 194 IndirectRequests test items, run without context and zero-shot, Qwen recovers
+On the \TransferN{} IndirectRequests test items, run without context and zero-shot, Qwen recovers
 requests poorly (recall \TransferRecall) although the values it returns are often right
 (\TransferValue), for an end-to-end score of \TransferEndToEnd{} (Table~\ref{tab:transfer},
 Appendix~\ref{app:extra}). This data is LLM-generated and its items have no non-requests, so it
@@ -413,7 +461,8 @@ Each generated fragment records the command, the SHA-256 of every input file and
 config hash in its header comment. Table~\ref{tab:provenance} lists the inputs. The figure is drawn
 from \texttt{results/analysis/test/figure\_data.csv} by \texttt{python -m src.analysis.figures} (matplotlib, via the \texttt{figures} uv group).
 The freeze record, prompts, model revisions and per-run commands are in the repository's
-\texttt{data/manifests/} and \texttt{configs/} directories. Encoder runs used one NVIDIA RTX 5090.
+\texttt{data/manifests/} and \texttt{configs/} directories: \texttt{configs/stage1/} for TF-IDF and DeBERTa,
+\texttt{configs/llm/} for Qwen and its prompts.
 
 \begin{table}[h]
   \caption{Inputs behind each generated fragment.}

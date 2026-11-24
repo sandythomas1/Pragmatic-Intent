@@ -17,6 +17,7 @@ PROVENANCE = "report.json#provenance (config 0123456789ab)"
 STATS = {"point": 0.25, "ci_low": 0.2, "ci_high": 0.3, "p": 0.04, "p_holm": 0.08, "examples": 1200,
          "dialogues": 300, "status": "ok", "provenance": PROVENANCE}
 LEVELS_ALL = ("overall", *pt.LEVELS)
+HYBRID_RI = {"system": "hybrid", "line": "matched", "endpoint": "request_interpretation"}
 
 
 def fixture_tables() -> dict[str, list[dict[str, object]]]:
@@ -51,6 +52,12 @@ def fixture_tables() -> dict[str, list[dict[str, object]]]:
         "transfer": [{"system": "qwen2.5-7b-instruct", "gpt_family": "false", "n": 194, "request_recall": 0.031,
                       "value_accuracy": 0.608, "end_to_end": 0.021, "invalid_outputs": 0,
                       "data_kind": "llm_generated_transfer"}],
+        "h5_rates": [{**HYBRID_RI, "category": k, "condition": c, **STATS}
+                     for (k, _), c in itertools.product(pt.INTENTS, ("none", "one", "full"))],
+        "h5_benefits": [{**HYBRID_RI, "category": k, "contrast": "full_minus_none", **STATS, "point": -0.059}
+                        for k, _ in pt.INTENTS],
+        "h5_standardized": [{**HYBRID_RI, "level": "trend", "kind": "standardized_linear_trend", **STATS,
+                             "point": -0.0018}],
     }
 
 
@@ -162,7 +169,32 @@ class BuildTest(unittest.TestCase):
         return {f.name: f for f in pt.build(self.tables)}
 
     def test_every_fragment_is_built(self) -> None:
-        self.assertEqual(set(self.fragments()), {"overall", "confirmatory", "levels", "stages", "transfer", "numbers"})
+        self.assertEqual(set(self.fragments()),
+                         {"overall", "confirmatory", "levels", "stages", "intents", "transfer", "numbers"})
+
+    def test_the_intent_table_has_one_labelled_row_per_category_in_fixed_order(self) -> None:
+        body = self.fragments()["intents"].body
+        labels = [label for _, label in pt.INTENTS]
+        positions = [body.index(f"{label} & 1200 &") for label in labels]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("$-$0.059 [0.200, 0.300]", body)
+        self.assertNotIn("info_seeking", body)  # CSV text never reaches the output
+
+    def test_a_missing_intent_category_fails_by_name(self) -> None:
+        self.data["h5_rates"] = [r for r in self.data["h5_rates"]
+                                 if not (r["category"] == "travel" and r["condition"] == "one")]
+        write_tables(self.tables, self.data)
+        with self.assertRaises(AnalysisError) as caught:
+            pt.build(self.tables)
+        self.assertEqual(caught.exception.code, "missing_row")
+
+    def test_intent_numbers_and_the_standardized_trend_have_macros(self) -> None:
+        body = self.fragments()["numbers"].body
+        self.assertIn("\\newcommand{\\StdTrendEst}{$-$0.002}", body)
+        self.assertIn("\\newcommand{\\StdTrendCI}{[0.200, 0.300]}", body)
+        self.assertIn("\\newcommand{\\IntentBookingEst}{$-$0.059}", body)
+        self.assertIn("\\newcommand{\\IntentInfoSeekingFull}{0.250}", body)
+        self.assertIn("\\newcommand{\\IntentRecommendationCI}{[0.200, 0.300]}", body)
 
     def test_the_confirmatory_table_leads_with_the_primary_contrast(self) -> None:
         body = self.fragments()["confirmatory"].body

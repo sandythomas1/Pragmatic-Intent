@@ -49,6 +49,9 @@ CONDITIONS = ("none", "one", "full", "mismatched", "mismatched_one")
 CONDITION_HEADS = ("none", "one", "full", "mism.", "mism.-one")
 LEVELS = ("L0", "L1", "L2", "L3", "INF", "NR")
 OVERALL_CONTRASTS = ("one_minus_none", "full_minus_none", "full_minus_one")  # the prose quotes all three
+INTENTS = (("info_seeking", "Info-seeking"), ("booking", "Booking"), ("travel", "Travel"),
+           ("recommendation", "Recommendation"))  # cat-v1 request categories, in the paper's order
+HYBRID_RI = {"system": "hybrid", "line": "matched", "endpoint": "request_interpretation"}
 FLAG = r"\textsuperscript{\dag}"
 
 
@@ -257,6 +260,20 @@ def stages(h4: Source) -> Fragment:
     return Fragment("stages", (h4,), tabular("lrrrrr", ("Measure", *CONDITION_HEADS), lines))
 
 
+def intents(rates: Source, benefits: Source) -> Fragment:
+    """H5 (exploratory): hybrid interpretation by intent category and condition, and the full − none benefit."""
+    lines = []
+    for category, label in INTENTS:
+        rate = {c: rates.find(**HYBRID_RI, category=category, condition=c) for c in ("none", "one", "full")}
+        gain = benefits.find(**HYBRID_RI, category=category, contrast="full_minus_none")
+        cells = [label, rate["none"]["examples"]]
+        cells += [flagged(rate[c], num(rate[c]["point"], f"{label} {c}")) for c in ("none", "one", "full")]
+        cells.append(flagged(gain, f"{num(gain['point'], label, signed=True)} {interval(gain, label)}"))
+        lines.append(" & ".join(cells) + " \\\\")
+    head = ("Intent", "$n$", "none", "one", "full", "full$-$none [95\\% CI]")
+    return Fragment("intents", (rates, benefits), tabular("lrrrrc", head, lines))
+
+
 def transfer(table: Source) -> Fragment:
     """IndirectRequests transfer: its own table, labelled LLM-generated, never pooled (FR-15)."""
     lines = []
@@ -350,8 +367,24 @@ def numbers(src: Mapping[str, Source]) -> Fragment:
     for contrast, row in overall.items():
         name = "".join(_camel(part) for part in contrast.split("_minus_"))  # full_minus_none -> FullNone
         values += [(f"{name}Est", num(row["point"], contrast, signed=True)), (f"{name}CI", interval(row, contrast))]
+    values += _intent_values(src["h5_rates"], src["h5_benefits"], src["h5_standardized"])
     body = "\n".join(_macro(name, value) for name, value in values) + "\n"
     return Fragment("numbers", tuple(src.values()), body)
+
+
+def _intent_values(rates: Source, benefits: Source, standardized: Source) -> list[tuple[str, str]]:
+    """Per-intent full rate and benefit, and the intent-standardized H2 trend (is the null a mix effect?)."""
+    trend = standardized.find(**HYBRID_RI, level="trend", kind="standardized_linear_trend")
+    values = [("StdTrendEst", num(trend["point"], "standardized trend", signed=True)),
+              ("StdTrendCI", interval(trend, "standardized trend"))]
+    for category, label in INTENTS:
+        full = rates.find(**HYBRID_RI, category=category, condition="full")
+        gain = benefits.find(**HYBRID_RI, category=category, contrast="full_minus_none")
+        name = f"Intent{_camel(category)}"  # info_seeking -> IntentInfoSeeking
+        values += [(f"{name}Full", num(full["point"], label)),
+                   (f"{name}Est", num(gain["point"], label, signed=True)),
+                   (f"{name}CI", interval(gain, label))]
+    return values
 
 
 def _member(holm: Mapping[str, dict[str, str]], name: str) -> dict[str, str]:
@@ -384,12 +417,16 @@ REQUIRED = {
                     "ci_high"),
     "transfer": ("system", "gpt_family", "n", "request_recall", "value_accuracy", "end_to_end",
                  "invalid_outputs", "data_kind"),
+    "h5_rates": ("system", "line", "endpoint", "category", "condition", "point", "examples", "status"),
+    "h5_benefits": ("system", "line", "endpoint", "category", "contrast", "point", "ci_low", "ci_high", "status"),
+    "h5_standardized": ("system", "line", "endpoint", "level", "kind", "point", "ci_low", "ci_high", "status"),
 }
 BUILDERS: tuple[tuple[str, Callable[[Mapping[str, Source]], Fragment]], ...] = (
     ("overall", lambda s: overall_rates(s["h1_rates"], s["mismatch_controls"])),
     ("confirmatory", lambda s: confirmatory(s["primary_test"], s["holm"])),
     ("levels", lambda s: level_detail(s["h1_rates"], s["h2_benefits"])),
     ("stages", lambda s: stages(s["h4_rates"])),
+    ("intents", lambda s: intents(s["h5_rates"], s["h5_benefits"])),
     ("transfer", lambda s: transfer(s["transfer"])),
     ("numbers", numbers),
 )
